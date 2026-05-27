@@ -247,10 +247,9 @@ const getAvailableQuestionsForStudent = async (
 };
 
 const getScoreByStudentId = async (studentId) => {
-  const score = await Score.findOne({ studentId }).populate(
-    "studentId",
-    "name studentId",
-  ); // resolve student name & id
+  const score = await Score.findOne({ studentId })
+    .select("assigned new progress completed correct wrong timeTaken")
+    .lean();
 
   if (!score) {
     throw new Error("Score not found for this student");

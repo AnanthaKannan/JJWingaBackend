@@ -153,19 +153,12 @@ const getScoreByStudentIdController = async (req, res) => {
     });
   }
 
-  if (!mongoose.Types.ObjectId.isValid(studentId)) {
-    return res.status(400).json({
-      success: false,
-      message: "Invalid Student ID format",
-    });
-  }
-
   const score = await getScoreByStudentId(studentId);
 
   return res.status(200).json({
     success: true,
     message: "Score fetched successfully",
-    score,
+    ...score,
   });
 };
 
