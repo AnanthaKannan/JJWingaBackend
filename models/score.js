@@ -7,15 +7,27 @@ const scoreSchema = new mongoose.Schema(
       ref: 'Student',
       required: [true, 'Student reference is required'],
     },
+    assigned: {
+      type: Number,
+      default: 0,
+    },
+    new: {
+      type: Number,
+      default: 0,
+    },
+    progress: {
+      type: Number,
+      default: 0,
+    },
     completed: {
       type: Number,
       default: 0,
     },
-    failure: {
+    correct: {
       type: Number,
       default: 0,
     },
-    success: {
+    wrong: {
       type: Number,
       default: 0,
     },
@@ -23,10 +35,7 @@ const scoreSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-    assigned: {
-      type: Number,
-      default: 0,
-    },
+
   },
   {
     timestamps: true, // auto adds createdAt and updatedAt
