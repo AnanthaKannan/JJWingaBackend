@@ -1,34 +1,37 @@
-const mongoose = require("mongoose");
+const mongoose = require('mongoose');
 
-const adminSchema = new mongoose.Schema({
-  adminName: {
-    type: String,
-    required: true,
-    minlength: 0,
-    maxlength: 50,
-    default: ""
-  },
-  age:{
-    type:Number,
-    required:true,
-    min: 18,
-    max: 60
-  },
-  email:{
-    required:true,
-    type: String,
-  },
-  phone:{
-    type: String,
-    validate: {
-      validator: function(v) {
-        return /\w/.test(v);
-      },
-      message: props => `${props.value} is not a valid phone number!`
+const adminSchema = new mongoose.Schema(
+  {
+    adminId: {
+      type: String,
+      required: [true, 'Admin ID is required'],
+      unique: true,
+      trim: true,
+      // e.g. "JW001"
     },
-    required:[true, 'Admin phone number required']
+    name: {
+      type: String,
+      required: [true, 'Admin name is required'],
+      trim: true,
+    },
+    password: {
+      type: String,
+      required: [true, 'Password is required'],
+    },
+  },
+  {
+    timestamps: true, // auto adds createdAt and updatedAt
   }
+);
+
+// Hash password before saving
+adminSchema.pre('save', async function (next) {
+  if (!this.isModified('password')) return next();
+  const bcrypt = require('bcryptjs');
+  this.password = await bcrypt.hash(this.password, 10);
+  next();
 });
 
-const Admin = mongoose.model("Admin", adminSchema);
-exports.Admin = Admin;
+const Admin = mongoose.model('Admin', adminSchema);
+
+module.exports = Admin;

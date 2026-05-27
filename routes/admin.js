@@ -3,11 +3,11 @@ const router = express.Router();
 const AdminController = require('../controllers/admin');
 
 
-router.post('/addAdmin', AdminController.addAdmin);
+router.post('/student', AdminController.addAdmin);
 
-router.get('/getAdmin', AdminController.getAdmin);
+router.get('/student', AdminController.getAdmin);
 
-router.get('/getAdminByMail', AdminController.getAdminByMail);
+router.get('/student:id', AdminController.getAdminByMail);
 
 router.put('/updateAdminByMail/:old_email/:new_email', AdminController.updateAdminByMail)
 
