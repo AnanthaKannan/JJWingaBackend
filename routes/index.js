@@ -31,8 +31,8 @@ router.get(
 );
 
 // Question (protected)
-router.get("/questions", authenticate, controller.getQuestionListController);
-router.post("/admin/questions/add", ...admin, controller.addQuestionController);
+router.get("/admin/questions", ...admin, controller.getQuestionListController);
+router.post("/admin/questions", ...admin, controller.addQuestionController);
 router.get(
   "/questions/available/:studentId",
   authenticate,

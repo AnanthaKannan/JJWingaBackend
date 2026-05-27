@@ -268,12 +268,11 @@ const addQuestionController = async (req, res) => {
     });
   }
 
-  const data = await addQuestion({ questionId, questions });
+  await addQuestion({ questionId, questions });
 
   return res.status(201).json({
     success: true,
     message: "Question added successfully",
-    ...data,
   });
 };
 

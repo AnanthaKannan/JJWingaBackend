@@ -131,7 +131,11 @@ const getQuestionList = async (page = 1, limit = 15, search = "") => {
   const query = search ? { questionId: { $regex: search, $options: "i" } } : {};
 
   const [questions, total] = await Promise.all([
-    Question.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit),
+    Question.find(query)
+      .select("-__v -_id")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit),
     Question.countDocuments(query),
   ]);
 
@@ -221,7 +225,10 @@ const getAvailableQuestionsForStudent = async (
       $match: { assignedHomework: { $size: 0 } },
     },
     {
-      $project: { assignedHomework: 0 },
+      $project: {
+        assignedHomework: 0,
+        __v: 0,
+      },
     },
     { $sort: { createdAt: -1 } },
   ];
@@ -367,8 +374,6 @@ const addQuestion = async (questionData) => {
     questionId,
     questions: questions ?? [],
   });
-
-  return { question };
 };
 
 const updateHomework = async (homeworkId, updateData) => {
