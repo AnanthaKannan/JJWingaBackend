@@ -76,8 +76,8 @@ const getQuestionListController = async (req, res) => {
 };
 
 const getHomeworkListController = async (req, res) => {
-  const { studentId } = req.params;
-  const { state, page, limit } = req.query;
+  const { studentId, state } = req.params;
+  const { page, limit } = req.query;
 
   if (!studentId) {
     return res.status(400).json({
@@ -117,13 +117,6 @@ const getAvailableQuestionsForStudentController = async (req, res) => {
     return res.status(400).json({
       success: false,
       message: "Student ID is required",
-    });
-  }
-
-  if (!mongoose.Types.ObjectId.isValid(studentId)) {
-    return res.status(400).json({
-      success: false,
-      message: "Invalid Student ID format",
     });
   }
 
@@ -169,13 +162,6 @@ const getHomeworkByIdController = async (req, res) => {
     return res.status(400).json({
       success: false,
       message: "Homework ID is required",
-    });
-  }
-
-  if (!mongoose.Types.ObjectId.isValid(id)) {
-    return res.status(400).json({
-      success: false,
-      message: "Invalid Homework ID format",
     });
   }
 

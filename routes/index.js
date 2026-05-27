@@ -34,22 +34,18 @@ router.get(
 router.get("/admin/questions", ...admin, controller.getQuestionListController);
 router.post("/admin/questions", ...admin, controller.addQuestionController);
 router.get(
-  "/questions/available/:studentId",
-  authenticate,
+  "/admin/questions/available/:studentId",
+  ...admin,
   controller.getAvailableQuestionsForStudentController,
 );
 
 // Homework (protected)
 router.get(
-  "/homework/:studentId",
+  "/homework/:studentId/:state",
   authenticate,
   controller.getHomeworkListController,
 );
-router.get(
-  "/homework/id/:id",
-  authenticate,
-  controller.getHomeworkByIdController,
-);
+router.get("/homework/:id", authenticate, controller.getHomeworkByIdController);
 router.patch(
   "/homework/:id",
   authenticate,

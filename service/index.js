@@ -132,7 +132,7 @@ const getQuestionList = async (page = 1, limit = 15, search = "") => {
 
   const [questions, total] = await Promise.all([
     Question.find(query)
-      .select("-__v -_id")
+      .select("-__v")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit),
@@ -266,9 +266,7 @@ const getScoreByStudentId = async (studentId) => {
 };
 
 const getHomeworkById = async (id) => {
-  const homework = await HomeWork.findById(id)
-    .populate("questionId") // resolve full question data
-    .populate("studentId", "name studentId"); // resolve student name & id
+  const homework = await HomeWork.findById(id).populate("questionId"); // resolve full question data
 
   if (!homework) {
     throw new Error("Homework not found");
