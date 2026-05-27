@@ -10,6 +10,11 @@ router.get("/health", controller.healthCheckController);
 router.post("/login", controller.loginController);
 
 // Student — admin only
+router.get(
+  "/admin/send-notification",
+  ...admin,
+  controller.notificationController,
+);
 router.get("/admin/students", ...admin, controller.getStudentListController);
 router.post("/admin/students", ...admin, controller.addStudentController);
 router.patch(

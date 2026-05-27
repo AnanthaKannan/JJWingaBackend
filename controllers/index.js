@@ -1,3 +1,4 @@
+const admin = require("firebase-admin");
 const {
   login,
   getStudentList,
@@ -12,6 +13,20 @@ const {
   updateStudent,
   addQuestion,
 } = require("../service");
+
+admin.initializeApp({
+  credential: admin.credential.cert({
+    projectId: process.env.FIREBASE_PROJECT_ID,
+    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+    privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
+  }),
+});
+
+const notificationController = async (req, res) => {
+  const { token, title, body } = req.body;
+  await admin.messaging().send({ token, notification: { title, body } });
+  res.json({ success: true });
+};
 
 const loginController = async (req, res) => {
   try {
@@ -311,4 +326,5 @@ module.exports = {
   getScoreByStudentIdController,
   loginController,
   healthCheckController,
+  notificationController,
 };
