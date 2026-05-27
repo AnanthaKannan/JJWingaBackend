@@ -7,6 +7,8 @@
     "start": "node app.js",
     "dev": "npx nodemon app.js",
     "prod": "node app.js",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "engines": {
@@ -24,5 +26,9 @@
     "firebase-admin": "^13.10.0",
     "mongodb": "^3.7.4",
     "mongoose": "^5.13.23"
+  },
+  "devDependencies": {
+    "eslint": "^10.4.0",
+    "globals": "^17.6.0"
   }
 }

@@ -7,13 +7,14 @@ module.exports = function () {
       useUnifiedTopology: true,
       useNewUrlParser: true,
       useCreateIndex: true,
-      useFindAndModify: false
+      useFindAndModify: false,
     })
     .then(() => {
-      console.log(`Mongo dp connecteds... ${db}`)
-    }).catch((error) => {
-      console.log('-----------', error)
-      console.log(`${db} not connected..Node is Exiting...! ${error}`);
+      console.log(`Mongo dp connecteds...`);
+    })
+    .catch((error) => {
+      console.log("-----------", error);
+      console.log(`not connected..Node is Exiting...! ${error}`);
       process.exit(1);
     });
 };

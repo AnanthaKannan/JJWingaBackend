@@ -1,7 +1,17 @@
-const { login, getStudentList, getQuestionList, getHomeworkList, getAvailableQuestionsForStudent,
+const {
+  login,
+  getStudentList,
+  getQuestionList,
+  getHomeworkList,
+  getAvailableQuestionsForStudent,
   updateHomework,
-
-  getScoreByStudentId, getHomeworkById, assignQuestion, addStudent, updateStudent, addQuestion } = require('../service')
+  getScoreByStudentId,
+  getHomeworkById,
+  assignQuestion,
+  addStudent,
+  updateStudent,
+  addQuestion,
+} = require("../service");
 
 const loginController = async (req, res) => {
   try {
@@ -10,7 +20,7 @@ const loginController = async (req, res) => {
     if (!username || !password) {
       return res.status(400).json({
         success: false,
-        message: 'Username and password are required',
+        message: "Username and password are required",
       });
     }
 
@@ -18,26 +28,25 @@ const loginController = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Login successful',
+      message: "Login successful",
       ...data,
     });
   } catch (error) {
-    const isClientError = [
-      'Invalid username or password',
-    ].includes(error.message);
+    const isClientError = ["Invalid username or password"].includes(
+      error.message,
+    );
 
     return res.status(isClientError ? 401 : 500).json({
       success: false,
-      message: error.message || 'Failed to login',
+      message: error.message || "Failed to login",
     });
   }
 };
 
 const getStudentListController = async (req, res) => {
-
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 15;
-  const search = req.query.search?.trim() || '';
+  const search = req.query.search?.trim() || "";
 
   const data = await getStudentList(page, limit, search);
 
@@ -45,17 +54,15 @@ const getStudentListController = async (req, res) => {
     success: true,
     message: search
       ? `Search results for "${search}"`
-      : 'Student list fetched successfully',
+      : "Student list fetched successfully",
     ...data,
   });
-
 };
 
 const getQuestionListController = async (req, res) => {
-
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 15;
-  const search = req.query.search?.trim() || '';
+  const search = req.query.search?.trim() || "";
 
   const data = await getQuestionList(page, limit, search);
 
@@ -63,30 +70,28 @@ const getQuestionListController = async (req, res) => {
     success: true,
     message: search
       ? `Search results for "${search}"`
-      : 'Question list fetched successfully',
+      : "Question list fetched successfully",
     ...data,
   });
-
 };
 
 const getHomeworkListController = async (req, res) => {
-
   const { studentId } = req.params;
   const { state, page, limit } = req.query;
 
   if (!studentId) {
     return res.status(400).json({
       success: false,
-      message: 'Student ID is required',
+      message: "Student ID is required",
     });
   }
 
   // Validate state if provided
-  const validStates = ['NEW', 'PROGRESS', 'COMPLETED'];
+  const validStates = ["NEW", "PROGRESS", "COMPLETED"];
   if (state && !validStates.includes(state.toUpperCase())) {
     return res.status(400).json({
       success: false,
-      message: `Invalid state. Must be one of: ${validStates.join(', ')}`,
+      message: `Invalid state. Must be one of: ${validStates.join(", ")}`,
     });
   }
 
@@ -99,28 +104,26 @@ const getHomeworkListController = async (req, res) => {
 
   return res.status(200).json({
     success: true,
-    message: 'Homework list fetched successfully',
+    message: "Homework list fetched successfully",
     ...data,
   });
-
 };
 
 const getAvailableQuestionsForStudentController = async (req, res) => {
-
   const { studentId } = req.params;
   const { page, limit, search } = req.query;
 
   if (!studentId) {
     return res.status(400).json({
       success: false,
-      message: 'Student ID is required',
+      message: "Student ID is required",
     });
   }
 
   if (!mongoose.Types.ObjectId.isValid(studentId)) {
     return res.status(400).json({
       success: false,
-      message: 'Invalid Student ID format',
+      message: "Invalid Student ID format",
     });
   }
 
@@ -128,19 +131,17 @@ const getAvailableQuestionsForStudentController = async (req, res) => {
     studentId,
     parseInt(page) || 1,
     parseInt(limit) || 15,
-    search?.trim() || '',
+    search?.trim() || "",
   );
 
   return res.status(200).json({
     success: true,
     message: search
       ? `Available questions matching "${search}"`
-      : 'Available questions fetched successfully',
+      : "Available questions fetched successfully",
     ...data,
   });
-
 };
-
 
 const getScoreByStudentIdController = async (req, res) => {
   const { studentId } = req.params;
@@ -148,14 +149,14 @@ const getScoreByStudentIdController = async (req, res) => {
   if (!studentId) {
     return res.status(400).json({
       success: false,
-      message: 'Student ID is required',
+      message: "Student ID is required",
     });
   }
 
   if (!mongoose.Types.ObjectId.isValid(studentId)) {
     return res.status(400).json({
       success: false,
-      message: 'Invalid Student ID format',
+      message: "Invalid Student ID format",
     });
   }
 
@@ -163,27 +164,25 @@ const getScoreByStudentIdController = async (req, res) => {
 
   return res.status(200).json({
     success: true,
-    message: 'Score fetched successfully',
+    message: "Score fetched successfully",
     score,
   });
-
 };
 
 const getHomeworkByIdController = async (req, res) => {
-
   const { id } = req.params;
 
   if (!id) {
     return res.status(400).json({
       success: false,
-      message: 'Homework ID is required',
+      message: "Homework ID is required",
     });
   }
 
   if (!mongoose.Types.ObjectId.isValid(id)) {
     return res.status(400).json({
       success: false,
-      message: 'Invalid Homework ID format',
+      message: "Invalid Homework ID format",
     });
   }
 
@@ -191,20 +190,18 @@ const getHomeworkByIdController = async (req, res) => {
 
   return res.status(200).json({
     success: true,
-    message: 'Homework fetched successfully',
+    message: "Homework fetched successfully",
     homework,
   });
-
 };
 
 const assignQuestionController = async (req, res) => {
-
   const { studentId, questionId } = req.body;
 
   if (!studentId || !questionId) {
     return res.status(400).json({
       success: false,
-      message: 'studentId and questionId are required',
+      message: "studentId and questionId are required",
     });
   }
 
@@ -212,20 +209,18 @@ const assignQuestionController = async (req, res) => {
 
   return res.status(201).json({
     success: true,
-    message: 'Question assigned successfully',
+    message: "Question assigned successfully",
     ...data,
   });
-
 };
 
 const addStudentController = async (req, res) => {
-
   const { name, password, createdBy } = req.body;
 
   if (!name || !password || !createdBy) {
     return res.status(400).json({
       success: false,
-      message: 'name, password and createdBy are required',
+      message: "name, password and createdBy are required",
     });
   }
 
@@ -233,27 +228,26 @@ const addStudentController = async (req, res) => {
 
   return res.status(201).json({
     success: true,
-    message: 'Student added successfully',
+    message: "Student added successfully",
     ...data,
   });
 };
 
 const updateStudentController = async (req, res) => {
-
   const { id } = req.params;
   const updateData = req.body;
 
   if (!id) {
     return res.status(400).json({
       success: false,
-      message: 'Student ID is required',
+      message: "Student ID is required",
     });
   }
 
   if (!updateData || Object.keys(updateData).length === 0) {
     return res.status(400).json({
       success: false,
-      message: 'No update data provided',
+      message: "No update data provided",
     });
   }
 
@@ -261,27 +255,25 @@ const updateStudentController = async (req, res) => {
 
   return res.status(200).json({
     success: true,
-    message: 'Student updated successfully',
+    message: "Student updated successfully",
     ...data,
   });
-
 };
 
 const addQuestionController = async (req, res) => {
-
   const { questionId, questions } = req.body;
 
   if (!questionId) {
     return res.status(400).json({
       success: false,
-      message: 'questionId is required',
+      message: "questionId is required",
     });
   }
 
   if (!questions || !Array.isArray(questions) || questions.length === 0) {
     return res.status(400).json({
       success: false,
-      message: 'questions must be a non-empty array',
+      message: "questions must be a non-empty array",
     });
   }
 
@@ -289,28 +281,26 @@ const addQuestionController = async (req, res) => {
 
   return res.status(201).json({
     success: true,
-    message: 'Question added successfully',
+    message: "Question added successfully",
     ...data,
   });
-
 };
 
 const updateHomeworkController = async (req, res) => {
-
   const { id } = req.params;
   const updateData = req.body;
 
   if (!id) {
     return res.status(400).json({
       success: false,
-      message: 'Homework ID is required',
+      message: "Homework ID is required",
     });
   }
 
   if (!updateData || Object.keys(updateData).length === 0) {
     return res.status(400).json({
       success: false,
-      message: 'No update data provided',
+      message: "No update data provided",
     });
   }
 
@@ -318,16 +308,15 @@ const updateHomeworkController = async (req, res) => {
 
   return res.status(200).json({
     success: true,
-    message: 'Homework updated successfully',
+    message: "Homework updated successfully",
     ...data,
   });
-
 };
 
 const healthCheckController = (req, res) => {
   return res.status(200).json({
     success: true,
-    message: 'Server is running',
+    message: "Server is running",
     timestamp: new Date().toISOString(),
   });
 };
