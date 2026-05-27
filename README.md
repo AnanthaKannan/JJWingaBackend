@@ -7,6 +7,8 @@
 ## URL
 https://jjwingabackend.onrender.com
 
+## Deployed - https://render.com/#
+
 
 ## Relook 
 1. fcmTokens should be unique for update
