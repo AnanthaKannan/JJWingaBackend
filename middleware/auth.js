@@ -12,7 +12,7 @@ module.exports = function (req, res, next) {
     });
   }
   try {
-    const decoded = jwt.verify(token, process.env.PORT);
+    const decoded = jwt.verify(token, process.env.TOKEN_ENCODE_KEY);
     req.user = decoded;
     console.log(`Request to API name - ${req.path} ${req.user.email}`)
     next();

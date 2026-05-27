@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const config = require("config");
+
 module.exports = function () {
   const db = process.env.MONGO_URL;
   mongoose
@@ -12,6 +12,7 @@ module.exports = function () {
     .then(() => {
       console.log(`Mongo dp connecteds... ${db}`)
     }).catch((error) => {
+      console.log('-----------', error)
       console.log(`${db} not connected..Node is Exiting...! ${error}`);
       process.exit(1);
     });
