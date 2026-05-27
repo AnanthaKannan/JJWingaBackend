@@ -1,9 +1,11 @@
 const Student = require("../models/student");
 const HomeWork = require("../models/homework");
 const Admin = require("../models/admin");
-const Idgen = require("../models/idgen");
+const IdGen = require("../models/idgen");
 const Question = require("../models/question");
 const Score = require("../models/score");
+const bcrypt = require("bcryptjs");
+const mongoose = require("mongoose");
 
 const { generateToken } = require("../middleware/auth");
 
@@ -59,13 +61,16 @@ const login = async (username, password) => {
   };
 };
 
-const getStudentList = async (page = 1, limit = 15, search = "") => {
+const getStudentList = async (adminId, page = 1, limit = 15, search = "") => {
   const skip = (page - 1) * limit;
+  const adminObjectId = mongoose.Types.ObjectId(adminId);
 
-  // Match stage for search — placed first to filter before joins
-  const matchStage = search
-    ? [{ $match: { name: { $regex: search, $options: "i" } } }]
-    : [];
+  const matchStage = [
+    { $match: { createdBy: adminObjectId } },
+    ...(search
+      ? [{ $match: { name: { $regex: search, $options: "i" } } }]
+      : []),
+  ];
 
   const pipeline = [
     ...matchStage,
@@ -83,23 +88,18 @@ const getStudentList = async (page = 1, limit = 15, search = "") => {
       },
     },
     {
-      $lookup: {
-        from: "admins",
-        localField: "createdBy",
-        foreignField: "_id",
-        as: "createdBy",
-      },
-    },
-    {
-      $addFields: {
-        createdBy: { $arrayElemAt: ["$createdBy", 0] },
-      },
-    },
-    {
       $project: {
         password: 0,
-        "createdBy.password": 0,
+        createdAt: 0,
+        updatedAt: 0,
+        createdBy: 0,
+        __v: 0,
+
         "score.studentId": 0,
+        "score.createdAt": 0,
+        "score.updatedAt": 0,
+        "score._id": 0,
+        "score.__v": 0,
       },
     },
     { $sort: { createdAt: -1 } },
@@ -305,8 +305,8 @@ const addStudent = async (studentData) => {
   const { name, password, createdBy } = studentData;
 
   // 1. Validate admin exists
-  const admin = await Admin.findById(createdBy);
-  if (!admin) throw new Error("Admin not found");
+  // const admin = await Admin.findById(createdBy);
+  // if (!admin) throw new Error("Admin not found");
 
   // 2. Increment idGen and get new studentLastId
   const idGen = await IdGen.findOneAndUpdate(
@@ -315,8 +315,8 @@ const addStudent = async (studentData) => {
     { new: true, upsert: true },
   );
 
-  // 3. Generate studentId e.g. "STU101"
-  const studentId = `STU${idGen.studentLastId}`;
+  // 3. Generate studentId e.g. "JJ101"
+  const studentId = `JJ${idGen.studentLastId}`;
 
   // 4. Create student
   const student = await Student.create({
@@ -329,7 +329,7 @@ const addStudent = async (studentData) => {
   // 5. Create an empty score record for the student
   const score = await Score.create({ studentId: student._id });
 
-  return { student, score };
+  return { student };
 };
 
 const updateStudent = async (studentObjectId, updateData) => {

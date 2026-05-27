@@ -48,7 +48,7 @@ const getStudentListController = async (req, res) => {
   const limit = parseInt(req.query.limit) || 15;
   const search = req.query.search?.trim() || "";
 
-  const data = await getStudentList(page, limit, search);
+  const data = await getStudentList(req.user.id, page, limit, search);
 
   return res.status(200).json({
     success: true,
@@ -215,21 +215,20 @@ const assignQuestionController = async (req, res) => {
 };
 
 const addStudentController = async (req, res) => {
-  const { name, password, createdBy } = req.body;
+  const { name, password = "Welcome123" } = req.body;
 
-  if (!name || !password || !createdBy) {
+  if (!name || !password) {
     return res.status(400).json({
       success: false,
       message: "name, password and createdBy are required",
     });
   }
 
-  const data = await addStudent({ name, password, createdBy });
+  await addStudent({ name, password, createdBy: req.user.id });
 
   return res.status(201).json({
     success: true,
     message: "Student added successfully",
-    ...data,
   });
 };
 

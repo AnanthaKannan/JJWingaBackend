@@ -6,12 +6,12 @@ const { authenticate, authorizeAdmin } = require("../middleware/auth");
 const admin = [authenticate, authorizeAdmin];
 
 // Auth (public)
-router.post("/login", controller.loginController);
 router.get("/health", controller.healthCheckController);
+router.post("/login", controller.loginController);
 
 // Student — admin only
 router.get("/admin/students", ...admin, controller.getStudentListController);
-router.post("/admin/students/add", ...admin, controller.addStudentController);
+router.post("/admin/students", ...admin, controller.addStudentController);
 router.patch(
   "/admin/students/:id",
   ...admin,
