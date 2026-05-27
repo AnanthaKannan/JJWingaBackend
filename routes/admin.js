@@ -1,19 +1,30 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
+const controller = require('./controller');
+const { authenticate, authorizeAdmin } = require('../middleware/auth');
 
-const controller = require('../controllers')
+const admin = [authenticate, authorizeAdmin];
 
+// Auth (public)
+router.post('/login', controller.loginController);
 
-router.post('/login', controller.login);
+// Student — admin only
+router.get('/admin/students', ...admin, controller.getStudentListController);
+router.post('/admin/students/add', ...admin, controller.addStudentController);
+router.patch('/admin/students/:id', ...admin, controller.updateStudentController);
+router.post('/admin/questions/assign', ...admin, controller.assignQuestionController);
 
-router.post('/student', controller.addAdmin);
+// Score (protected)
+router.get('/scores/:studentId', authenticate, controller.getScoreByStudentIdController);
 
-router.get('/student', controller.getAdmin);
+// Question (protected)
+router.get('/questions', authenticate, controller.getQuestionListController);
+router.post('/admin/questions/add', ...admin, controller.addQuestionController);
+router.get('/questions/available/:studentId', authenticate, controller.getAvailableQuestionsForStudentController);
 
-router.get('/student:id', controller.getAdminByMail);
-
-router.put('/updateAdminByMail/:old_email/:new_email', controller.updateAdminByMail)
-
-router.delete('/deletAdminById/:_id', controller.deletAdminById)
+// Homework (protected)
+router.get('/homework/:studentId', authenticate, controller.getHomeworkListController);
+router.get('/homework/id/:id', authenticate, controller.getHomeworkByIdController);
+router.patch('/homework/:id', authenticate, controller.updateHomeworkController);
 
 module.exports = router;

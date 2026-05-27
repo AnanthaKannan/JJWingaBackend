@@ -44,9 +44,9 @@ const login = async (username, password) => {
     ...(role === 'student' ? { studentId: user.studentId } : { adminId: user.adminId }),
   };
 
-
+  const token = generateToken(payload);
   return {
-    token: generateToken,
+    token,
     role,
     user: {
       id: user._id,
@@ -56,18 +56,58 @@ const login = async (username, password) => {
   };
 };
 
-const getStudentList = async (page = 1, limit = 15) => {
+const getStudentList = async (page = 1, limit = 15, search = '') => {
   const skip = (page - 1) * limit;
 
-  const [students, total] = await Promise.all([
-    Student.find()
-      .select('-password')         // exclude password
-      .populate('createdBy', 'name adminId') // include admin name & id
-      .sort({ createdAt: -1 })     // newest first
-      .skip(skip)
-      .limit(limit),
-    Student.countDocuments(),
+  // Match stage for search — placed first to filter before joins
+  const matchStage = search
+    ? [{ $match: { name: { $regex: search, $options: 'i' } } }]
+    : [];
+
+  const pipeline = [
+    ...matchStage,
+    {
+      $lookup: {
+        from: 'scores',
+        localField: '_id',
+        foreignField: 'studentId',
+        as: 'score',
+      },
+    },
+    {
+      $addFields: {
+        score: { $arrayElemAt: ['$score', 0] },
+      },
+    },
+    {
+      $lookup: {
+        from: 'admins',
+        localField: 'createdBy',
+        foreignField: '_id',
+        as: 'createdBy',
+      },
+    },
+    {
+      $addFields: {
+        createdBy: { $arrayElemAt: ['$createdBy', 0] },
+      },
+    },
+    {
+      $project: {
+        password: 0,
+        'createdBy.password': 0,
+        'score.studentId': 0,
+      },
+    },
+    { $sort: { createdAt: -1 } },
+  ];
+
+  const [students, countResult] = await Promise.all([
+    Student.aggregate([...pipeline, { $skip: skip }, { $limit: limit }]),
+    Student.aggregate([...pipeline, { $count: 'total' }]),
   ]);
+
+  const total = countResult[0]?.total || 0;
 
   return {
     students,
@@ -82,15 +122,19 @@ const getStudentList = async (page = 1, limit = 15) => {
   };
 };
 
-const getQuestionList = async (page = 1, limit = 15) => {
+const getQuestionList = async (page = 1, limit = 15, search = '') => {
   const skip = (page - 1) * limit;
 
+  const query = search
+    ? { questionId: { $regex: search, $options: 'i' } }
+    : {};
+
   const [questions, total] = await Promise.all([
-    Question.find()
-      .sort({ createdAt: -1 }) // newest first
+    Question.find(query)
+      .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit),
-    Question.countDocuments(),
+    Question.countDocuments(query),
   ]);
 
   return {
@@ -138,13 +182,14 @@ const getHomeworkList = async (studentId, state = null, page = 1, limit = 15) =>
 };
 
 
-const getAvailableQuestionsForStudent = async (studentId, page = 1, limit = 15) => {
+const getAvailableQuestionsForStudent = async (studentId, page = 1, limit = 15, search = '') => {
   const skip = (page - 1) * limit;
   const studentObjectId = new mongoose.Types.ObjectId(studentId);
 
   const pipeline = [
+    // Search by questionId if provided
+    ...(search ? [{ $match: { questionId: { $regex: search, $options: 'i' } } }] : []),
     {
-      // Join with homeworks collection to check if question is assigned to this student
       $lookup: {
         from: 'homeworks',
         let: { questionId: '$_id' },
@@ -164,11 +209,9 @@ const getAvailableQuestionsForStudent = async (studentId, page = 1, limit = 15) 
       },
     },
     {
-      // Only keep questions NOT assigned to this student
       $match: { assignedHomework: { $size: 0 } },
     },
     {
-      // Remove the joined field from output
       $project: { assignedHomework: 0 },
     },
     { $sort: { createdAt: -1 } },
@@ -205,7 +248,179 @@ const getScoreByStudentId = async (studentId) => {
   return score;
 };
 
+const getHomeworkById = async (id) => {
+  const homework = await HomeWork.findById(id)
+    .populate('questionId')                      // resolve full question data
+    .populate('studentId', 'name studentId');    // resolve student name & id
+
+  if (!homework) {
+    throw new Error('Homework not found');
+  }
+
+  return homework;
+};
+
+const assignQuestion = async (studentId, questionId) => {
+  // 1. Validate student exists
+  const student = await Student.findById(studentId);
+  if (!student) throw new Error('Student not found');
+
+  // 2. Validate question exists
+  const question = await Question.findById(questionId);
+  if (!question) throw new Error('Question not found');
+
+  // 3. Check if already assigned (avoid duplicates)
+  const existing = await HomeWork.findOne({ studentId, questionId });
+  if (existing) throw new Error('Question already assigned to this student');
+
+  // 4. Create homework record
+  const homework = await HomeWork.create({
+    studentId,
+    questionId,
+    state: 'NEW',
+  });
+
+  // 5. Increment assigned and new in score (upsert in case score doc doesn't exist)
+  const score = await Score.findOneAndUpdate(
+    { studentId },
+    { $inc: { assigned: 1, new: 1 } },
+    { new: true, upsert: true }
+  );
+
+  return { homework, score };
+};
+
+const addStudent = async (studentData) => {
+  const { name, password, createdBy } = studentData;
+
+  // 1. Validate admin exists
+  const admin = await Admin.findById(createdBy);
+  if (!admin) throw new Error('Admin not found');
+
+  // 2. Increment idGen and get new studentLastId
+  const idGen = await IdGen.findOneAndUpdate(
+    {},
+    { $inc: { studentLastId: 1 } },
+    { new: true, upsert: true }
+  );
+
+  // 3. Generate studentId e.g. "STU101"
+  const studentId = `STU${idGen.studentLastId}`;
+
+  // 4. Create student
+  const student = await Student.create({
+    studentId,
+    name,
+    password,
+    createdBy,
+  });
+
+  // 5. Create an empty score record for the student
+  const score = await Score.create({ studentId: student._id });
+
+  return { student, score };
+};
+
+const updateStudent = async (studentObjectId, updateData) => {
+  // 1. Validate student exists
+  const student = await Student.findById(studentObjectId);
+  if (!student) throw new Error('Student not found');
+
+  // 2. Whitelist allowed fields
+  const allowedFields = ['name', 'password', 'vertical', 'fcmTokens'];
+  const filteredData = Object.keys(updateData)
+    .filter((key) => allowedFields.includes(key))
+    .reduce((obj, key) => {
+      obj[key] = updateData[key];
+      return obj;
+    }, {});
+
+  if (Object.keys(filteredData).length === 0) {
+    throw new Error('No valid fields provided to update');
+  }
+
+  // 3. Apply updates to the document and save
+  //    (so pre('save') password hash hook triggers if password is changed)
+  Object.assign(student, filteredData);
+  await student.save();
+
+  // 4. Return student without password
+  const updatedStudent = student.toObject();
+  delete updatedStudent.password;
+
+  return { student: updatedStudent };
+};
+
+const addQuestion = async (questionData) => {
+  const { questionId, questions } = questionData;
+
+  // 1. Check if questionId already exists
+  const existing = await Question.findOne({ questionId });
+  if (existing) throw new Error('Question ID already exists');
+
+  // 2. Create question
+  const question = await Question.create({
+    questionId,
+    questions: questions ?? [],
+  });
+
+  return { question };
+};
+
+const updateHomework = async (homeworkId, updateData) => {
+  const { state, answers, results, timer } = updateData;
+
+  // 1. Validate homework exists
+  const homework = await HomeWork.findById(homeworkId);
+  if (!homework) throw new Error('Homework not found');
+
+  const prevState = homework.state;
+  const newState = state ?? prevState;
+
+  // 2. Build score increment object based on state transition
+  const scoreInc = {};
+
+  if (prevState !== newState) {
+    // Decrement previous state
+    if (prevState === 'NEW') scoreInc.new = -1;
+    if (prevState === 'PROGRESS') scoreInc.progress = -1;
+
+    // Increment new state
+    if (newState === 'PROGRESS') scoreInc.progress = (scoreInc.progress ?? 0) + 1;
+    if (newState === 'COMPLETED') scoreInc.completed = 1;
+  }
+
+  // 3. If completed, update correct, wrong and add to timeTaken
+  if (newState === 'COMPLETED') {
+    const correct = results?.filter(Boolean).length ?? 0;
+    const wrong = results?.filter((r) => !r).length ?? 0;
+
+    scoreInc.correct = correct;
+    scoreInc.wrong = wrong;
+    scoreInc.timeTaken = timer ?? 0;
+  }
+
+  // 4. Update homework fields
+  if (state) homework.state = state;
+  if (answers) homework.answers = answers;
+  if (results) homework.results = results;
+  if (timer !== undefined) homework.timer = timer;
+
+  await homework.save();
+
+  // 5. Update score atomically
+  const score = await Score.findOneAndUpdate(
+    { studentId: homework.studentId },
+    { $inc: scoreInc },
+    { new: true }
+  );
+
+  return { homework, score };
+};
+
 module.exports = {
   login, getStudentList, getQuestionList, getHomeworkList, getAvailableQuestionsForStudent,
-  getScoreByStudentId
+  updateHomework,
+
+  getScoreByStudentId, getHomeworkById, assignQuestion, addStudent, updateStudent, addQuestion
 };
