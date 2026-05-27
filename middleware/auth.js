@@ -1,7 +1,10 @@
 const jwt = require("jsonwebtoken");
 // const logger  = require('../startup/logging');
 
-module.exports = function (req, res, next) {
+const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN;
+
+const authenticate = (req, res, next) => {
 
   const token = req.header("x-access-token");
   if (!token) {
@@ -12,7 +15,7 @@ module.exports = function (req, res, next) {
     });
   }
   try {
-    const decoded = jwt.verify(token, process.env.TOKEN_ENCODE_KEY);
+    const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded;
     console.log(`Request to API name - ${req.path} ${req.user.email}`)
     next();
@@ -25,3 +28,13 @@ module.exports = function (req, res, next) {
     });
   }
 };
+
+const generateToken = (payload,) => {
+  const token = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+}
+
+
+module.exports = {
+  authenticate,
+  generateToken
+}

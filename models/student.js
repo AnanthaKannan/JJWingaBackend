@@ -17,6 +17,10 @@ const studentSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Password is required'],
     },
+    vertical: {
+      type: Boolean,
+      default: false,
+    },
     fcmTokens: {
       type: [String],
       default: [],
