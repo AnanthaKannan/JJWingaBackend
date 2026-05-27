@@ -3,10 +3,12 @@ const router = express.Router();
 const controller = require('./controller');
 const { authenticate, authorizeAdmin } = require('../middleware/auth');
 
+
 const admin = [authenticate, authorizeAdmin];
 
 // Auth (public)
 router.post('/login', controller.loginController);
+router.get('/health', healthCheckController);
 
 // Student — admin only
 router.get('/admin/students', ...admin, controller.getStudentListController);
