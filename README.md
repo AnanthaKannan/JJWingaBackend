@@ -8,6 +8,10 @@
 https://jjwingabackend.onrender.com
 
 
+## Relook 
+1. fcmTokens should be unique for update
+
+
 ## API documentation
 ### Get all the students for the admin
 GET {{url}}/admin/students
@@ -46,7 +50,13 @@ GET {{url}}/admin/students
 POST {{url}}/admin/students
 payload:
 {
-    "name": "Sree",
-    "password": "Welcome@123",
+    "name": "Sree"
+}
+
+## Update the student by id
+PATCH {{url}}/admin/students/:id
+payload:
+{
+    "vertical": true
 }
 

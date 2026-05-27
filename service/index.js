@@ -354,12 +354,6 @@ const updateStudent = async (studentObjectId, updateData) => {
   //    (so pre('save') password hash hook triggers if password is changed)
   Object.assign(student, filteredData);
   await student.save();
-
-  // 4. Return student without password
-  const updatedStudent = student.toObject();
-  delete updatedStudent.password;
-
-  return { student: updatedStudent };
 };
 
 const addQuestion = async (questionData) => {

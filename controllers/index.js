@@ -250,12 +250,11 @@ const updateStudentController = async (req, res) => {
     });
   }
 
-  const data = await updateStudent(id, updateData);
+  await updateStudent(id, updateData);
 
   return res.status(200).json({
     success: true,
     message: "Student updated successfully",
-    ...data,
   });
 };
 
