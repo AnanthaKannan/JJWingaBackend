@@ -1,0 +1,22 @@
+version: '3'
+services: 
+  app:
+    container_name: node-boiler
+    restart: always
+    build: .
+    ports:
+      - '4000:4000'
+#     links:
+#       - mongo
+#   mongo:
+#     container_name: mongo:3-xenial
+#     image: mongo
+#     ports: 
+#       - '27017:27017'
+#     volumes:
+#       - mongo-data:/data/db
+#       - mongo-configdb:/data/configdb
+
+# volumes:
+#   mongo-data:
+#   mongo-configdb:
