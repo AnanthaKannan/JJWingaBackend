@@ -25,6 +25,7 @@ const notificationSchema = new mongoose.Schema(
   },
   {
     timestamps: true, // auto adds createdAt and updatedAt
+    versionKey: false,
   },
 );
 

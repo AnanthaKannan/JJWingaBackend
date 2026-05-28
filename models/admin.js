@@ -1,23 +1,26 @@
 const mongoose = require("mongoose");
 
-const adminSchema = new mongoose.Schema({
-  adminId: {
-    type: String,
-    required: [true, "Admin ID is required"],
-    unique: true,
-    trim: true,
-    // e.g. "JW001"
+const adminSchema = new mongoose.Schema(
+  {
+    adminId: {
+      type: String,
+      required: [true, "Admin ID is required"],
+      unique: true,
+      trim: true,
+      // e.g. "JW001"
+    },
+    name: {
+      type: String,
+      required: [true, "Admin name is required"],
+      trim: true,
+    },
+    password: {
+      type: String,
+      required: [true, "Password is required"],
+    },
   },
-  name: {
-    type: String,
-    required: [true, "Admin name is required"],
-    trim: true,
-  },
-  password: {
-    type: String,
-    required: [true, "Password is required"],
-  },
-});
+  { versionKey: false },
+);
 
 // Hash password before saving
 adminSchema.pre("save", async function (next) {

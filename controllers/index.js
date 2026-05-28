@@ -178,20 +178,21 @@ const getHomeworkByIdController = async (req, res) => {
 };
 
 const assignQuestionController = async (req, res) => {
-  const { studentId, questionId } = req.body;
+  const { studentId, questionIds } = req.body;
 
-  if (!studentId || !questionId) {
+  // Validate inputs
+  if (!studentId || !Array.isArray(questionIds) || questionIds.length < 1) {
     return res.status(400).json({
       success: false,
-      message: "studentId and questionId are required",
+      message: "studentId and questionIds are required",
     });
   }
 
-  const data = await assignQuestion(studentId, questionId);
+  const data = await assignQuestion(studentId, questionIds);
 
   return res.status(201).json({
     success: true,
-    message: "Question assigned successfully",
+    message: `${data.homeworks.length} question(s) assigned successfully`,
     ...data,
   });
 };

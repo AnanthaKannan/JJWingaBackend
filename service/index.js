@@ -1,4 +1,4 @@
-const adminMessaging = require("firebase-admin");
+const admin = require("firebase-admin");
 const bcrypt = require("bcryptjs");
 const mongoose = require("mongoose");
 
@@ -13,13 +13,15 @@ const {
   Notification,
 } = require("../models");
 
-adminMessaging.initializeApp({
-  credential: adminMessaging.credential.cert({
-    projectId: process.env.FIREBASE_PROJECT_ID,
-    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-    privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
-  }),
-});
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert({
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
+    }),
+  });
+}
 
 const login = async (username, password) => {
   let user = null;
@@ -67,7 +69,7 @@ const login = async (username, password) => {
       id: user._id,
       name: user.name,
       ...(role === "student"
-        ? { studentId: user.studentId }
+        ? { studentId: user.studentId, vertical: user.vertical }
         : { adminId: user.adminId }),
     },
   };
@@ -287,34 +289,41 @@ const getHomeworkById = async (id) => {
   return homework;
 };
 
-const assignQuestion = async (studentId, questionId) => {
+const assignQuestion = async (studentId, questionIds) => {
   // 1. Validate student exists
-  const student = await Student.findById(studentId);
-  if (!student) throw new Error("Student not found");
+  // const student = await Student.findById(studentId);
+  // if (!student) throw new Error('Student not found');
 
-  // 2. Validate question exists
-  const question = await Question.findById(questionId);
-  if (!question) throw new Error("Question not found");
+  // // 2. Validate all questions exist
+  // const questions = await Question.find({ _id: { $in: questionIds } });
+  // if (questions.length !== questionIds.length) {
+  //   throw new Error('One or more questions not found');
+  // }
 
-  // 3. Check if already assigned (avoid duplicates)
-  const existing = await HomeWork.findOne({ studentId, questionId });
-  if (existing) throw new Error("Question already assigned to this student");
+  // 3. Check for already assigned questions (avoid duplicates)
+  // const existing = await HomeWork.find({ studentId, questionId: { $in: questionIds } });
+  // if (existing.length > 0) {
+  //   const alreadyAssigned = existing.map((hw) => hw.questionId.toString());
+  //   throw new Error(`Questions already assigned: ${alreadyAssigned.join(', ')}`);
+  // }
 
-  // 4. Create homework record
-  const homework = await HomeWork.create({
+  // 4. Build and bulk insert homework records
+  const homeworkDocs = questionIds.map((questionId) => ({
     studentId,
     questionId,
     state: "NEW",
-  });
+  }));
 
-  // 5. Increment assigned and new in score (upsert in case score doc doesn't exist)
+  const homeworks = await HomeWork.insertMany(homeworkDocs, { ordered: false });
+
+  // 5. Increment assigned and new in score by total count (upsert if score doc doesn't exist)
   const score = await Score.findOneAndUpdate(
     { studentId },
-    { $inc: { assigned: 1, new: 1 } },
+    { $inc: { assigned: homeworks.length, new: homeworks.length } },
     { new: true, upsert: true },
   );
 
-  return { homework, score };
+  return { homeworks, score };
 };
 
 const addStudent = async (studentData) => {
@@ -482,9 +491,10 @@ const getNotificationList = async (studentId, page = 1, limit = 15) => {
 
 const sendPushNotification = async (token, title, body) => {
   try {
+    console.log("token", token, title, body);
     if (!token) throw new Error("Invalid fcm token");
 
-    await adminMessaging.send({
+    const res = await admin.messaging().send({
       token,
       notification: { title, body },
     });
