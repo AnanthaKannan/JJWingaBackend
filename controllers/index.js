@@ -1,4 +1,3 @@
-const admin = require("firebase-admin");
 const {
   login,
   getStudentList,
@@ -11,22 +10,11 @@ const {
   assignQuestion,
   addStudent,
   updateStudent,
+  updateFcmToken,
   addQuestion,
+  sendBulkNotification,
+  getNotificationList,
 } = require("../service");
-
-admin.initializeApp({
-  credential: admin.credential.cert({
-    projectId: process.env.FIREBASE_PROJECT_ID,
-    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-    privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
-  }),
-});
-
-const notificationController = async (req, res) => {
-  const { token, title, body } = req.body;
-  await admin.messaging().send({ token, notification: { title, body } });
-  res.json({ success: true });
-};
 
 const loginController = async (req, res) => {
   try {
@@ -252,6 +240,24 @@ const updateStudentController = async (req, res) => {
   });
 };
 
+const updateStudentFcmTokenController = async (req, res) => {
+  const { fcmToken } = req.body;
+
+  if (!fcmToken) {
+    return res.status(400).json({
+      success: false,
+      message: "fcmToken is required",
+    });
+  }
+
+  const tokenList = await updateFcmToken(req.user.id, fcmToken);
+
+  return res.status(200).json({
+    success: true,
+    message: "FCM token updated successfully",
+  });
+};
+
 const addQuestionController = async (req, res) => {
   const { questionId, questions } = req.body;
 
@@ -312,10 +318,51 @@ const healthCheckController = (req, res) => {
   });
 };
 
+const getNotificationsController = async (req, res) => {
+  const { studentId } = req.params;
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 15;
+
+  const result = await getNotificationList(studentId, page, limit);
+
+  return res.status(200).json({
+    success: true,
+    data: result.notifications,
+    meta: result.meta,
+  });
+};
+
+const sendNotificationController = async (req, res) => {
+  const { studentIds, messageHeader, messageBody } = req.body;
+  const sentBy = req.user.id; // from auth middleware
+
+  // Validate studentIds
+  if (!Array.isArray(studentIds) || studentIds.length === 0) {
+    return res.status(400).json({
+      success: false,
+      message: "studentIds must be a non-empty array",
+    });
+  }
+
+  const result = await sendBulkNotification(
+    studentIds,
+    messageHeader,
+    messageBody,
+    sentBy,
+  );
+
+  return res.status(201).json({
+    success: true,
+    message: `Notification sent to ${result.sentCount} of ${result.totalRequested} students`,
+    data: result,
+  });
+};
+
 module.exports = {
   getStudentListController,
   addStudentController,
   updateStudentController,
+  updateStudentFcmTokenController,
   getQuestionListController,
   addQuestionController,
   assignQuestionController,
@@ -326,5 +373,6 @@ module.exports = {
   getScoreByStudentIdController,
   loginController,
   healthCheckController,
-  notificationController,
+  getNotificationsController,
+  sendNotificationController,
 };

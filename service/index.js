@@ -1,13 +1,25 @@
-const Student = require("../models/student");
-const HomeWork = require("../models/homework");
-const Admin = require("../models/admin");
-const IdGen = require("../models/idgen");
-const Question = require("../models/question");
-const Score = require("../models/score");
+const adminMessaging = require("firebase-admin");
 const bcrypt = require("bcryptjs");
 const mongoose = require("mongoose");
 
 const { generateToken } = require("../middleware/auth");
+const {
+  Student,
+  HomeWork,
+  Admin,
+  IdGen,
+  Question,
+  Score,
+  Notification,
+} = require("../models");
+
+adminMessaging.initializeApp({
+  credential: adminMessaging.credential.cert({
+    projectId: process.env.FIREBASE_PROJECT_ID,
+    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+    privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
+  }),
+});
 
 const login = async (username, password) => {
   let user = null;
@@ -354,10 +366,27 @@ const updateStudent = async (studentObjectId, updateData) => {
     throw new Error("No valid fields provided to update");
   }
 
+  if (Object.prototype.hasOwnProperty.call(filteredData, "fcmTokens")) {
+    const normalizedTokens = Array.isArray(filteredData.fcmTokens)
+      ? filteredData.fcmTokens
+      : [filteredData.fcmTokens];
+
+    filteredData.fcmTokens = [
+      ...new Set(normalizedTokens.filter((token) => token && token.trim())),
+    ];
+  }
+
   // 3. Apply updates to the document and save
   //    (so pre('save') password hash hook triggers if password is changed)
   Object.assign(student, filteredData);
   await student.save();
+};
+
+const updateFcmToken = async (studentId, fcmToken) => {
+  await Student.findByIdAndUpdate(
+    studentId,
+    { fcmTokens: [fcmToken] }, // replace entire array with the new single token
+  );
 };
 
 const addQuestion = async (questionData) => {
@@ -426,6 +455,82 @@ const updateHomework = async (homeworkId, updateData) => {
   return { homework, score };
 };
 
+const getNotificationList = async (studentId, page = 1, limit = 15) => {
+  const skip = (page - 1) * limit;
+
+  const [notifications, total] = await Promise.all([
+    Notification.find({ studentId })
+      .select("-studentId") // exclude studentId (already known)
+      .sort({ createdAt: -1 }) // newest first
+      .skip(skip)
+      .limit(limit),
+    Notification.countDocuments({ studentId }),
+  ]);
+
+  return {
+    notifications,
+    meta: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+      hasNextPage: page < Math.ceil(total / limit),
+      hasPrevPage: page > 1,
+    },
+  };
+};
+
+const sendPushNotification = async (token, title, body) => {
+  try {
+    if (!token) throw new Error("Invalid fcm token");
+
+    await adminMessaging.send({
+      token,
+      notification: { title, body },
+    });
+  } catch (error) {
+    // Log but don't throw — DB entry already saved, push failure is non-critical
+    console.error(
+      `Failed to send push notification to token ${token}:`,
+      error.message,
+    );
+  }
+};
+
+const sendBulkNotification = async (
+  students,
+  messageHeader,
+  messageBody,
+  sentBy,
+) => {
+  // Step 1: Build notification documents for DB
+  const notifications = students.map(({ id }) => ({
+    studentId: id,
+    messageHeader,
+    messageBody,
+    sentBy,
+  }));
+
+  // Step 2: Bulk insert — single DB round trip
+  const result = await Notification.insertMany(notifications, {
+    ordered: false,
+  });
+  // ordered: false — continues inserting remaining docs even if one fails
+
+  // Step 3: Send FCM push notifications to all tokens in parallel
+  await Promise.allSettled(
+    students.map(({ tokens }) =>
+      sendPushNotification(tokens[0], messageHeader, messageBody),
+    ),
+  );
+  // Promise.allSettled — ensures all push attempts run even if some fail
+
+  return {
+    sentCount: result.length,
+    totalRequested: students.length,
+  };
+};
+
 module.exports = {
   login,
   getStudentList,
@@ -439,4 +544,7 @@ module.exports = {
   addStudent,
   updateStudent,
   addQuestion,
+  getNotificationList,
+  sendBulkNotification,
+  updateFcmToken,
 };
