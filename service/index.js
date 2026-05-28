@@ -366,10 +366,27 @@ const updateStudent = async (studentObjectId, updateData) => {
     throw new Error("No valid fields provided to update");
   }
 
+  if (Object.prototype.hasOwnProperty.call(filteredData, "fcmTokens")) {
+    const normalizedTokens = Array.isArray(filteredData.fcmTokens)
+      ? filteredData.fcmTokens
+      : [filteredData.fcmTokens];
+
+    filteredData.fcmTokens = [
+      ...new Set(normalizedTokens.filter((token) => token && token.trim())),
+    ];
+  }
+
   // 3. Apply updates to the document and save
   //    (so pre('save') password hash hook triggers if password is changed)
   Object.assign(student, filteredData);
   await student.save();
+};
+
+const updateFcmToken = async (studentId, fcmToken) => {
+  await Student.findByIdAndUpdate(
+    studentId,
+    { fcmTokens: [fcmToken] }, // replace entire array with the new single token
+  );
 };
 
 const addQuestion = async (questionData) => {
@@ -465,6 +482,8 @@ const getNotificationList = async (studentId, page = 1, limit = 15) => {
 
 const sendPushNotification = async (token, title, body) => {
   try {
+    if (!token) throw new Error("Invalid fcm token");
+
     await adminMessaging.send({
       token,
       notification: { title, body },
@@ -500,8 +519,8 @@ const sendBulkNotification = async (
 
   // Step 3: Send FCM push notifications to all tokens in parallel
   await Promise.allSettled(
-    students.map(({ token }) =>
-      sendPushNotification(token, messageHeader, messageBody),
+    students.map(({ tokens }) =>
+      sendPushNotification(tokens[0], messageHeader, messageBody),
     ),
   );
   // Promise.allSettled — ensures all push attempts run even if some fail
@@ -527,4 +546,5 @@ module.exports = {
   addQuestion,
   getNotificationList,
   sendBulkNotification,
+  updateFcmToken,
 };

@@ -17,10 +17,18 @@ router.patch(
   ...admin,
   controller.updateStudentController,
 );
+
 router.post(
   "/admin/questions/assign",
   ...admin,
   controller.assignQuestionController,
+);
+
+// Student (protected)
+router.patch(
+  "/student/fcm-token",
+  authenticate,
+  controller.updateStudentFcmTokenController,
 );
 
 // Score (protected)

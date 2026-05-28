@@ -10,6 +10,7 @@ const {
   assignQuestion,
   addStudent,
   updateStudent,
+  updateFcmToken,
   addQuestion,
   sendBulkNotification,
   getNotificationList,
@@ -239,6 +240,24 @@ const updateStudentController = async (req, res) => {
   });
 };
 
+const updateStudentFcmTokenController = async (req, res) => {
+  const { fcmToken } = req.body;
+
+  if (!fcmToken) {
+    return res.status(400).json({
+      success: false,
+      message: "fcmToken is required",
+    });
+  }
+
+  const tokenList = await updateFcmToken(req.user.id, fcmToken);
+
+  return res.status(200).json({
+    success: true,
+    message: "FCM token updated successfully",
+  });
+};
+
 const addQuestionController = async (req, res) => {
   const { questionId, questions } = req.body;
 
@@ -343,6 +362,7 @@ module.exports = {
   getStudentListController,
   addStudentController,
   updateStudentController,
+  updateStudentFcmTokenController,
   getQuestionListController,
   addQuestionController,
   assignQuestionController,
