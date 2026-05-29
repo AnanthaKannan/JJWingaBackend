@@ -14,6 +14,8 @@ const {
   addQuestion,
   sendBulkNotification,
   getNotificationList,
+  getWeeklyRankings,
+  updatePassword,
 } = require("../service");
 
 const loginController = async (req, res) => {
@@ -59,6 +61,16 @@ const getStudentListController = async (req, res) => {
       ? `Search results for "${search}"`
       : "Student list fetched successfully",
     ...data,
+  });
+};
+
+const getRankingController = async (req, res) => {
+  const data = await getWeeklyRankings();
+
+  return res.status(200).json({
+    success: true,
+    message: "Ranking list fetched successfully",
+    data,
   });
 };
 
@@ -359,6 +371,36 @@ const sendNotificationController = async (req, res) => {
   });
 };
 
+const updatePasswordController = async (req, res) => {
+  try {
+    const studentId = req.user.id; // from auth middleware
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "currentPassword and newPassword are required",
+      });
+    }
+
+    await updatePassword(studentId, currentPassword, newPassword);
+
+    return res.status(200).json({
+      success: true,
+      message: "Password updated successfully",
+    });
+  } catch (error) {
+    const isClientError = [
+      "Student not found",
+      "Current password is incorrect",
+    ].includes(error.message);
+    return res.status(isClientError ? 400 : 500).json({
+      success: false,
+      message: error.message || "Internal server error",
+    });
+  }
+};
+
 module.exports = {
   getStudentListController,
   addStudentController,
@@ -376,4 +418,6 @@ module.exports = {
   healthCheckController,
   getNotificationsController,
   sendNotificationController,
+  getRankingController,
+  updatePasswordController,
 };
