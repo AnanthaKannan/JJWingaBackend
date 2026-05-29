@@ -491,7 +491,6 @@ const getNotificationList = async (studentId, page = 1, limit = 15) => {
 
 const sendPushNotification = async (token, title, body) => {
   try {
-    console.log("token", token, title, body);
     if (!token) throw new Error("Invalid fcm token");
 
     const res = await admin.messaging().send({
@@ -513,24 +512,37 @@ const sendBulkNotification = async (
   messageBody,
   sentBy,
 ) => {
-  // Step 1: Build notification documents for DB
-  const notifications = students.map(({ id }) => ({
-    studentId: id,
+  const studentIds = students.map(({ id }) => id);
+
+  // Step 1: Fetch FCM tokens from DB for all students in one query
+  const studentDocs = await Student.find(
+    { _id: { $in: studentIds } },
+    { fcmTokens: 1 }, // only fetch fcmTokens field
+  );
+
+  // Step 2: Build a map of studentId -> fcmToken for quick lookup
+  const tokenMap = studentDocs.reduce((acc, student) => {
+    acc[student._id.toString()] = student.fcmTokens?.[0] || null;
+    return acc;
+  }, {});
+
+  // Step 3: Build notification documents for DB
+  const notifications = studentIds.map((studentId) => ({
+    studentId,
     messageHeader,
     messageBody,
     sentBy,
   }));
 
-  // Step 2: Bulk insert — single DB round trip
+  // Step 4: Bulk insert — single DB round trip
   const result = await Notification.insertMany(notifications, {
     ordered: false,
   });
-  // ordered: false — continues inserting remaining docs even if one fails
 
-  // Step 3: Send FCM push notifications to all tokens in parallel
+  // Step 5: Send FCM push notifications to all students in parallel
   await Promise.allSettled(
-    students.map(({ tokens }) =>
-      sendPushNotification(tokens[0], messageHeader, messageBody),
+    studentIds.map((id) =>
+      sendPushNotification(tokenMap[id], messageHeader, messageBody),
     ),
   );
   // Promise.allSettled — ensures all push attempts run even if some fail
@@ -539,6 +551,159 @@ const sendBulkNotification = async (
     sentCount: result.length,
     totalRequested: students.length,
   };
+};
+
+const getWeeklyRankings = async () => {
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  const rankings = await HomeWork.aggregate([
+    // Step 1: Filter only COMPLETED homework from last 7 days
+    {
+      $match: {
+        state: "COMPLETED",
+        updatedAt: { $gte: sevenDaysAgo },
+      },
+    },
+
+    // Step 2: Calculate correct count and total questions per homework
+    {
+      $addFields: {
+        correctCount: {
+          $size: {
+            $filter: {
+              input: "$results",
+              as: "result",
+              cond: { $eq: ["$$result", true] },
+            },
+          },
+        },
+        totalQuestions: { $size: "$results" },
+      },
+    },
+
+    // Step 3: Group by student — sum correctCount, totalQuestions, timer
+    {
+      $group: {
+        _id: "$studentId",
+        totalCorrect: { $sum: "$correctCount" },
+        totalQuestions: { $sum: "$totalQuestions" },
+        totalTimer: { $sum: "$timer" },
+        completedCount: { $sum: 1 },
+      },
+    },
+
+    // Step 4: Calculate accuracy and a composite score for ranking
+    {
+      $addFields: {
+        accuracy: {
+          $cond: [
+            { $eq: ["$totalQuestions", 0] },
+            0,
+            {
+              $round: [
+                {
+                  $multiply: [
+                    { $divide: ["$totalCorrect", "$totalQuestions"] },
+                    100,
+                  ],
+                },
+                2,
+              ],
+            },
+          ],
+        },
+        // composite score: accuracy weighted more, timer penalises (lower is better)
+        // multiply timer by small factor so it doesn't overpower accuracy
+        compositeScore: {
+          $subtract: [
+            {
+              $add: [
+                "$totalCorrect",
+                {
+                  $cond: [
+                    { $eq: ["$totalQuestions", 0] },
+                    0,
+                    {
+                      $multiply: [
+                        { $divide: ["$totalCorrect", "$totalQuestions"] },
+                        100,
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+            { $multiply: ["$totalTimer", 0.001] }, // small timer penalty
+          ],
+        },
+      },
+    },
+
+    // Step 5: Sort by composite score descending
+    { $sort: { compositeScore: -1 } },
+
+    // Step 6: Limit to top 10
+    { $limit: 10 },
+
+    // Step 7: Add rank using $setWindowFields with single sortBy field
+    {
+      $setWindowFields: {
+        sortBy: { compositeScore: -1 },
+        output: {
+          rank: { $rank: {} },
+        },
+      },
+    },
+
+    // Step 8: Join with students collection to get student details
+    {
+      $lookup: {
+        from: "students",
+        localField: "_id",
+        foreignField: "_id",
+        as: "student",
+      },
+    },
+    {
+      $addFields: {
+        student: { $arrayElemAt: ["$student", 0] },
+      },
+    },
+
+    // Step 9: Shape the final output
+    {
+      $project: {
+        _id: 0,
+        rank: 1,
+        studentId: "$_id",
+        name: "$student.name",
+        studentCode: "$student.studentId",
+        totalCorrect: 1,
+        totalQuestions: 1,
+        accuracy: 1,
+        totalTimer: 1,
+        completedCount: 1,
+      },
+    },
+  ]);
+
+  return rankings;
+};
+
+const updatePassword = async (studentId, currentPassword, newPassword) => {
+  // Step 1: Fetch student with password
+  const student = await Student.findById(studentId).select("+password");
+  if (!student) throw new Error("Student not found");
+
+  // Step 2: Verify current password
+  const isMatch = await bcrypt.compare(currentPassword, student.password);
+  if (!isMatch) throw new Error("Current password is incorrect");
+
+  // Step 3: Hash new password and save
+  // using save() to trigger the pre-save bcrypt hook in the model
+  student.password = newPassword;
+  await student.save();
 };
 
 module.exports = {
@@ -557,4 +722,6 @@ module.exports = {
   getNotificationList,
   sendBulkNotification,
   updateFcmToken,
+  getWeeklyRankings,
+  updatePassword,
 };
