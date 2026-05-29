@@ -327,7 +327,7 @@ const assignQuestion = async (studentId, questionIds) => {
 };
 
 const addStudent = async (studentData) => {
-  const { name, password, createdBy } = studentData;
+  const { name, createdBy } = studentData;
 
   // 1. Validate admin exists
   // const admin = await Admin.findById(createdBy);
@@ -342,6 +342,7 @@ const addStudent = async (studentData) => {
 
   // 3. Generate studentId e.g. "JJ101"
   const studentId = `JJ${idGen.studentLastId}`;
+  const password = `Welcome${idGen.studentLastId}`;
 
   // 4. Create student
   const student = await Student.create({

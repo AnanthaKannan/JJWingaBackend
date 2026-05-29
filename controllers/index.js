@@ -210,16 +210,16 @@ const assignQuestionController = async (req, res) => {
 };
 
 const addStudentController = async (req, res) => {
-  const { name, password = "Welcome123" } = req.body;
+  const { name } = req.body;
 
-  if (!name || !password) {
+  if (!name) {
     return res.status(400).json({
       success: false,
-      message: "name, password and createdBy are required",
+      message: "name is required",
     });
   }
 
-  await addStudent({ name, password, createdBy: req.user.id });
+  await addStudent({ name, createdBy: req.user.id });
 
   return res.status(201).json({
     success: true,
