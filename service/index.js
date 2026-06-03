@@ -707,6 +707,48 @@ const updatePassword = async (studentId, currentPassword, newPassword) => {
   await student.save();
 };
 
+const seedAdminScreenData = async () => {
+  const adminData = {
+    _id: new mongoose.Types.ObjectId("6a16d4108349e449c87c7806"),
+    adminId: "JW001",
+    name: "Sobhana",
+    password: "$2b$10$tw.cZEpo5FjvxEMe6JDodea4LtodzAM1aV2D7sfcNCKY7hV5ghHk2",
+  };
+
+  const existingAdmin = await Admin.findOne({ adminId: adminData.adminId });
+  const admin =
+    existingAdmin ||
+    (await Admin.findOneAndUpdate(
+      { adminId: adminData.adminId },
+      { $setOnInsert: adminData },
+      { new: true, upsert: true },
+    ));
+
+  const existingIdGen = await IdGen.findOne({});
+
+  const idGen = await IdGen.findOneAndUpdate(
+    {},
+    {
+      $setOnInsert: {
+        _id: new mongoose.Types.ObjectId("6a195c89699fb18c51477740"),
+        studentLastId: 100,
+      },
+    },
+    { new: true, upsert: true },
+  );
+
+  return {
+    admin: {
+      data: admin,
+      created: !existingAdmin,
+    },
+    idGen: {
+      data: idGen,
+      created: !existingIdGen,
+    },
+  };
+};
+
 module.exports = {
   login,
   getStudentList,
@@ -725,4 +767,5 @@ module.exports = {
   updateFcmToken,
   getWeeklyRankings,
   updatePassword,
+  seedAdminScreenData,
 };
