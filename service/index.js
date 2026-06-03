@@ -56,6 +56,7 @@ const login = async (username, password) => {
   const payload = {
     id: user._id,
     role,
+    deviceId: user.deviceId,
     ...(role === "student"
       ? { studentId: user.studentId }
       : { adminId: user.adminId }),
@@ -67,6 +68,7 @@ const login = async (username, password) => {
     role,
     user: {
       id: user._id,
+      deviceId: user.deviceId,
       name: user.name,
       ...(role === "student"
         ? { studentId: user.studentId, vertical: user.vertical }
@@ -136,6 +138,18 @@ const getStudentList = async (adminId, page = 1, limit = 15, search = "") => {
       hasNextPage: page < Math.ceil(total / limit),
       hasPrevPage: page > 1,
     },
+  };
+};
+
+const getStudentsBySameDeviceId = async (deviceId) => {
+  const students = await Student.find({ deviceId })
+    .select("_id studentId name deviceId vertical")
+    .sort({ name: 1 })
+    .lean();
+
+  return {
+    students,
+    count: students.length,
   };
 };
 
@@ -392,11 +406,20 @@ const updateStudent = async (studentObjectId, updateData) => {
   await student.save();
 };
 
-const updateFcmToken = async (studentId, fcmToken) => {
-  await Student.findByIdAndUpdate(
-    studentId,
-    { fcmTokens: [fcmToken] }, // replace entire array with the new single token
-  );
+const updateFcmToken = async (userId, fcmToken, isStudent) => {
+  if (isStudent) {
+    const studentId = userId;
+    await Student.findByIdAndUpdate(
+      studentId,
+      { fcmTokens: [fcmToken] }, // replace entire array with the new single token
+    );
+  } else {
+    const adminId = userId;
+    await Admin.findByIdAndUpdate(
+      adminId,
+      { fcmTokens: [fcmToken] }, // replace entire array with the new single token
+    );
+  }
 };
 
 const addQuestion = async (questionData) => {
@@ -445,6 +468,8 @@ const updateHomework = async (homeworkId, updateData) => {
     scoreInc.correct = correct;
     scoreInc.wrong = wrong;
     scoreInc.timeTaken = timer ?? 0;
+
+    // send notification to admin
   }
 
   // 4. Update homework fields
@@ -752,6 +777,7 @@ const seedAdminScreenData = async () => {
 module.exports = {
   login,
   getStudentList,
+  getStudentsBySameDeviceId,
   getQuestionList,
   getHomeworkList,
   getAvailableQuestionsForStudent,

@@ -32,6 +32,12 @@ router.post(
 );
 
 // Student (protected)
+router.get(
+  "/student/same-device",
+  authenticate,
+  controller.getStudentsBySameDeviceIdController,
+);
+
 router.patch(
   "/student/fcm-token",
   authenticate,

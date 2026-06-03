@@ -18,6 +18,11 @@ const adminSchema = new mongoose.Schema(
       type: String,
       required: [true, "Password is required"],
     },
+    fcmTokens: {
+      type: [String],
+      default: [],
+      // Array to support multiple devices per student
+    },
   },
   { versionKey: false },
 );

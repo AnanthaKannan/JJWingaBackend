@@ -8,6 +8,9 @@ const studentSchema = new mongoose.Schema(
       unique: true,
       trim: true,
     },
+    deviceId: {
+      type: String,
+    },
     name: {
       type: String,
       required: [true, "Student name is required"],

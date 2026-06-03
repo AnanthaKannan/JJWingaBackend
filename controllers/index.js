@@ -1,6 +1,7 @@
 const {
   login,
   getStudentList,
+  getStudentsBySameDeviceId,
   getQuestionList,
   getHomeworkList,
   getAvailableQuestionsForStudent,
@@ -62,6 +63,28 @@ const getStudentListController = async (req, res) => {
       : "Student list fetched successfully",
     ...data,
   });
+};
+
+const getStudentsBySameDeviceIdController = async (req, res) => {
+  try {
+    const data = await getStudentsBySameDeviceId(req.user.deviceId);
+
+    return res.status(200).json({
+      success: true,
+      message: "Students with same device ID fetched successfully",
+      ...data,
+    });
+  } catch (error) {
+    const isClientError = [
+      "Student not found",
+      "Device ID is not assigned for this student",
+    ].includes(error.message);
+
+    return res.status(isClientError ? 400 : 500).json({
+      success: false,
+      message: error.message || "Failed to fetch students",
+    });
+  }
 };
 
 const getRankingController = async (req, res) => {
@@ -263,7 +286,8 @@ const updateStudentFcmTokenController = async (req, res) => {
     });
   }
 
-  const tokenList = await updateFcmToken(req.user.id, fcmToken);
+  const isStudent = req.user.role === "student";
+  const tokenList = await updateFcmToken(req.user.id, fcmToken, isStudent);
 
   return res.status(200).json({
     success: true,
@@ -403,6 +427,7 @@ const updatePasswordController = async (req, res) => {
 
 module.exports = {
   getStudentListController,
+  getStudentsBySameDeviceIdController,
   addStudentController,
   updateStudentController,
   updateStudentFcmTokenController,
