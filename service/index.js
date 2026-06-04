@@ -367,7 +367,7 @@ const addStudent = async (studentData) => {
   });
 
   // 5. Create an empty score record for the student
-  const score = await Score.create({ studentId: student._id });
+  await Score.create({ studentId: student._id });
 
   return { student };
 };
@@ -430,7 +430,7 @@ const addQuestion = async (questionData) => {
   if (existing) throw new Error("Question ID already exists");
 
   // 2. Create question
-  const question = await Question.create({
+  await Question.create({
     questionId,
     questions: questions ?? [],
   });
@@ -563,7 +563,7 @@ const sendPushNotification = async (token, title, body) => {
   try {
     if (!token) throw new Error("Invalid fcm token");
 
-    const res = await admin.messaging().send({
+    await admin.messaging().send({
       token,
       notification: { title, body },
     });

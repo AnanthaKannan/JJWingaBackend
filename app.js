@@ -6,7 +6,7 @@ const app = express();
 let counter = 0
 
 app.use(express.static('dist', {
-    setHeaders: (res, path, stat) => {
+    setHeaders: (_res, _path, _stat) => {
         console.log(++counter)
     }
 }));
