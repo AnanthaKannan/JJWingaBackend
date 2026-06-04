@@ -24,11 +24,7 @@ router.patch(
 );
 
 router.get("/ranking", authenticate, controller.getRankingController);
-router.patch(
-  "/update-password",
-  authenticate,
-  controller.updatePasswordController,
-);
+router.patch("/student", authenticate, controller.updateMyStudentController);
 
 router.post(
   "/admin/questions/assign",

@@ -782,21 +782,6 @@ const getWeeklyRankings = async () => {
   return rankings;
 };
 
-const updatePassword = async (studentId, currentPassword, newPassword) => {
-  // Step 1: Fetch student with password
-  const student = await Student.findById(studentId).select("+password");
-  if (!student) throw new Error("Student not found");
-
-  // Step 2: Verify current password
-  const isMatch = await bcrypt.compare(currentPassword, student.password);
-  if (!isMatch) throw new Error("Current password is incorrect");
-
-  // Step 3: Hash new password and save
-  // using save() to trigger the pre-save bcrypt hook in the model
-  student.password = newPassword;
-  await student.save();
-};
-
 const seedAdminScreenData = async () => {
   const adminData = {
     _id: new mongoose.Types.ObjectId("6a16d4108349e449c87c7806"),
@@ -858,6 +843,5 @@ module.exports = {
   sendBulkNotification,
   updateFcmToken,
   getWeeklyRankings,
-  updatePassword,
   seedAdminScreenData,
 };

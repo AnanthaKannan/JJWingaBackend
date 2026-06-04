@@ -17,7 +17,6 @@ const {
   sendBulkNotification,
   getNotificationList,
   getWeeklyRankings,
-  updatePassword,
 } = require("../service");
 
 const loginController = async (req, res) => {
@@ -455,29 +454,35 @@ const sendNotificationController = async (req, res) => {
   });
 };
 
-const updatePasswordController = async (req, res) => {
+const updateMyStudentController = async (req, res) => {
   try {
     const studentId = req.user.id; // from auth middleware
-    const { currentPassword, newPassword } = req.body;
+    const updateData = req.body;
 
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({
+    if (req.user.role !== "student") {
+      return res.status(403).json({
         success: false,
-        message: "currentPassword and newPassword are required",
+        message: "Access denied. Student only.",
       });
     }
 
-    await updatePassword(studentId, currentPassword, newPassword);
+    if (!updateData || Object.keys(updateData).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No update data provided",
+      });
+    }
+
+    await updateStudent(studentId, updateData);
 
     return res.status(200).json({
       success: true,
-      message: "Password updated successfully",
+      message: "Student updated successfully",
     });
   } catch (error) {
-    const isClientError = [
-      "Student not found",
-      "Current password is incorrect",
-    ].includes(error.message);
+    const isClientError = ["Student not found", "No valid fields provided to update"].includes(
+      error.message,
+    );
     return res.status(isClientError ? 400 : 500).json({
       success: false,
       message: error.message || "Internal server error",
@@ -505,6 +510,6 @@ module.exports = {
   getAdminNotificationsController,
   sendNotificationController,
   getRankingController,
-  updatePasswordController,
+  updateMyStudentController,
   loginUsingDeviceIdController,
 };
