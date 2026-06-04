@@ -23,7 +23,7 @@ if (!admin.apps.length) {
   });
 }
 
-const login = async (username, password) => {
+const login = async (username, password, validatePassword = true) => {
   let user = null;
   let role = null;
 
@@ -47,9 +47,11 @@ const login = async (username, password) => {
   }
 
   // Step 4: Validate password
-  const isMatch = await bcrypt.compare(password, user.password);
-  if (!isMatch) {
-    throw new Error("Invalid username or password");
+  if (validatePassword) {
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      throw new Error("Invalid username or password");
+    }
   }
 
   // Step 5: Generate JWT
@@ -75,6 +77,22 @@ const login = async (username, password) => {
         : { adminId: user.adminId }),
     },
   };
+};
+
+const loginUsingDeviceId = async (studentId, deviceId) => {
+  if (!deviceId) {
+    throw new Error("Device ID not found in token");
+  }
+
+  const student = await Student.findOne({ studentId, deviceId }).select(
+    "studentId",
+  );
+
+  if (!student) {
+    throw new Error("Student not found for this device");
+  }
+
+  return login(student.studentId, null, false);
 };
 
 const getStudentList = async (adminId, page = 1, limit = 15, search = "") => {
@@ -823,6 +841,7 @@ const seedAdminScreenData = async () => {
 
 module.exports = {
   login,
+  loginUsingDeviceId,
   getStudentList,
   getStudentsBySameDeviceId,
   getQuestionList,

@@ -8,6 +8,11 @@ const admin = [authenticate, authorizeAdmin];
 // Auth (public)
 router.get("/health", controller.healthCheckController);
 router.post("/login", controller.loginController);
+router.post(
+  "/login/:studentId",
+  authenticate,
+  controller.loginUsingDeviceIdController,
+);
 
 // Student — admin only
 router.get("/admin/students", ...admin, controller.getStudentListController);

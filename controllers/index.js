@@ -1,5 +1,6 @@
 const {
   login,
+  loginUsingDeviceId,
   getStudentList,
   getStudentsBySameDeviceId,
   getQuestionList,
@@ -41,6 +42,32 @@ const loginController = async (req, res) => {
     const isClientError = ["Invalid username or password"].includes(
       error.message,
     );
+
+    return res.status(isClientError ? 401 : 500).json({
+      success: false,
+      message: error.message || "Failed to login",
+    });
+  }
+};
+
+const loginUsingDeviceIdController = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    const { deviceId } = req.user;
+
+    const data = await loginUsingDeviceId(studentId, deviceId);
+
+    return res.status(200).json({
+      success: true,
+      message: "Login successful",
+      ...data,
+    });
+  } catch (error) {
+    const isClientError = [
+      "Device ID not found in token",
+      "Student not found for this device",
+      "Invalid username or password",
+    ].includes(error.message);
 
     return res.status(isClientError ? 401 : 500).json({
       success: false,
@@ -479,4 +506,5 @@ module.exports = {
   sendNotificationController,
   getRankingController,
   updatePasswordController,
+  loginUsingDeviceIdController,
 };
