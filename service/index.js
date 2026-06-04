@@ -97,7 +97,7 @@ const loginUsingDeviceId = async (studentId, deviceId) => {
 
 const getStudentList = async (adminId, page = 1, limit = 15, search = "") => {
   const skip = (page - 1) * limit;
-  const adminObjectId = mongoose.Types.ObjectId(adminId);
+  const adminObjectId = new mongoose.Types.ObjectId(adminId);
 
   const matchStage = [
     { $match: { createdBy: adminObjectId } },

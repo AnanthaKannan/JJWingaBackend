@@ -8,12 +8,7 @@ const run = async () => {
     throw new Error("MONGO_URL is not configured");
   }
 
-  await mongoose.connect(process.env.MONGO_URL, {
-    useUnifiedTopology: true,
-    useNewUrlParser: true,
-    useCreateIndex: true,
-    useFindAndModify: false,
-  });
+  await mongoose.connect(process.env.MONGO_URL);
 
   const result = await seedAdminScreenData();
 
