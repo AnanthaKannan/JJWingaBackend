@@ -80,6 +80,12 @@ router.get(
   controller.getNotificationsController,
 );
 
+router.get(
+  "/admin/notifications",
+  ...admin,
+  controller.getAdminNotificationsController,
+);
+
 router.post(
   "/admin/notifications",
   ...admin,

@@ -5,7 +5,12 @@ const notificationSchema = new mongoose.Schema(
     studentId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Student",
-      required: [true, "Student reference is required"],
+      required: false,
+    },
+    adminId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Admin",
+      required: false,
     },
     messageHeader: {
       type: String,
@@ -19,8 +24,14 @@ const notificationSchema = new mongoose.Schema(
     },
     sentBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Admin",
-      required: [true, "Admin reference is required"],
+      refPath: "sentByModel",
+      required: [true, "Sender reference is required"],
+    },
+    sentByModel: {
+      type: String,
+      enum: ["Admin", "Student"],
+      default: "Admin",
+      required: true,
     },
   },
   {
@@ -28,6 +39,17 @@ const notificationSchema = new mongoose.Schema(
     versionKey: false,
   },
 );
+
+notificationSchema.pre("validate", function (next) {
+  if (!this.studentId && !this.adminId) {
+    this.invalidate(
+      "studentId",
+      "Either studentId or adminId is required for a notification",
+    );
+  }
+
+  next();
+});
 
 const Notification = mongoose.model("Notification", notificationSchema);
 

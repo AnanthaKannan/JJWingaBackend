@@ -436,6 +436,40 @@ const addQuestion = async (questionData) => {
   });
 };
 
+const createHomeworkCompletedNotification = async (homework) => {
+  const student = await Student.findById(homework.studentId).select(
+    "studentId name createdBy",
+  );
+
+  if (!student?.createdBy) {
+    return null;
+  }
+
+  const adminDetail = await Admin.findById(student.createdBy).select(
+    "fcmTokens",
+  );
+  const question = await Question.findById(homework.questionId).select(
+    "questionId",
+  );
+  const homeworkName = question?.questionId;
+
+  const notification = await Notification.create({
+    adminId: student.createdBy,
+    sentBy: student._id,
+    sentByModel: "Student",
+    messageHeader: "Homework completed",
+    messageBody: `${student.name} has completed homework - ${homeworkName}.`,
+  });
+
+  await sendPushNotification(
+    adminDetail?.fcmTokens?.[0],
+    notification.messageHeader,
+    notification.messageBody,
+  );
+
+  return notification;
+};
+
 const updateHomework = async (homeworkId, updateData) => {
   const { state, answers, results, timer } = updateData;
 
@@ -470,6 +504,7 @@ const updateHomework = async (homeworkId, updateData) => {
     scoreInc.timeTaken = timer ?? 0;
 
     // send notification to admin
+    await createHomeworkCompletedNotification(homework);
   }
 
   // 4. Update homework fields
@@ -490,16 +525,25 @@ const updateHomework = async (homeworkId, updateData) => {
   return { homework, score };
 };
 
-const getNotificationList = async (studentId, page = 1, limit = 15) => {
+const getNotificationList = async (
+  recipientId,
+  page = 1,
+  limit = 15,
+  recipientType,
+) => {
   const skip = (page - 1) * limit;
+  const recipientFilter =
+    recipientType === "admin"
+      ? { adminId: recipientId }
+      : { studentId: recipientId };
 
   const [notifications, total] = await Promise.all([
-    Notification.find({ studentId })
-      .select("-studentId") // exclude studentId (already known)
+    Notification.find(recipientFilter)
+      .select("-studentId -adminId") // exclude recipient id (already known)
       .sort({ createdAt: -1 }) // newest first
       .skip(skip)
       .limit(limit),
-    Notification.countDocuments({ studentId }),
+    Notification.countDocuments(recipientFilter),
   ]);
 
   return {

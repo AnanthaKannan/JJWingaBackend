@@ -360,7 +360,21 @@ const getNotificationsController = async (req, res) => {
   const page = Number(req.query.page) || 1;
   const limit = Number(req.query.limit) || 15;
 
-  const result = await getNotificationList(studentId, page, limit);
+  const result = await getNotificationList(studentId, page, limit, "student");
+
+  return res.status(200).json({
+    success: true,
+    data: result.notifications,
+    meta: result.meta,
+  });
+};
+
+const getAdminNotificationsController = async (req, res) => {
+  const adminId = req.user.id;
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 15;
+
+  const result = await getNotificationList(adminId, page, limit, "admin");
 
   return res.status(200).json({
     success: true,
@@ -442,6 +456,7 @@ module.exports = {
   loginController,
   healthCheckController,
   getNotificationsController,
+  getAdminNotificationsController,
   sendNotificationController,
   getRankingController,
   updatePasswordController,
