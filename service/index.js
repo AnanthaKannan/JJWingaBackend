@@ -185,8 +185,11 @@ const getHomeworkList = async (
   state = null,
   page = 1,
   limit = 15,
+  sortBy = "createdAt",
+  sortOrder = "desc",
 ) => {
   const skip = (page - 1) * limit;
+  const sortDirection = sortOrder === "asc" ? 1 : -1;
 
   // Build query
   const query = { studentId };
@@ -197,7 +200,7 @@ const getHomeworkList = async (
   const [homeworks, total] = await Promise.all([
     HomeWork.find(query)
       .populate("questionId") // resolve full question data
-      .sort({ createdAt: -1 }) // newest first
+      .sort({ [sortBy]: sortDirection })
       .skip(skip)
       .limit(limit),
     HomeWork.countDocuments(query),

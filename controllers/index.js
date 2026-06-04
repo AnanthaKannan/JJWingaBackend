@@ -115,7 +115,7 @@ const getQuestionListController = async (req, res) => {
 
 const getHomeworkListController = async (req, res) => {
   const { studentId, state } = req.params;
-  const { page, limit } = req.query;
+  const { page, limit, sortBy, sortOrder } = req.query;
 
   if (!studentId) {
     return res.status(400).json({
@@ -133,11 +133,30 @@ const getHomeworkListController = async (req, res) => {
     });
   }
 
+  const validSortFields = ["createdAt", "updatedAt"];
+  if (sortBy && !validSortFields.includes(sortBy)) {
+    return res.status(400).json({
+      success: false,
+      message: `Invalid sortBy. Must be one of: ${validSortFields.join(", ")}`,
+    });
+  }
+
+  const normalizedSortOrder = sortOrder?.toLowerCase();
+  const validSortOrders = ["asc", "desc"];
+  if (normalizedSortOrder && !validSortOrders.includes(normalizedSortOrder)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid sortOrder. Must be asc or desc",
+    });
+  }
+
   const data = await getHomeworkList(
     studentId,
     state || null,
     parseInt(page) || 1,
     parseInt(limit) || 15,
+    sortBy,
+    normalizedSortOrder,
   );
 
   return res.status(200).json({
