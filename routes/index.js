@@ -25,6 +25,11 @@ router.patch(
 
 router.get("/ranking", authenticate, controller.getRankingController);
 router.patch("/student", authenticate, controller.updateMyStudentController);
+router.delete(
+  "/student/device-id",
+  authenticate,
+  controller.removeStudentDeviceIdController,
+);
 
 router.post(
   "/admin/questions/assign",
@@ -40,7 +45,7 @@ router.get(
 );
 
 router.patch(
-  "/student/fcm-token",
+  "/fcm-token", // we are using this for student and admin both places
   authenticate,
   controller.updateStudentFcmTokenController,
 );

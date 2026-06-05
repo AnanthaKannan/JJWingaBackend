@@ -40,15 +40,13 @@ const notificationSchema = new mongoose.Schema(
   },
 );
 
-notificationSchema.pre("validate", function (next) {
+notificationSchema.pre("validate", function () {
   if (!this.studentId && !this.adminId) {
     this.invalidate(
       "studentId",
       "Either studentId or adminId is required for a notification",
     );
   }
-
-  next();
 });
 
 const Notification = mongoose.model("Notification", notificationSchema);

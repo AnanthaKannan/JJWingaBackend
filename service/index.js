@@ -13,6 +13,19 @@ const {
   Notification,
 } = require("../models");
 
+const arraysEqual = (first, second) =>
+  first.length === second.length &&
+  first.every((value, index) => value === second[index]);
+
+const toUniqueStringArray = (values) => [
+  ...new Set(
+    (Array.isArray(values) ? values : [values])
+      .filter((value) => typeof value === "string")
+      .map((value) => value.trim())
+      .filter(Boolean),
+  ),
+];
+
 if (!admin.apps.length) {
   admin.initializeApp({
     credential: admin.credential.cert({
@@ -55,12 +68,13 @@ const login = async (username, password, validatePassword = true) => {
   }
 
   // Step 5: Generate JWT
+  console.log(">>>>>>>>>>>>>>>", user);
+  const deviceIds = user.deviceIds;
   const payload = {
     id: user._id,
     role,
-    deviceId: user.deviceId,
     ...(role === "student"
-      ? { studentId: user.studentId }
+      ? { studentId: user.studentId, deviceIds }
       : { adminId: user.adminId }),
   };
 
@@ -70,7 +84,6 @@ const login = async (username, password, validatePassword = true) => {
     role,
     user: {
       id: user._id,
-      deviceId: user.deviceId,
       name: user.name,
       ...(role === "student"
         ? { studentId: user.studentId, vertical: user.vertical }
@@ -80,13 +93,16 @@ const login = async (username, password, validatePassword = true) => {
 };
 
 const loginUsingDeviceId = async (studentId, deviceId) => {
-  if (!deviceId) {
+  const deviceIds = [deviceId];
+
+  if (deviceIds.length === 0) {
     throw new Error("Device ID not found in token");
   }
 
-  const student = await Student.findOne({ studentId, deviceId }).select(
-    "studentId",
-  );
+  const student = await Student.findOne({
+    studentId,
+    deviceIds: { $in: deviceIds },
+  }).select("studentId");
 
   if (!student) {
     throw new Error("Student not found for this device");
@@ -159,9 +175,16 @@ const getStudentList = async (adminId, page = 1, limit = 15, search = "") => {
   };
 };
 
-const getStudentsBySameDeviceId = async (deviceId) => {
-  const students = await Student.find({ deviceId })
-    .select("_id studentId name deviceId vertical")
+const getStudentsBySameDeviceId = async (deviceIds) => {
+  console.log(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>", deviceIds);
+  if (!deviceIds || deviceIds.length === 0) {
+    throw new Error("Device ID is not assigned for this student");
+  }
+
+  const students = await Student.find({
+    deviceIds: { $in: deviceIds },
+  })
+    .select("_id studentId name deviceIds vertical")
     .sort({ name: 1 })
     .lean();
 
@@ -399,7 +422,7 @@ const updateStudent = async (studentObjectId, updateData) => {
   if (!student) throw new Error("Student not found");
 
   // 2. Whitelist allowed fields
-  const allowedFields = ["name", "password", "vertical", "fcmTokens"];
+  const allowedFields = ["name", "password", "vertical", "deviceId"];
   const filteredData = Object.keys(updateData)
     .filter((key) => allowedFields.includes(key))
     .reduce((obj, key) => {
@@ -411,19 +434,39 @@ const updateStudent = async (studentObjectId, updateData) => {
     throw new Error("No valid fields provided to update");
   }
 
-  if (Object.prototype.hasOwnProperty.call(filteredData, "fcmTokens")) {
-    const normalizedTokens = Array.isArray(filteredData.fcmTokens)
-      ? filteredData.fcmTokens
-      : [filteredData.fcmTokens];
+  if (Object.prototype.hasOwnProperty.call(filteredData, "deviceId")) {
+    const currentDeviceIds = student.deviceIds;
+    const incomingDeviceIds = [filteredData.deviceId];
+    const mergedDeviceIds = [...currentDeviceIds, ...incomingDeviceIds];
 
-    filteredData.fcmTokens = [
-      ...new Set(normalizedTokens.filter((token) => token && token.trim())),
-    ];
+    filteredData.deviceIds = [...new Set(mergedDeviceIds)];
+  }
+
+  if (Object.keys(filteredData).length === 0) {
+    return;
   }
 
   // 3. Apply updates to the document and save
   //    (so pre('save') password hash hook triggers if password is changed)
   Object.assign(student, filteredData);
+  await student.save();
+};
+
+const removeStudentDeviceId = async (studentObjectId, deviceId) => {
+  const deviceIdsToRemove = [deviceId];
+
+  if (deviceIdsToRemove.length === 0) {
+    throw new Error("deviceId is required");
+  }
+
+  const student = await Student.findById(studentObjectId);
+  if (!student) throw new Error("Student not found");
+
+  const removeSet = new Set(deviceIdsToRemove);
+  student.deviceIds = [student.deviceId].filter(
+    (value) => !removeSet.has(value),
+  );
+
   await student.save();
 };
 
@@ -838,6 +881,7 @@ module.exports = {
   assignQuestion,
   addStudent,
   updateStudent,
+  removeStudentDeviceId,
   addQuestion,
   getNotificationList,
   sendBulkNotification,

@@ -12,6 +12,7 @@ const {
   assignQuestion,
   addStudent,
   updateStudent,
+  removeStudentDeviceId,
   updateFcmToken,
   addQuestion,
   sendBulkNotification,
@@ -93,7 +94,7 @@ const getStudentListController = async (req, res) => {
 
 const getStudentsBySameDeviceIdController = async (req, res) => {
   try {
-    const data = await getStudentsBySameDeviceId(req.user.deviceId);
+    const data = await getStudentsBySameDeviceId(req.user.deviceIds);
 
     return res.status(200).json({
       success: true,
@@ -340,6 +341,43 @@ const updateStudentFcmTokenController = async (req, res) => {
   });
 };
 
+const removeStudentDeviceIdController = async (req, res) => {
+  try {
+    const { deviceId } = req.body;
+
+    if (req.user.role !== "student") {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. Student only.",
+      });
+    }
+
+    if (!deviceId) {
+      return res.status(400).json({
+        success: false,
+        message: "deviceId is required",
+      });
+    }
+
+    await removeStudentDeviceId(req.user.id, deviceId);
+
+    return res.status(200).json({
+      success: true,
+      message: "Device ID removed successfully",
+    });
+  } catch (error) {
+    const isClientError = [
+      "Student not found",
+      "deviceId is required",
+    ].includes(error.message);
+
+    return res.status(isClientError ? 400 : 500).json({
+      success: false,
+      message: error.message || "Internal server error",
+    });
+  }
+};
+
 const addQuestionController = async (req, res) => {
   const { questionId, questions } = req.body;
 
@@ -480,9 +518,10 @@ const updateMyStudentController = async (req, res) => {
       message: "Student updated successfully",
     });
   } catch (error) {
-    const isClientError = ["Student not found", "No valid fields provided to update"].includes(
-      error.message,
-    );
+    const isClientError = [
+      "Student not found",
+      "No valid fields provided to update",
+    ].includes(error.message);
     return res.status(isClientError ? 400 : 500).json({
       success: false,
       message: error.message || "Internal server error",
@@ -495,6 +534,7 @@ module.exports = {
   getStudentsBySameDeviceIdController,
   addStudentController,
   updateStudentController,
+  removeStudentDeviceIdController,
   updateStudentFcmTokenController,
   getQuestionListController,
   addQuestionController,

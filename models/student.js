@@ -1,5 +1,14 @@
 const mongoose = require("mongoose");
 
+const uniqueStringArray = (values) => [
+  ...new Set(
+    (Array.isArray(values) ? values : [values])
+      .filter((value) => typeof value === "string")
+      .map((value) => value.trim())
+      .filter(Boolean),
+  ),
+];
+
 const studentSchema = new mongoose.Schema(
   {
     studentId: {
@@ -8,8 +17,10 @@ const studentSchema = new mongoose.Schema(
       unique: true,
       trim: true,
     },
-    deviceId: {
-      type: String,
+    deviceIds: {
+      type: [String],
+      default: [],
+      set: uniqueStringArray,
     },
     name: {
       type: String,
