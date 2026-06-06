@@ -135,16 +135,15 @@ const getRankingController = async (req, res) => {
     });
   }
 
-  const data = await getWeeklyRankings(
-    level === undefined ? null : Number(level),
-  );
+  const rankingLevel = level === undefined ? null : Number(level);
+  const data = await getWeeklyRankings(rankingLevel, req.user);
 
   return res.status(200).json({
     success: true,
     message:
-      level === undefined
+      rankingLevel === null
         ? "Ranking list fetched successfully"
-        : `Ranking list fetched successfully for level ${Number(level)}`,
+        : `Ranking list fetched successfully for level ${rankingLevel}`,
     data,
   });
 };

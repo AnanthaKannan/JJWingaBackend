@@ -747,17 +747,37 @@ const sendBulkNotification = async (
   };
 };
 
-const getWeeklyRankings = async (level = null) => {
+const resolveWeeklyRankingLevel = async (level, user) => {
+  if (level !== null || user?.role !== "student") {
+    return level;
+  }
+
+  const student = await Student.findById(user.id).select("level").lean();
+
+  if (
+    Object.prototype.hasOwnProperty.call(student || {}, "level") &&
+    student.level !== undefined &&
+    student.level !== null &&
+    String(student.level).trim() !== ""
+  ) {
+    return Number(student.level);
+  }
+
+  return null;
+};
+
+const getWeeklyRankings = async (level = null, user = null) => {
+  const rankingLevel = await resolveWeeklyRankingLevel(level, user);
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
   const studentLevelFilter =
-    level === null
+    rankingLevel === null
       ? []
       : [
           {
             $match: {
-              "student.level": level,
+              "student.level": rankingLevel,
             },
           },
         ];
