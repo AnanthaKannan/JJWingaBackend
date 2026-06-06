@@ -40,6 +40,10 @@ const studentSchema = new mongoose.Schema(
       default: [],
       // Array to support multiple devices per student
     },
+    hasLoginSameDevice: {
+      type: Boolean,
+      default: false,
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Admin",

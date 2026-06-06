@@ -68,7 +68,6 @@ const login = async (username, password, validatePassword = true) => {
   }
 
   // Step 5: Generate JWT
-  console.log(">>>>>>>>>>>>>>>", user);
   const deviceIds = user.deviceIds;
   const payload = {
     id: user._id,
@@ -86,21 +85,23 @@ const login = async (username, password, validatePassword = true) => {
       id: user._id,
       name: user.name,
       ...(role === "student"
-        ? { studentId: user.studentId, vertical: user.vertical }
+        ? {
+            studentId: user.studentId,
+            vertical: user.vertical,
+            hasLoginSameDevice: user.hasLoginSameDevice,
+          }
         : { adminId: user.adminId }),
     },
   };
 };
 
-const loginUsingDeviceId = async (studentId, deviceId) => {
-  const deviceIds = [deviceId];
-
+const loginUsingDeviceId = async (studentId, deviceIds) => {
   if (deviceIds.length === 0) {
     throw new Error("Device ID not found in token");
   }
 
   const student = await Student.findOne({
-    studentId,
+    _id: studentId,
     deviceIds: { $in: deviceIds },
   }).select("studentId");
 
@@ -176,7 +177,6 @@ const getStudentList = async (adminId, page = 1, limit = 15, search = "") => {
 };
 
 const getStudentsBySameDeviceId = async (deviceIds) => {
-  console.log(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>", deviceIds);
   if (!deviceIds || deviceIds.length === 0) {
     throw new Error("Device ID is not assigned for this student");
   }

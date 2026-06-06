@@ -53,9 +53,10 @@ const loginController = async (req, res) => {
 const loginUsingDeviceIdController = async (req, res) => {
   try {
     const { studentId } = req.params;
-    const { deviceId } = req.user;
+    const { deviceIds } = req.user;
 
-    const data = await loginUsingDeviceId(studentId, deviceId);
+    console.log(studentId, deviceIds);
+    const data = await loginUsingDeviceId(studentId, deviceIds);
 
     return res.status(200).json({
       success: true,
@@ -345,8 +346,6 @@ const removeStudentDeviceIdController = async (req, res) => {
   try {
     const { studentId, deviceId } = req.body;
     const { deviceIds } = req.user;
-
-    console.log("------------", req.user);
 
     if (req.user.role !== "student") {
       return res.status(403).json({
