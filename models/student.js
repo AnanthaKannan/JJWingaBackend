@@ -31,6 +31,10 @@ const studentSchema = new mongoose.Schema(
       type: String,
       required: [true, "Password is required"],
     },
+    level: {
+      type: Number,
+      required: [true, "Level is required"],
+    },
     vertical: {
       type: Boolean,
       default: false,

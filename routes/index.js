@@ -67,6 +67,11 @@ router.get(
 // Question (protected)
 router.get("/admin/questions", ...admin, controller.getQuestionListController);
 router.post("/admin/questions", ...admin, controller.addQuestionController);
+router.delete(
+  "/admin/questions/:id",
+  ...admin,
+  controller.deleteQuestionController,
+);
 router.get(
   "/admin/questions/available/:studentId",
   ...admin,

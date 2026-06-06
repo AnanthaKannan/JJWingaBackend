@@ -15,6 +15,7 @@ const {
   removeStudentDeviceId,
   updateFcmToken,
   addQuestion,
+  deleteQuestion,
   sendBulkNotification,
   getNotificationList,
   getWeeklyRankings,
@@ -22,7 +23,7 @@ const {
 
 const loginController = async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { username, password, deviceId } = req.body;
 
     if (!username || !password) {
       return res.status(400).json({
@@ -31,7 +32,7 @@ const loginController = async (req, res) => {
       });
     }
 
-    const data = await login(username, password);
+    const data = await login(username, password, deviceId);
 
     return res.status(200).json({
       success: true,
@@ -116,13 +117,50 @@ const getStudentsBySameDeviceIdController = async (req, res) => {
 };
 
 const getRankingController = async (req, res) => {
-  const data = await getWeeklyRankings();
+  const { level } = req.query;
+
+  if (
+    level !== undefined &&
+    (String(level).trim() === "" || Number.isNaN(Number(level)))
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: "level must be a number",
+    });
+  }
+
+  const data = await getWeeklyRankings(
+    level === undefined ? null : Number(level),
+  );
 
   return res.status(200).json({
     success: true,
-    message: "Ranking list fetched successfully",
+    message:
+      level === undefined
+        ? "Ranking list fetched successfully"
+        : `Ranking list fetched successfully for level ${Number(level)}`,
     data,
   });
+};
+
+const hasField = (data, field) =>
+  Object.prototype.hasOwnProperty.call(data, field);
+
+const isMissingRequiredValue = (value) =>
+  value === undefined ||
+  value === null ||
+  (typeof value === "string" && value.trim() === "");
+
+const validateStudentLevel = (level) => {
+  if (isMissingRequiredValue(level)) {
+    return "level is required";
+  }
+
+  if (Number.isNaN(Number(level))) {
+    return "level must be a number";
+  }
+
+  return null;
 };
 
 const getQuestionListController = async (req, res) => {
@@ -260,27 +298,38 @@ const getHomeworkByIdController = async (req, res) => {
 };
 
 const assignQuestionController = async (req, res) => {
-  const { studentId, questionIds } = req.body;
+  try {
+    const { studentId, questionIds } = req.body;
 
-  // Validate inputs
-  if (!studentId || !Array.isArray(questionIds) || questionIds.length < 1) {
-    return res.status(400).json({
+    // Validate inputs
+    if (!studentId || !Array.isArray(questionIds) || questionIds.length < 1) {
+      return res.status(400).json({
+        success: false,
+        message: "studentId and questionIds are required",
+      });
+    }
+
+    const data = await assignQuestion(studentId, questionIds);
+
+    return res.status(201).json({
+      success: true,
+      message: `${data.homeworks.length} question(s) assigned successfully`,
+      ...data,
+    });
+  } catch (error) {
+    const isClientError = ["One or more questions not found"].includes(
+      error.message,
+    );
+
+    return res.status(isClientError ? 400 : 500).json({
       success: false,
-      message: "studentId and questionIds are required",
+      message: error.message || "Internal server error",
     });
   }
-
-  const data = await assignQuestion(studentId, questionIds);
-
-  return res.status(201).json({
-    success: true,
-    message: `${data.homeworks.length} question(s) assigned successfully`,
-    ...data,
-  });
 };
 
 const addStudentController = async (req, res) => {
-  const { name } = req.body;
+  const { name, level } = req.body;
 
   if (!name) {
     return res.status(400).json({
@@ -289,7 +338,15 @@ const addStudentController = async (req, res) => {
     });
   }
 
-  await addStudent({ name, createdBy: req.user.id });
+  const levelError = validateStudentLevel(level);
+  if (levelError) {
+    return res.status(400).json({
+      success: false,
+      message: levelError,
+    });
+  }
+
+  await addStudent({ name, level: Number(level), createdBy: req.user.id });
 
   return res.status(201).json({
     success: true,
@@ -313,6 +370,18 @@ const updateStudentController = async (req, res) => {
       success: false,
       message: "No update data provided",
     });
+  }
+
+  if (hasField(updateData, "level")) {
+    const levelError = validateStudentLevel(updateData.level);
+    if (levelError) {
+      return res.status(400).json({
+        success: false,
+        message: levelError,
+      });
+    }
+
+    updateData.level = Number(updateData.level);
   }
 
   await updateStudent(id, updateData);
@@ -419,6 +488,36 @@ const addQuestionController = async (req, res) => {
     success: true,
     message: "Question added successfully",
   });
+};
+
+const deleteQuestionController = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "Question ID is required",
+      });
+    }
+
+    const data = await deleteQuestion(id);
+
+    return res.status(200).json({
+      success: true,
+      message:
+        data.deleteType === "soft"
+          ? "Question soft deleted successfully"
+          : "Question deleted successfully",
+    });
+  } catch (error) {
+    const isClientError = ["Question not found"].includes(error.message);
+
+    return res.status(isClientError ? 400 : 500).json({
+      success: false,
+      message: error.message || "Internal server error",
+    });
+  }
 };
 
 const updateHomeworkController = async (req, res) => {
@@ -556,6 +655,7 @@ module.exports = {
   updateStudentFcmTokenController,
   getQuestionListController,
   addQuestionController,
+  deleteQuestionController,
   assignQuestionController,
   getHomeworkListController,
   getHomeworkByIdController,

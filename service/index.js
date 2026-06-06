@@ -36,7 +36,7 @@ if (!admin.apps.length) {
   });
 }
 
-const login = async (username, password, validatePassword = true) => {
+const login = async (username, password, deviceId, validatePassword = true) => {
   let user = null;
   let role = null;
 
@@ -69,6 +69,7 @@ const login = async (username, password, validatePassword = true) => {
 
   // Step 5: Generate JWT
   const deviceIds = user.deviceIds;
+  if (deviceId) deviceIds.push(deviceId);
   const payload = {
     id: user._id,
     role,
@@ -109,7 +110,7 @@ const loginUsingDeviceId = async (studentId, deviceIds) => {
     throw new Error("Student not found for this device");
   }
 
-  return login(student.studentId, null, false);
+  return login(student.studentId, null, null, false);
 };
 
 const getStudentList = async (adminId, page = 1, limit = 15, search = "") => {
@@ -197,7 +198,10 @@ const getStudentsBySameDeviceId = async (deviceIds) => {
 const getQuestionList = async (page = 1, limit = 15, search = "") => {
   const skip = (page - 1) * limit;
 
-  const query = search ? { questionId: { $regex: search, $options: "i" } } : {};
+  const query = {
+    isDeleted: { $ne: true },
+    ...(search ? { questionId: { $regex: search, $options: "i" } } : {}),
+  };
 
   const [questions, total] = await Promise.all([
     Question.find(query)
@@ -270,6 +274,9 @@ const getAvailableQuestionsForStudent = async (
   const studentObjectId = new mongoose.Types.ObjectId(studentId);
 
   const pipeline = [
+    {
+      $match: { isDeleted: { $ne: true } },
+    },
     // Search by questionId if provided
     ...(search
       ? [{ $match: { questionId: { $regex: search, $options: "i" } } }]
@@ -352,11 +359,13 @@ const assignQuestion = async (studentId, questionIds) => {
   // const student = await Student.findById(studentId);
   // if (!student) throw new Error('Student not found');
 
-  // // 2. Validate all questions exist
-  // const questions = await Question.find({ _id: { $in: questionIds } });
-  // if (questions.length !== questionIds.length) {
-  //   throw new Error('One or more questions not found');
-  // }
+  const questions = await Question.find({
+    _id: { $in: questionIds },
+    isDeleted: { $ne: true },
+  });
+  if (questions.length !== questionIds.length) {
+    throw new Error("One or more questions not found");
+  }
 
   // 3. Check for already assigned questions (avoid duplicates)
   // const existing = await HomeWork.find({ studentId, questionId: { $in: questionIds } });
@@ -385,7 +394,7 @@ const assignQuestion = async (studentId, questionIds) => {
 };
 
 const addStudent = async (studentData) => {
-  const { name, createdBy } = studentData;
+  const { name, level, createdBy } = studentData;
 
   // 1. Validate admin exists
   // const admin = await Admin.findById(createdBy);
@@ -406,6 +415,7 @@ const addStudent = async (studentData) => {
   const student = await Student.create({
     studentId,
     name,
+    level,
     password,
     createdBy,
   });
@@ -422,7 +432,7 @@ const updateStudent = async (studentObjectId, updateData) => {
   if (!student) throw new Error("Student not found");
 
   // 2. Whitelist allowed fields
-  const allowedFields = ["name", "password", "vertical", "deviceId"];
+  const allowedFields = ["name", "password", "vertical", "deviceId", "level"];
   const filteredData = Object.keys(updateData)
     .filter((key) => allowedFields.includes(key))
     .reduce((obj, key) => {
@@ -498,6 +508,24 @@ const addQuestion = async (questionData) => {
     questionId,
     questions: questions ?? [],
   });
+};
+
+const deleteQuestion = async (questionObjectId) => {
+  const question = await Question.findById(questionObjectId);
+  if (!question) throw new Error("Question not found");
+
+  const isAssigned = await HomeWork.exists({ questionId: questionObjectId });
+
+  if (isAssigned) {
+    question.isDeleted = true;
+    await question.save();
+
+    return { deleteType: "soft", question };
+  }
+
+  await question.deleteOne();
+
+  return { deleteType: "hard" };
 };
 
 const createHomeworkCompletedNotification = async (homework) => {
@@ -687,9 +715,20 @@ const sendBulkNotification = async (
   };
 };
 
-const getWeeklyRankings = async () => {
+const getWeeklyRankings = async (level = null) => {
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  const studentLevelFilter =
+    level === null
+      ? []
+      : [
+          {
+            $match: {
+              "student.level": level,
+            },
+          },
+        ];
 
   const rankings = await HomeWork.aggregate([
     // Step 1: Filter only COMPLETED homework from last 7 days
@@ -727,7 +766,23 @@ const getWeeklyRankings = async () => {
       },
     },
 
-    // Step 4: Calculate accuracy and a composite score for ranking
+    // Step 4: Join with students collection to get student details
+    {
+      $lookup: {
+        from: "students",
+        localField: "_id",
+        foreignField: "_id",
+        as: "student",
+      },
+    },
+    {
+      $addFields: {
+        student: { $arrayElemAt: ["$student", 0] },
+      },
+    },
+    ...studentLevelFilter,
+
+    // Step 5: Calculate accuracy and a composite score for ranking
     {
       $addFields: {
         accuracy: {
@@ -774,13 +829,7 @@ const getWeeklyRankings = async () => {
       },
     },
 
-    // Step 5: Sort by composite score descending
-    { $sort: { compositeScore: -1 } },
-
-    // Step 6: Limit to top 10
-    { $limit: 10 },
-
-    // Step 7: Add rank using $setWindowFields with single sortBy field
+    // Step 6: Add rank using $setWindowFields with single sortBy field
     {
       $setWindowFields: {
         sortBy: { compositeScore: -1 },
@@ -790,22 +839,11 @@ const getWeeklyRankings = async () => {
       },
     },
 
-    // Step 8: Join with students collection to get student details
-    {
-      $lookup: {
-        from: "students",
-        localField: "_id",
-        foreignField: "_id",
-        as: "student",
-      },
-    },
-    {
-      $addFields: {
-        student: { $arrayElemAt: ["$student", 0] },
-      },
-    },
+    // Step 7: Sort and limit to top 10
+    { $sort: { rank: 1 } },
+    { $limit: 10 },
 
-    // Step 9: Shape the final output
+    // Step 8: Shape the final output
     {
       $project: {
         _id: 0,
@@ -813,6 +851,7 @@ const getWeeklyRankings = async () => {
         studentId: "$_id",
         name: "$student.name",
         studentCode: "$student.studentId",
+        level: "$student.level",
         totalCorrect: 1,
         totalQuestions: 1,
         accuracy: 1,
@@ -883,6 +922,7 @@ module.exports = {
   updateStudent,
   removeStudentDeviceId,
   addQuestion,
+  deleteQuestion,
   getNotificationList,
   sendBulkNotification,
   updateFcmToken,

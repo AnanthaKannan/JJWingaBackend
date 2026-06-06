@@ -28,6 +28,7 @@ GET {{url}}/admin/students?limit=15&page=1&search=sonia
             "fcmTokens": [],
             "studentId": "JJ119",
             "name": "Mr. Sylvia Romaguera",
+            "level": 1,
             "score": {
                 "assigned": 0,
                 "new": 0,
@@ -53,7 +54,8 @@ GET {{url}}/admin/students?limit=15&page=1&search=sonia
 POST {{url}}/admin/students
 payload:
 {
-    "name": "Sree"
+    "name": "Sree",
+    "level": 1
 }
 
 Response:
@@ -66,7 +68,8 @@ Response:
 PATCH {{url}}/admin/students/:id
 payload:
 {
-    "vertical": true
+    "vertical": true,
+    "level": 2
 }
 
 Response:
@@ -88,6 +91,30 @@ Response
     "correct": 0,
     "wrong": 0,
     "timeTaken": 0
+}
+
+## Get weekly ranking
+GET {{url}}/ranking
+GET {{url}}/ranking?level=2
+
+Response
+{
+    "success": true,
+    "message": "Ranking list fetched successfully for level 2",
+    "data": [
+        {
+            "rank": 1,
+            "studentId": "6a1721e39b7d0c85483d8cfd",
+            "name": "Sree",
+            "studentCode": "JJ119",
+            "level": 2,
+            "totalCorrect": 10,
+            "totalQuestions": 12,
+            "accuracy": 83.33,
+            "totalTimer": 300,
+            "completedCount": 2
+        }
+    ]
 }
 
 ## Add question by admin
@@ -149,6 +176,19 @@ Response:
 {
     "success": true,
     "message": "Homework assigned successfully"
+}
+
+## Delete question by id
+DELETE {{url}}/admin/questions/:id
+
+If the question is assigned to any student, it will be soft deleted by setting `isDeleted` to `true`.
+If the question is not assigned to any student, it will be deleted from the database.
+
+Response:
+{
+    "success": true,
+    "message": "Question soft deleted successfully",
+    "deleteType": "soft"
 }
 
 

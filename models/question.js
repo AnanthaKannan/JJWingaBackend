@@ -13,6 +13,10 @@ const questionSchema = new mongoose.Schema(
       type: Array,
       default: [],
     },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true, // auto adds createdAt and updatedAt
