@@ -41,6 +41,8 @@ const loginController = async (req, res) => {
       ...data,
     });
   } catch (error) {
+    logControllerError("loginController", error);
+
     const isClientError = ["Invalid username or password"].includes(
       error.message,
     );
@@ -57,7 +59,6 @@ const loginUsingDeviceIdController = async (req, res) => {
     const { studentId } = req.params;
     const { deviceIds } = req.user;
 
-    console.log(studentId, deviceIds);
     const data = await loginUsingDeviceId(studentId, deviceIds);
 
     return res.status(200).json({
@@ -66,6 +67,8 @@ const loginUsingDeviceIdController = async (req, res) => {
       ...data,
     });
   } catch (error) {
+    logControllerError("loginUsingDeviceIdController", error);
+
     const isClientError = [
       "Device ID not found in token",
       "Student not found for this device",
@@ -105,6 +108,8 @@ const getStudentsBySameDeviceIdController = async (req, res) => {
       ...data,
     });
   } catch (error) {
+    logControllerError("getStudentsBySameDeviceIdController", error);
+
     const isClientError = [
       "Student not found",
       "Device ID is not assigned for this student",
@@ -162,6 +167,10 @@ const validateStudentLevel = (level) => {
   }
 
   return null;
+};
+
+const logControllerError = (context, error) => {
+  console.error(`[${context}]`, error);
 };
 
 const getQuestionListController = async (req, res) => {
@@ -345,6 +354,8 @@ const assignQuestionController = async (req, res) => {
       ...data,
     });
   } catch (error) {
+    logControllerError("assignQuestionController", error);
+
     const isClientError = ["One or more questions not found"].includes(
       error.message,
     );
@@ -480,6 +491,8 @@ const removeStudentDeviceIdController = async (req, res) => {
       message: "Device ID removed successfully",
     });
   } catch (error) {
+    logControllerError("removeStudentDeviceIdController", error);
+
     const isClientError = [
       "Student not found",
       "deviceId is required",
@@ -564,6 +577,8 @@ const updateQuestionController = async (req, res) => {
       message: "Question updated successfully",
     });
   } catch (error) {
+    logControllerError("updateQuestionController", error);
+
     const isClientError = [
       "Question not found",
       "No valid fields provided to update",
@@ -597,6 +612,8 @@ const deleteQuestionController = async (req, res) => {
           : "Question deleted successfully",
     });
   } catch (error) {
+    logControllerError("deleteQuestionController", error);
+
     const isClientError = ["Question not found"].includes(error.message);
 
     return res.status(isClientError ? 400 : 500).json({
@@ -721,6 +738,8 @@ const updateMyStudentController = async (req, res) => {
       message: "Student updated successfully",
     });
   } catch (error) {
+    logControllerError("updateMyStudentController", error);
+
     const isClientError = [
       "Student not found",
       "No valid fields provided to update",

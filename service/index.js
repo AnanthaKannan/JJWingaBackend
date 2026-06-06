@@ -468,7 +468,7 @@ const updateStudent = async (studentObjectId, updateData) => {
   // 3. Apply updates to the document and save
   //    (so pre('save') password hash hook triggers if password is changed)
   Object.assign(student, filteredData);
-  await student.save();
+  await student.save({ validateModifiedOnly: true });
 };
 
 const removeStudentDeviceId = async (studentObjectId, deviceId) => {
@@ -486,7 +486,7 @@ const removeStudentDeviceId = async (studentObjectId, deviceId) => {
     (value) => !removeSet.has(value),
   );
 
-  await student.save();
+  await student.save({ validateModifiedOnly: true });
 };
 
 const updateFcmToken = async (userId, fcmToken, isStudent) => {
