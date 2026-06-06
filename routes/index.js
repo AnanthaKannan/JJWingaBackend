@@ -44,6 +44,13 @@ router.get(
   controller.getStudentsBySameDeviceIdController,
 );
 
+// we can deprecate
+router.patch(
+  "/student/fcm-token", // we are using this for student and admin both places
+  authenticate,
+  controller.updateStudentFcmTokenController,
+);
+
 router.patch(
   "/fcm-token", // we are using this for student and admin both places
   authenticate,
