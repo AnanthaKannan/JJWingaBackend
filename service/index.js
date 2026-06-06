@@ -195,12 +195,18 @@ const getStudentsBySameDeviceId = async (deviceIds) => {
   };
 };
 
-const getQuestionList = async (page = 1, limit = 15, search = "") => {
+const getQuestionList = async (
+  page = 1,
+  limit = 15,
+  search = "",
+  level = null,
+) => {
   const skip = (page - 1) * limit;
 
   const query = {
     isDeleted: { $ne: true },
     ...(search ? { questionId: { $regex: search, $options: "i" } } : {}),
+    ...(level === null ? {} : { level }),
   };
 
   const [questions, total] = await Promise.all([
@@ -269,6 +275,7 @@ const getAvailableQuestionsForStudent = async (
   page = 1,
   limit = 15,
   search = "",
+  level = null,
 ) => {
   const skip = (page - 1) * limit;
   const studentObjectId = new mongoose.Types.ObjectId(studentId);
@@ -277,6 +284,7 @@ const getAvailableQuestionsForStudent = async (
     {
       $match: { isDeleted: { $ne: true } },
     },
+    ...(level === null ? [] : [{ $match: { level } }]),
     // Search by questionId if provided
     ...(search
       ? [{ $match: { questionId: { $regex: search, $options: "i" } } }]
@@ -497,7 +505,7 @@ const updateFcmToken = async (userId, fcmToken, isStudent) => {
 };
 
 const addQuestion = async (questionData) => {
-  const { questionId, questions } = questionData;
+  const { questionId, level, questions } = questionData;
 
   // 1. Check if questionId already exists
   const existing = await Question.findOne({ questionId });
@@ -506,8 +514,31 @@ const addQuestion = async (questionData) => {
   // 2. Create question
   await Question.create({
     questionId,
+    level,
     questions: questions ?? [],
   });
+};
+
+const updateQuestion = async (questionObjectId, updateData) => {
+  const question = await Question.findById(questionObjectId);
+  if (!question) throw new Error("Question not found");
+
+  const allowedFields = ["questionId", "level"];
+  const filteredData = Object.keys(updateData)
+    .filter((key) => allowedFields.includes(key))
+    .reduce((obj, key) => {
+      obj[key] = updateData[key];
+      return obj;
+    }, {});
+
+  if (Object.keys(filteredData).length === 0) {
+    throw new Error("No valid fields provided to update");
+  }
+
+  Object.assign(question, filteredData);
+  await question.save();
+
+  return { question };
 };
 
 const deleteQuestion = async (questionObjectId) => {
@@ -928,4 +959,5 @@ module.exports = {
   updateFcmToken,
   getWeeklyRankings,
   seedAdminScreenData,
+  updateQuestion,
 };

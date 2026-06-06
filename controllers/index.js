@@ -15,6 +15,7 @@ const {
   removeStudentDeviceId,
   updateFcmToken,
   addQuestion,
+  updateQuestion,
   deleteQuestion,
   sendBulkNotification,
   getNotificationList,
@@ -167,8 +168,24 @@ const getQuestionListController = async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 15;
   const search = req.query.search?.trim() || "";
+  const { level } = req.query;
 
-  const data = await getQuestionList(page, limit, search);
+  if (
+    level !== undefined &&
+    (String(level).trim() === "" || Number.isNaN(Number(level)))
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: "level must be a number",
+    });
+  }
+
+  const data = await getQuestionList(
+    page,
+    limit,
+    search,
+    level === undefined ? null : Number(level),
+  );
 
   return res.status(200).json({
     success: true,
@@ -234,7 +251,7 @@ const getHomeworkListController = async (req, res) => {
 
 const getAvailableQuestionsForStudentController = async (req, res) => {
   const { studentId } = req.params;
-  const { page, limit, search } = req.query;
+  const { page, limit, search, level } = req.query;
 
   if (!studentId) {
     return res.status(400).json({
@@ -243,11 +260,22 @@ const getAvailableQuestionsForStudentController = async (req, res) => {
     });
   }
 
+  if (
+    level !== undefined &&
+    (String(level).trim() === "" || Number.isNaN(Number(level)))
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: "level must be a number",
+    });
+  }
+
   const data = await getAvailableQuestionsForStudent(
     studentId,
     parseInt(page) || 1,
     parseInt(limit) || 15,
     search?.trim() || "",
+    level === undefined ? null : Number(level),
   );
 
   return res.status(200).json({
@@ -466,7 +494,7 @@ const removeStudentDeviceIdController = async (req, res) => {
 };
 
 const addQuestionController = async (req, res) => {
-  const { questionId, questions } = req.body;
+  const { questionId, level, questions } = req.body;
 
   if (!questionId) {
     return res.status(400).json({
@@ -482,12 +510,70 @@ const addQuestionController = async (req, res) => {
     });
   }
 
-  await addQuestion({ questionId, questions });
+  const levelError = validateStudentLevel(level);
+  if (levelError) {
+    return res.status(400).json({
+      success: false,
+      message: levelError,
+    });
+  }
+
+  await addQuestion({ questionId, level: Number(level), questions });
 
   return res.status(201).json({
     success: true,
     message: "Question added successfully",
   });
+};
+
+const updateQuestionController = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "Question ID is required",
+      });
+    }
+
+    if (!updateData || Object.keys(updateData).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No update data provided",
+      });
+    }
+
+    if (hasField(updateData, "level")) {
+      const levelError = validateStudentLevel(updateData.level);
+      if (levelError) {
+        return res.status(400).json({
+          success: false,
+          message: levelError,
+        });
+      }
+
+      updateData.level = Number(updateData.level);
+    }
+
+    await updateQuestion(id, updateData);
+
+    return res.status(200).json({
+      success: true,
+      message: "Question updated successfully",
+    });
+  } catch (error) {
+    const isClientError = [
+      "Question not found",
+      "No valid fields provided to update",
+    ].includes(error.message);
+
+    return res.status(isClientError ? 400 : 500).json({
+      success: false,
+      message: error.message || "Internal server error",
+    });
+  }
 };
 
 const deleteQuestionController = async (req, res) => {
@@ -655,6 +741,7 @@ module.exports = {
   updateStudentFcmTokenController,
   getQuestionListController,
   addQuestionController,
+  updateQuestionController,
   deleteQuestionController,
   assignQuestionController,
   getHomeworkListController,
