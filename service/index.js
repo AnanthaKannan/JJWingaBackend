@@ -88,6 +88,7 @@ const login = async (username, password, deviceId, validatePassword = true) => {
       ...(role === "student"
         ? {
             studentId: user.studentId,
+            level: user.level,
             vertical: user.vertical,
             hasLoginSameDevice: user.hasLoginSameDevice,
           }
