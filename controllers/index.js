@@ -343,7 +343,10 @@ const updateStudentFcmTokenController = async (req, res) => {
 
 const removeStudentDeviceIdController = async (req, res) => {
   try {
-    const { deviceId } = req.body;
+    const { studentId, deviceId } = req.body;
+    const { deviceIds } = req.user;
+
+    console.log("------------", req.user);
 
     if (req.user.role !== "student") {
       return res.status(403).json({
@@ -352,14 +355,29 @@ const removeStudentDeviceIdController = async (req, res) => {
       });
     }
 
-    if (!deviceId) {
+    if (!studentId) {
       return res.status(400).json({
         success: false,
-        message: "deviceId is required",
+        message: "studentId is required",
       });
     }
 
-    await removeStudentDeviceId(req.user.id, deviceId);
+    if (!deviceId) {
+      return res.status(400).json({
+        success: false,
+        message: "Device ID not found in token",
+      });
+    }
+
+    if (!deviceIds.some((id) => id === deviceId)) {
+      return res.status(403).json({
+        success: false,
+        message:
+          "Access denied. You are not authorized person for this operation.",
+      });
+    }
+
+    await removeStudentDeviceId(studentId, deviceId);
 
     return res.status(200).json({
       success: true,
@@ -369,6 +387,7 @@ const removeStudentDeviceIdController = async (req, res) => {
     const isClientError = [
       "Student not found",
       "deviceId is required",
+      "Device ID not found in token",
     ].includes(error.message);
 
     return res.status(isClientError ? 400 : 500).json({

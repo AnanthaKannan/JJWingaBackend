@@ -463,7 +463,7 @@ const removeStudentDeviceId = async (studentObjectId, deviceId) => {
   if (!student) throw new Error("Student not found");
 
   const removeSet = new Set(deviceIdsToRemove);
-  student.deviceIds = [student.deviceId].filter(
+  student.deviceIds = student.deviceIds.filter(
     (value) => !removeSet.has(value),
   );
 
