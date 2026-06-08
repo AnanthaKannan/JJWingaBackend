@@ -66,7 +66,7 @@ router.post(
 );
 router.get(
   "/file-uploads",
-  ...authenticate,
+  authenticate,
   controller.getFileUploadListController,
 );
 router.delete(
