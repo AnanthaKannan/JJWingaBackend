@@ -15,6 +15,7 @@ const {
   removeStudentDeviceId,
   updateFcmToken,
   uploadFile,
+  getFileUploadList,
   updateFileUploadName,
   deleteFileUpload,
   deleteProfilePic,
@@ -487,6 +488,33 @@ const uploadFileController = async (req, res) => {
   }
 };
 
+const getFileUploadListController = async (req, res) => {
+  try {
+    const type = req.query.type?.trim();
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 15;
+
+    const data = await getFileUploadList(type, page, limit);
+
+    return res.status(200).json({
+      success: true,
+      message: "File upload list fetched successfully",
+      ...data,
+    });
+  } catch (error) {
+    logControllerError("getFileUploadListController", error);
+
+    const isClientError = [
+      "type must be one of: practice, celebration",
+    ].includes(error.message);
+
+    return res.status(isClientError ? 400 : 500).json({
+      success: false,
+      message: error.message || "Failed to fetch file uploads",
+    });
+  }
+};
+
 const sendDownloadResponse = (res, file) => {
   const downloadName = String(file.downloadName || file.fileName || "download")
     .replace(/[\r\n"]/g, "")
@@ -922,6 +950,7 @@ module.exports = {
   updateMyStudentController,
   loginUsingDeviceIdController,
   uploadFileController,
+  getFileUploadListController,
   updateFileUploadNameController,
   deleteFileUploadController,
   deleteProfilePicController,

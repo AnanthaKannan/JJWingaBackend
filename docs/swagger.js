@@ -667,6 +667,35 @@
  *       200:
  *         description: Profile picture deleted successfully
  *
+ * /admin/file-uploads:
+ *   get:
+ *     summary: List FileUpload records by type
+ *     tags: [Uploads]
+ *     security:
+ *       - AccessToken: []
+ *     parameters:
+ *       - in: query
+ *         name: type
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [practice, celebration]
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 15
+ *     responses:
+ *       200:
+ *         description: File upload list fetched successfully
+ *       400:
+ *         description: Invalid file upload type
+ *
  * /admin/file-uploads/{id}:
  *   patch:
  *     summary: Update a FileUpload name

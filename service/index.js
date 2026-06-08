@@ -580,6 +580,37 @@ const createFileUploadRecord = async (name, filePath, type) => {
   });
 };
 
+const getFileUploadList = async (type, page = 1, limit = 15) => {
+  if (!isFileUploadType(type)) {
+    throw new Error("type must be one of: practice, celebration");
+  }
+
+  const skip = (page - 1) * limit;
+  const query = { type };
+
+  const [fileUploads, total] = await Promise.all([
+    FileUpload.find(query)
+      .select("-__v")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+    FileUpload.countDocuments(query),
+  ]);
+
+  return {
+    fileUploads,
+    meta: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+      hasNextPage: page < Math.ceil(total / limit),
+      hasPrevPage: page > 1,
+    },
+  };
+};
+
 const uploadFile = async (file, user, formPath = "", name = "") => {
   if (!file) {
     throw new Error("file is required");
@@ -1208,6 +1239,7 @@ module.exports = {
   sendBulkNotification,
   updateFcmToken,
   uploadFile,
+  getFileUploadList,
   updateFileUploadName,
   deleteFileUpload,
   deleteProfilePic,

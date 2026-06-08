@@ -64,6 +64,11 @@ router.post(
   uploadSingleFile,
   controller.uploadFileController,
 );
+router.get(
+  "/file-uploads",
+  ...authenticate,
+  controller.getFileUploadListController,
+);
 router.delete(
   "/profile-pic",
   authenticate,
