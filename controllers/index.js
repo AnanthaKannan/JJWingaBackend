@@ -14,6 +14,7 @@ const {
   updateStudent,
   removeStudentDeviceId,
   updateFcmToken,
+  uploadFile,
   addQuestion,
   updateQuestion,
   deleteQuestion,
@@ -449,6 +450,27 @@ const updateStudentFcmTokenController = async (req, res) => {
   });
 };
 
+const uploadFileController = async (req, res) => {
+  try {
+    const file = await uploadFile(req.file, req.user);
+
+    return res.status(201).json({
+      success: true,
+      message: "File uploaded successfully",
+      file,
+    });
+  } catch (error) {
+    logControllerError("uploadFileController", error);
+
+    const isClientError = ["file is required"].includes(error.message);
+
+    return res.status(isClientError ? 400 : 500).json({
+      success: false,
+      message: error.message || "Failed to upload file",
+    });
+  }
+};
+
 const removeStudentDeviceIdController = async (req, res) => {
   try {
     const { studentId, deviceId } = req.body;
@@ -775,4 +797,5 @@ module.exports = {
   getRankingController,
   updateMyStudentController,
   loginUsingDeviceIdController,
+  uploadFileController,
 };

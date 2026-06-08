@@ -4,6 +4,11 @@ const mongoose = require("mongoose");
 
 const { generateToken } = require("../middleware/auth");
 const {
+  buildUploadPath,
+  getSupabaseClient,
+  getSupabaseStorageTarget,
+} = require("../utils/supabaseStorage");
+const {
   Student,
   HomeWork,
   Admin,
@@ -12,19 +17,6 @@ const {
   Score,
   Notification,
 } = require("../models");
-
-const arraysEqual = (first, second) =>
-  first.length === second.length &&
-  first.every((value, index) => value === second[index]);
-
-const toUniqueStringArray = (values) => [
-  ...new Set(
-    (Array.isArray(values) ? values : [values])
-      .filter((value) => typeof value === "string")
-      .map((value) => value.trim())
-      .filter(Boolean),
-  ),
-];
 
 if (!admin.apps.length) {
   admin.initializeApp({
@@ -503,6 +495,41 @@ const updateFcmToken = async (userId, fcmToken, isStudent) => {
       { fcmTokens: [fcmToken] }, // replace entire array with the new single token
     );
   }
+};
+
+const uploadFile = async (file, user) => {
+  if (!file) {
+    throw new Error("file is required");
+  }
+
+  const { bucket, prefix } = getSupabaseStorageTarget();
+
+  const supabase = getSupabaseClient();
+  const path = buildUploadPath(file, user, prefix);
+
+  const { data, error } = await supabase.storage
+    .from(bucket)
+    .upload(path, file.buffer, {
+      contentType: file.mimetype,
+      upsert: false,
+    });
+
+  if (error) {
+    throw new Error(error.message || "Failed to upload file");
+  }
+
+  const { data: publicUrlData } = supabase.storage
+    .from(bucket)
+    .getPublicUrl(data.path);
+
+  return {
+    bucket,
+    path: data.path,
+    url: publicUrlData.publicUrl,
+    originalName: file.originalname,
+    mimeType: file.mimetype,
+    size: file.size,
+  };
 };
 
 const addQuestion = async (questionData) => {
@@ -1010,6 +1037,7 @@ module.exports = {
   getNotificationList,
   sendBulkNotification,
   updateFcmToken,
+  uploadFile,
   getWeeklyRankings,
   seedAdminScreenData,
   updateQuestion,

@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const controller = require("../controllers");
 const { authenticate, authorizeAdmin } = require("../middleware/auth");
+const { uploadSingleFile } = require("../middleware/upload");
 
 const admin = [authenticate, authorizeAdmin];
 
@@ -55,6 +56,13 @@ router.patch(
   "/fcm-token", // we are using this for student and admin both places
   authenticate,
   controller.updateStudentFcmTokenController,
+);
+
+router.post(
+  "/uploads",
+  authenticate,
+  uploadSingleFile,
+  controller.uploadFileController,
 );
 
 // Score (protected)
