@@ -61,8 +61,11 @@ const login = async (username, password, deviceId, validatePassword = true) => {
   }
 
   // Step 5: Generate JWT
-  const deviceIds = user.deviceIds;
-  if (deviceId) deviceIds.push(deviceId);
+  let deviceIds = user.deviceIds;
+  if (deviceId) {
+    if (deviceIds?.length > 0) deviceIds.push(deviceId);
+    else deviceIds = [deviceId];
+  }
   const payload = {
     id: user._id,
     role,
@@ -530,7 +533,9 @@ const downloadSupabaseFile = async (filePath) => {
 
   const { bucket } = getSupabaseStorageTarget();
   const supabase = getSupabaseClient();
-  const { data, error } = await supabase.storage.from(bucket).download(filePath);
+  const { data, error } = await supabase.storage
+    .from(bucket)
+    .download(filePath);
 
   if (error) {
     throw new Error(error.message || "Failed to download file");
