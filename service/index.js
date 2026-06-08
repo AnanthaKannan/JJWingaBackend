@@ -74,7 +74,7 @@ const login = async (username, password, deviceId, validatePassword = true) => {
     id: user._id,
     role,
     ...(role === "student"
-      ? { studentId: user.studentId, deviceIds }
+      ? { studentId: user.studentId, deviceIds, createdBy: user.createdBy }
       : { adminId: user.adminId }),
   };
 
@@ -747,13 +747,7 @@ const sendBulkNotification = async (
   };
 };
 
-const resolveWeeklyRankingLevel = async (level, user) => {
-  if (level !== null || user?.role !== "student") {
-    return level;
-  }
-
-  const student = await Student.findById(user.id).select("level").lean();
-
+const resolveStudentRankingLevel = (student) => {
   if (
     Object.prototype.hasOwnProperty.call(student || {}, "level") &&
     student.level !== undefined &&
@@ -766,10 +760,47 @@ const resolveWeeklyRankingLevel = async (level, user) => {
   return null;
 };
 
+const resolveWeeklyRankingScope = async (level, user) => {
+  const scope = {
+    level,
+    adminId: null,
+  };
+
+  if (user?.role === "admin") {
+    scope.adminId = user.id;
+    return scope;
+  }
+
+  if (user?.role === "student") {
+    const needsLevel = level === null;
+    let student = null;
+
+    if (needsLevel) {
+      student = await Student.findById(user.id).select("level").lean();
+    }
+
+    scope.level = needsLevel ? resolveStudentRankingLevel(student) : level;
+    scope.adminId = user.createdBy;
+  }
+
+  return scope;
+};
+
 const getWeeklyRankings = async (level = null, user = null) => {
-  const rankingLevel = await resolveWeeklyRankingLevel(level, user);
+  const { level: rankingLevel, adminId: rankingAdminId } =
+    await resolveWeeklyRankingScope(level, user);
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  const studentAdminFilter = rankingAdminId
+    ? [
+        {
+          $match: {
+            "student.createdBy": new mongoose.Types.ObjectId(rankingAdminId),
+          },
+        },
+      ]
+    : [];
 
   const studentLevelFilter =
     rankingLevel === null
@@ -832,6 +863,7 @@ const getWeeklyRankings = async (level = null, user = null) => {
         student: { $arrayElemAt: ["$student", 0] },
       },
     },
+    ...studentAdminFilter,
     ...studentLevelFilter,
 
     // Step 5: Calculate accuracy and a composite score for ranking
