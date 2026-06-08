@@ -16,6 +16,7 @@ const {
   Question,
   Score,
   Notification,
+  FileUpload,
 } = require("../models");
 
 if (!admin.apps.length) {
@@ -497,15 +498,98 @@ const updateFcmToken = async (userId, fcmToken, isStudent) => {
   }
 };
 
-const uploadFile = async (file, user) => {
+const updateProfilePicPath = async (user, profilePicPath) => {
+  if (user?.role === "student") {
+    await Student.findByIdAndUpdate(user.id, { profilePicPath });
+    return;
+  }
+
+  if (user?.role === "admin") {
+    await Admin.findByIdAndUpdate(user.id, { profilePicPath });
+  }
+};
+
+const deleteSupabaseFile = async (filePath) => {
+  if (!filePath) {
+    return;
+  }
+
+  const { bucket } = getSupabaseStorageTarget();
+  const supabase = getSupabaseClient();
+  const { error } = await supabase.storage.from(bucket).remove([filePath]);
+
+  if (error) {
+    throw new Error(error.message || "Failed to delete file");
+  }
+};
+
+const downloadSupabaseFile = async (filePath) => {
+  if (!filePath) {
+    throw new Error("filePath is required");
+  }
+
+  const { bucket } = getSupabaseStorageTarget();
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.storage.from(bucket).download(filePath);
+
+  if (error) {
+    throw new Error(error.message || "Failed to download file");
+  }
+
+  const arrayBuffer = await data.arrayBuffer();
+  const fileName = filePath.split("/").filter(Boolean).pop() || "download";
+
+  return {
+    buffer: Buffer.from(arrayBuffer),
+    contentType: data.type || "application/octet-stream",
+    fileName,
+  };
+};
+
+const isFileUploadType = (type) => ["practice", "celebration"].includes(type);
+
+const validateFileUploadRecord = (user, name, type) => {
+  if (!isFileUploadType(type)) {
+    return;
+  }
+
+  if (user?.role !== "admin") {
+    throw new Error("Only admin can upload practice or celebration files");
+  }
+
+  if (typeof name !== "string" || name.trim() === "") {
+    throw new Error("name is required");
+  }
+};
+
+const createFileUploadRecord = async (name, filePath, type) => {
+  if (!["practice", "celebration"].includes(type)) {
+    return null;
+  }
+
+  return FileUpload.create({
+    name: name.trim(),
+    filePath,
+    type,
+  });
+};
+
+const uploadFile = async (file, user, formPath = "", name = "") => {
   if (!file) {
     throw new Error("file is required");
   }
 
+  if (typeof formPath !== "string" || formPath.trim() === "") {
+    throw new Error("path is required");
+  }
+
+  const uploadType = formPath.trim();
+  validateFileUploadRecord(user, name, uploadType);
+
   const { bucket, prefix } = getSupabaseStorageTarget();
 
   const supabase = getSupabaseClient();
-  const path = buildUploadPath(file, user, prefix);
+  const path = buildUploadPath(file, user, prefix, formPath);
 
   const { data, error } = await supabase.storage
     .from(bucket)
@@ -522,6 +606,12 @@ const uploadFile = async (file, user) => {
     .from(bucket)
     .getPublicUrl(data.path);
 
+  if (formPath.trim() === "profile") {
+    await updateProfilePicPath(user, data.path);
+  }
+
+  const fileUpload = await createFileUploadRecord(name, data.path, uploadType);
+
   return {
     bucket,
     path: data.path,
@@ -529,7 +619,81 @@ const uploadFile = async (file, user) => {
     originalName: file.originalname,
     mimeType: file.mimetype,
     size: file.size,
+    ...(fileUpload ? { fileUpload } : {}),
   };
+};
+
+const updateFileUploadName = async (fileUploadId, name) => {
+  if (!fileUploadId) {
+    throw new Error("fileUploadId is required");
+  }
+
+  if (typeof name !== "string" || name.trim() === "") {
+    throw new Error("name is required");
+  }
+
+  const fileUpload = await FileUpload.findByIdAndUpdate(
+    fileUploadId,
+    { name: name.trim() },
+    { new: true, runValidators: true },
+  );
+
+  if (!fileUpload) {
+    throw new Error("File upload not found");
+  }
+
+  return { fileUpload };
+};
+
+const deleteFileUpload = async (fileUploadId) => {
+  if (!fileUploadId) {
+    throw new Error("fileUploadId is required");
+  }
+
+  const fileUpload = await FileUpload.findById(fileUploadId);
+  if (!fileUpload) {
+    throw new Error("File upload not found");
+  }
+
+  await deleteSupabaseFile(fileUpload.filePath);
+  await fileUpload.deleteOne();
+
+  return { fileUploadId };
+};
+
+const downloadFileUpload = async (fileUploadId) => {
+  if (!fileUploadId) {
+    throw new Error("fileUploadId is required");
+  }
+
+  const fileUpload = await FileUpload.findById(fileUploadId);
+  if (!fileUpload) {
+    throw new Error("File upload not found");
+  }
+
+  const file = await downloadSupabaseFile(fileUpload.filePath);
+
+  return {
+    ...file,
+    downloadName: `${fileUpload.name}-${file.fileName}`,
+  };
+};
+
+const deleteProfilePic = async (user) => {
+  const Model = user?.role === "student" ? Student : Admin;
+  const account = await Model.findById(user?.id).select("profilePicPath");
+
+  if (!account) {
+    throw new Error("User not found");
+  }
+
+  if (!account.profilePicPath) {
+    throw new Error("Profile picture not found");
+  }
+
+  await deleteSupabaseFile(account.profilePicPath);
+  account.profilePicPath = "";
+  await account.save({ validateModifiedOnly: true });
 };
 
 const addQuestion = async (questionData) => {
@@ -1038,6 +1202,10 @@ module.exports = {
   sendBulkNotification,
   updateFcmToken,
   uploadFile,
+  updateFileUploadName,
+  deleteFileUpload,
+  deleteProfilePic,
+  downloadFileUpload,
   getWeeklyRankings,
   seedAdminScreenData,
   updateQuestion,

@@ -5,6 +5,7 @@ const HomeWork = require("./homework");
 const IdGen = require("./idgen");
 const Score = require("./score");
 const Notification = require("./notification");
+const FileUpload = require("./fileUpload");
 
 module.exports = {
   Student,
@@ -14,4 +15,5 @@ module.exports = {
   IdGen,
   Score,
   Notification,
+  FileUpload,
 };

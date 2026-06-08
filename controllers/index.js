@@ -15,6 +15,10 @@ const {
   removeStudentDeviceId,
   updateFcmToken,
   uploadFile,
+  updateFileUploadName,
+  deleteFileUpload,
+  deleteProfilePic,
+  downloadFileUpload,
   addQuestion,
   updateQuestion,
   deleteQuestion,
@@ -452,7 +456,12 @@ const updateStudentFcmTokenController = async (req, res) => {
 
 const uploadFileController = async (req, res) => {
   try {
-    const file = await uploadFile(req.file, req.user);
+    const file = await uploadFile(
+      req.file,
+      req.user,
+      req.body?.path,
+      req.body?.name,
+    );
 
     return res.status(201).json({
       success: true,
@@ -462,11 +471,126 @@ const uploadFileController = async (req, res) => {
   } catch (error) {
     logControllerError("uploadFileController", error);
 
-    const isClientError = ["file is required"].includes(error.message);
+    const isClientError = [
+      "file is required",
+      "path is required",
+      "name is required",
+    ].includes(error.message);
+    const isForbiddenError = [
+      "Only admin can upload practice or celebration files",
+    ].includes(error.message);
+
+    return res.status(isForbiddenError ? 403 : isClientError ? 400 : 500).json({
+      success: false,
+      message: error.message || "Failed to upload file",
+    });
+  }
+};
+
+const sendDownloadResponse = (res, file) => {
+  const downloadName = String(file.downloadName || file.fileName || "download")
+    .replace(/[\r\n"]/g, "")
+    .trim();
+
+  res.setHeader("Content-Type", file.contentType);
+  res.setHeader(
+    "Content-Disposition",
+    `attachment; filename="${downloadName || "download"}"`,
+  );
+  return res.status(200).send(file.buffer);
+};
+
+const updateFileUploadNameController = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name } = req.body;
+
+    await updateFileUploadName(id, name);
+
+    return res.status(200).json({
+      success: true,
+      message: "File upload name updated successfully",
+    });
+  } catch (error) {
+    logControllerError("updateFileUploadNameController", error);
+
+    const isClientError = [
+      "fileUploadId is required",
+      "name is required",
+      "File upload not found",
+    ].includes(error.message);
 
     return res.status(isClientError ? 400 : 500).json({
       success: false,
-      message: error.message || "Failed to upload file",
+      message: error.message || "Failed to update file upload",
+    });
+  }
+};
+
+const downloadFileUploadController = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const file = await downloadFileUpload(id);
+
+    return sendDownloadResponse(res, file);
+  } catch (error) {
+    logControllerError("downloadFileUploadController", error);
+
+    const isClientError = [
+      "fileUploadId is required",
+      "File upload not found",
+    ].includes(error.message);
+
+    return res.status(isClientError ? 400 : 500).json({
+      success: false,
+      message: error.message || "Failed to download file upload",
+    });
+  }
+};
+
+const deleteFileUploadController = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    await deleteFileUpload(id);
+
+    return res.status(200).json({
+      success: true,
+      message: "File upload deleted successfully",
+    });
+  } catch (error) {
+    logControllerError("deleteFileUploadController", error);
+
+    const isClientError = [
+      "fileUploadId is required",
+      "File upload not found",
+    ].includes(error.message);
+
+    return res.status(isClientError ? 400 : 500).json({
+      success: false,
+      message: error.message || "Failed to delete file upload",
+    });
+  }
+};
+
+const deleteProfilePicController = async (req, res) => {
+  try {
+    await deleteProfilePic(req.user);
+
+    return res.status(200).json({
+      success: true,
+      message: "Profile picture deleted successfully",
+    });
+  } catch (error) {
+    logControllerError("deleteProfilePicController", error);
+
+    const isClientError = ["User not found", "Profile picture not found"].includes(
+      error.message,
+    );
+
+    return res.status(isClientError ? 400 : 500).json({
+      success: false,
+      message: error.message || "Failed to delete profile picture",
     });
   }
 };
@@ -798,4 +922,8 @@ module.exports = {
   updateMyStudentController,
   loginUsingDeviceIdController,
   uploadFileController,
+  updateFileUploadNameController,
+  deleteFileUploadController,
+  deleteProfilePicController,
+  downloadFileUploadController,
 };

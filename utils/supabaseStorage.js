@@ -12,16 +12,12 @@ const getSupabaseClient = () => {
   }
 
   if (!supabaseClient) {
-    supabaseClient = createClient(
-      supabaseUrl,
-      supabaseServiceRoleKey,
-      {
-        auth: {
-          persistSession: false,
-          autoRefreshToken: false,
-        },
+    supabaseClient = createClient(supabaseUrl, supabaseServiceRoleKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
       },
-    );
+    });
   }
 
   return supabaseClient;
@@ -56,6 +52,13 @@ const sanitizeStorageSegment = (value) =>
     .replace(/-+/g, "-")
     .replace(/^-+|-+$/g, "");
 
+const sanitizeStoragePath = (value) =>
+  String(value || "")
+    .split("/")
+    .map(sanitizeStorageSegment)
+    .filter(Boolean)
+    .join("/");
+
 const getFileExtension = (file) => {
   const originalExtension = sanitizeStorageSegment(
     file.originalname?.split(".").pop(),
@@ -70,18 +73,12 @@ const getFileExtension = (file) => {
     : file.mimetype.split("/")[1];
 };
 
-const buildUploadPath = (file, user, prefix = "") => {
+const buildUploadPath = (file, _user, prefix = "", formPath = "") => {
   const extension = getFileExtension(file);
-  const fileTypeFolder =
-    file.mimetype === "application/pdf" ? "pdfs" : "images";
-  const ownerFolder = sanitizeStorageSegment(
-    user?.role === "admin" ? user.id : user?.createdBy || user?.id,
-  );
   const uniqueName = `${Date.now()}-${new mongoose.Types.ObjectId()}.${extension}`;
+  const requestPath = sanitizeStoragePath(formPath);
 
-  return [prefix, fileTypeFolder, ownerFolder, uniqueName]
-    .filter(Boolean)
-    .join("/");
+  return [prefix, requestPath, uniqueName].filter(Boolean).join("/");
 };
 
 module.exports = {

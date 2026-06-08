@@ -64,6 +64,11 @@ router.post(
   uploadSingleFile,
   controller.uploadFileController,
 );
+router.delete(
+  "/profile-pic",
+  authenticate,
+  controller.deleteProfilePicController,
+);
 
 // Score (protected)
 router.get(
@@ -121,6 +126,22 @@ router.post(
   "/admin/notifications",
   ...admin,
   controller.sendNotificationController,
+);
+
+router.patch(
+  "/admin/file-uploads/:id",
+  ...admin,
+  controller.updateFileUploadNameController,
+);
+router.delete(
+  "/admin/file-uploads/:id",
+  ...admin,
+  controller.deleteFileUploadController,
+);
+router.get(
+  "/admin/file-uploads/:id/download",
+  ...admin,
+  controller.downloadFileUploadController,
 );
 
 module.exports = router;
