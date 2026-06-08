@@ -81,6 +81,7 @@ const login = async (username, password, deviceId, validatePassword = true) => {
     user: {
       id: user._id,
       name: user.name,
+      profilePicPath: user.profilePicPath,
       ...(role === "student"
         ? {
             studentId: user.studentId,
