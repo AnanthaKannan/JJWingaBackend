@@ -18,16 +18,20 @@ const adminSchema = new mongoose.Schema(
       type: String,
       required: [true, "Password is required"],
     },
+    fcmTokens: {
+      type: [String],
+      default: [],
+      // Array to support multiple devices per student
+    },
   },
   { versionKey: false },
 );
 
 // Hash password before saving
-adminSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) return next();
+adminSchema.pre("save", async function () {
+  if (!this.isModified("password")) return;
   const bcrypt = require("bcryptjs");
   this.password = await bcrypt.hash(this.password, 10);
-  next();
 });
 
 const Admin = mongoose.model("Admin", adminSchema);

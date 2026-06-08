@@ -1,5 +1,14 @@
 const mongoose = require("mongoose");
 
+const uniqueStringArray = (values) => [
+  ...new Set(
+    (Array.isArray(values) ? values : [values])
+      .filter((value) => typeof value === "string")
+      .map((value) => value.trim())
+      .filter(Boolean),
+  ),
+];
+
 const studentSchema = new mongoose.Schema(
   {
     studentId: {
@@ -7,6 +16,11 @@ const studentSchema = new mongoose.Schema(
       required: [true, "Student ID is required"],
       unique: true,
       trim: true,
+    },
+    deviceIds: {
+      type: [String],
+      default: [],
+      set: uniqueStringArray,
     },
     name: {
       type: String,
@@ -17,6 +31,10 @@ const studentSchema = new mongoose.Schema(
       type: String,
       required: [true, "Password is required"],
     },
+    level: {
+      type: Number,
+      required: [true, "Level is required"],
+    },
     vertical: {
       type: Boolean,
       default: false,
@@ -25,6 +43,10 @@ const studentSchema = new mongoose.Schema(
       type: [String],
       default: [],
       // Array to support multiple devices per student
+    },
+    hasLoginSameDevice: {
+      type: Boolean,
+      default: false,
     },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
@@ -39,11 +61,10 @@ const studentSchema = new mongoose.Schema(
 );
 
 // Hash password before saving
-studentSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) return next();
+studentSchema.pre("save", async function () {
+  if (!this.isModified("password")) return;
   const bcrypt = require("bcryptjs");
   this.password = await bcrypt.hash(this.password, 10);
-  next();
 });
 
 const Student = mongoose.model("Student", studentSchema);

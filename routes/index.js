@@ -8,6 +8,11 @@ const admin = [authenticate, authorizeAdmin];
 // Auth (public)
 router.get("/health", controller.healthCheckController);
 router.post("/login", controller.loginController);
+router.post(
+  "/login/:studentId",
+  authenticate,
+  controller.loginUsingDeviceIdController,
+);
 
 // Student — admin only
 router.get("/admin/students", ...admin, controller.getStudentListController);
@@ -19,10 +24,11 @@ router.patch(
 );
 
 router.get("/ranking", authenticate, controller.getRankingController);
-router.patch(
-  "/update-password",
+router.patch("/student", authenticate, controller.updateMyStudentController);
+router.delete(
+  "/student/device-id",
   authenticate,
-  controller.updatePasswordController,
+  controller.removeStudentDeviceIdController,
 );
 
 router.post(
@@ -32,8 +38,21 @@ router.post(
 );
 
 // Student (protected)
+router.get(
+  "/student/same-device",
+  authenticate,
+  controller.getStudentsBySameDeviceIdController,
+);
+
+// we can deprecate
 router.patch(
-  "/student/fcm-token",
+  "/student/fcm-token", // we are using this for student and admin both places
+  authenticate,
+  controller.updateStudentFcmTokenController,
+);
+
+router.patch(
+  "/fcm-token", // we are using this for student and admin both places
   authenticate,
   controller.updateStudentFcmTokenController,
 );
@@ -48,6 +67,16 @@ router.get(
 // Question (protected)
 router.get("/admin/questions", ...admin, controller.getQuestionListController);
 router.post("/admin/questions", ...admin, controller.addQuestionController);
+router.patch(
+  "/admin/questions/:id",
+  ...admin,
+  controller.updateQuestionController,
+);
+router.delete(
+  "/admin/questions/:id",
+  ...admin,
+  controller.deleteQuestionController,
+);
 router.get(
   "/admin/questions/available/:studentId",
   ...admin,
@@ -72,6 +101,12 @@ router.get(
   "/notifications/:studentId",
   authenticate,
   controller.getNotificationsController,
+);
+
+router.get(
+  "/admin/notifications",
+  ...admin,
+  controller.getAdminNotificationsController,
 );
 
 router.post(

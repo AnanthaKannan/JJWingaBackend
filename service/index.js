@@ -13,6 +13,19 @@ const {
   Notification,
 } = require("../models");
 
+const arraysEqual = (first, second) =>
+  first.length === second.length &&
+  first.every((value, index) => value === second[index]);
+
+const toUniqueStringArray = (values) => [
+  ...new Set(
+    (Array.isArray(values) ? values : [values])
+      .filter((value) => typeof value === "string")
+      .map((value) => value.trim())
+      .filter(Boolean),
+  ),
+];
+
 if (!admin.apps.length) {
   admin.initializeApp({
     credential: admin.credential.cert({
@@ -23,7 +36,7 @@ if (!admin.apps.length) {
   });
 }
 
-const login = async (username, password) => {
+const login = async (username, password, deviceId, validatePassword = true) => {
   let user = null;
   let role = null;
 
@@ -47,17 +60,21 @@ const login = async (username, password) => {
   }
 
   // Step 4: Validate password
-  const isMatch = await bcrypt.compare(password, user.password);
-  if (!isMatch) {
-    throw new Error("Invalid username or password");
+  if (validatePassword) {
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      throw new Error("Invalid username or password");
+    }
   }
 
   // Step 5: Generate JWT
+  const deviceIds = user.deviceIds;
+  if (deviceId) deviceIds.push(deviceId);
   const payload = {
     id: user._id,
     role,
     ...(role === "student"
-      ? { studentId: user.studentId }
+      ? { studentId: user.studentId, deviceIds, createdBy: user.createdBy }
       : { adminId: user.adminId }),
   };
 
@@ -69,15 +86,37 @@ const login = async (username, password) => {
       id: user._id,
       name: user.name,
       ...(role === "student"
-        ? { studentId: user.studentId, vertical: user.vertical }
+        ? {
+            studentId: user.studentId,
+            level: user.level,
+            vertical: user.vertical,
+            hasLoginSameDevice: user.hasLoginSameDevice,
+          }
         : { adminId: user.adminId }),
     },
   };
 };
 
+const loginUsingDeviceId = async (studentId, deviceIds) => {
+  if (deviceIds.length === 0) {
+    throw new Error("Device ID not found in token");
+  }
+
+  const student = await Student.findOne({
+    _id: studentId,
+    deviceIds: { $in: deviceIds },
+  }).select("studentId");
+
+  if (!student) {
+    throw new Error("Student not found for this device");
+  }
+
+  return login(student.studentId, null, null, false);
+};
+
 const getStudentList = async (adminId, page = 1, limit = 15, search = "") => {
   const skip = (page - 1) * limit;
-  const adminObjectId = mongoose.Types.ObjectId(adminId);
+  const adminObjectId = new mongoose.Types.ObjectId(adminId);
 
   const matchStage = [
     { $match: { createdBy: adminObjectId } },
@@ -139,10 +178,37 @@ const getStudentList = async (adminId, page = 1, limit = 15, search = "") => {
   };
 };
 
-const getQuestionList = async (page = 1, limit = 15, search = "") => {
+const getStudentsBySameDeviceId = async (deviceIds) => {
+  if (!deviceIds || deviceIds.length === 0) {
+    throw new Error("Device ID is not assigned for this student");
+  }
+
+  const students = await Student.find({
+    deviceIds: { $in: deviceIds },
+  })
+    .select("_id studentId name deviceIds vertical")
+    .sort({ name: 1 })
+    .lean();
+
+  return {
+    students,
+    count: students.length,
+  };
+};
+
+const getQuestionList = async (
+  page = 1,
+  limit = 15,
+  search = "",
+  level = null,
+) => {
   const skip = (page - 1) * limit;
 
-  const query = search ? { questionId: { $regex: search, $options: "i" } } : {};
+  const query = {
+    isDeleted: { $ne: true },
+    ...(search ? { questionId: { $regex: search, $options: "i" } } : {}),
+    ...(level === null ? {} : { level }),
+  };
 
   const [questions, total] = await Promise.all([
     Question.find(query)
@@ -171,8 +237,11 @@ const getHomeworkList = async (
   state = null,
   page = 1,
   limit = 15,
+  sortBy = "createdAt",
+  sortOrder = "desc",
 ) => {
   const skip = (page - 1) * limit;
+  const sortDirection = sortOrder === "asc" ? 1 : -1;
 
   // Build query
   const query = { studentId };
@@ -183,7 +252,7 @@ const getHomeworkList = async (
   const [homeworks, total] = await Promise.all([
     HomeWork.find(query)
       .populate("questionId") // resolve full question data
-      .sort({ createdAt: -1 }) // newest first
+      .sort({ [sortBy]: sortDirection })
       .skip(skip)
       .limit(limit),
     HomeWork.countDocuments(query),
@@ -207,11 +276,16 @@ const getAvailableQuestionsForStudent = async (
   page = 1,
   limit = 15,
   search = "",
+  level = null,
 ) => {
   const skip = (page - 1) * limit;
   const studentObjectId = new mongoose.Types.ObjectId(studentId);
 
   const pipeline = [
+    {
+      $match: { isDeleted: { $ne: true } },
+    },
+    ...(level === null ? [] : [{ $match: { level } }]),
     // Search by questionId if provided
     ...(search
       ? [{ $match: { questionId: { $regex: search, $options: "i" } } }]
@@ -294,11 +368,13 @@ const assignQuestion = async (studentId, questionIds) => {
   // const student = await Student.findById(studentId);
   // if (!student) throw new Error('Student not found');
 
-  // // 2. Validate all questions exist
-  // const questions = await Question.find({ _id: { $in: questionIds } });
-  // if (questions.length !== questionIds.length) {
-  //   throw new Error('One or more questions not found');
-  // }
+  const questions = await Question.find({
+    _id: { $in: questionIds },
+    isDeleted: { $ne: true },
+  });
+  if (questions.length !== questionIds.length) {
+    throw new Error("One or more questions not found");
+  }
 
   // 3. Check for already assigned questions (avoid duplicates)
   // const existing = await HomeWork.find({ studentId, questionId: { $in: questionIds } });
@@ -327,7 +403,7 @@ const assignQuestion = async (studentId, questionIds) => {
 };
 
 const addStudent = async (studentData) => {
-  const { name, createdBy } = studentData;
+  const { name, level, createdBy } = studentData;
 
   // 1. Validate admin exists
   // const admin = await Admin.findById(createdBy);
@@ -348,12 +424,13 @@ const addStudent = async (studentData) => {
   const student = await Student.create({
     studentId,
     name,
+    level,
     password,
     createdBy,
   });
 
   // 5. Create an empty score record for the student
-  const score = await Score.create({ studentId: student._id });
+  await Score.create({ studentId: student._id });
 
   return { student };
 };
@@ -364,7 +441,7 @@ const updateStudent = async (studentObjectId, updateData) => {
   if (!student) throw new Error("Student not found");
 
   // 2. Whitelist allowed fields
-  const allowedFields = ["name", "password", "vertical", "fcmTokens"];
+  const allowedFields = ["name", "password", "vertical", "deviceId", "level"];
   const filteredData = Object.keys(updateData)
     .filter((key) => allowedFields.includes(key))
     .reduce((obj, key) => {
@@ -376,41 +453,145 @@ const updateStudent = async (studentObjectId, updateData) => {
     throw new Error("No valid fields provided to update");
   }
 
-  if (Object.prototype.hasOwnProperty.call(filteredData, "fcmTokens")) {
-    const normalizedTokens = Array.isArray(filteredData.fcmTokens)
-      ? filteredData.fcmTokens
-      : [filteredData.fcmTokens];
+  if (Object.prototype.hasOwnProperty.call(filteredData, "deviceId")) {
+    const currentDeviceIds = student.deviceIds;
+    const incomingDeviceIds = [filteredData.deviceId];
+    const mergedDeviceIds = [...currentDeviceIds, ...incomingDeviceIds];
 
-    filteredData.fcmTokens = [
-      ...new Set(normalizedTokens.filter((token) => token && token.trim())),
-    ];
+    filteredData.deviceIds = [...new Set(mergedDeviceIds)];
+  }
+
+  if (Object.keys(filteredData).length === 0) {
+    return;
   }
 
   // 3. Apply updates to the document and save
   //    (so pre('save') password hash hook triggers if password is changed)
   Object.assign(student, filteredData);
-  await student.save();
+  await student.save({ validateModifiedOnly: true });
 };
 
-const updateFcmToken = async (studentId, fcmToken) => {
-  await Student.findByIdAndUpdate(
-    studentId,
-    { fcmTokens: [fcmToken] }, // replace entire array with the new single token
+const removeStudentDeviceId = async (studentObjectId, deviceId) => {
+  const deviceIdsToRemove = [deviceId];
+
+  if (deviceIdsToRemove.length === 0) {
+    throw new Error("deviceId is required");
+  }
+
+  const student = await Student.findById(studentObjectId);
+  if (!student) throw new Error("Student not found");
+
+  const removeSet = new Set(deviceIdsToRemove);
+  student.deviceIds = student.deviceIds.filter(
+    (value) => !removeSet.has(value),
   );
+
+  await student.save({ validateModifiedOnly: true });
+};
+
+const updateFcmToken = async (userId, fcmToken, isStudent) => {
+  if (isStudent) {
+    const studentId = userId;
+    await Student.findByIdAndUpdate(
+      studentId,
+      { fcmTokens: [fcmToken] }, // replace entire array with the new single token
+    );
+  } else {
+    const adminId = userId;
+    await Admin.findByIdAndUpdate(
+      adminId,
+      { fcmTokens: [fcmToken] }, // replace entire array with the new single token
+    );
+  }
 };
 
 const addQuestion = async (questionData) => {
-  const { questionId, questions } = questionData;
+  const { questionId, level, questions } = questionData;
 
   // 1. Check if questionId already exists
   const existing = await Question.findOne({ questionId });
   if (existing) throw new Error("Question ID already exists");
 
   // 2. Create question
-  const question = await Question.create({
+  await Question.create({
     questionId,
+    level,
     questions: questions ?? [],
   });
+};
+
+const updateQuestion = async (questionObjectId, updateData) => {
+  const question = await Question.findById(questionObjectId);
+  if (!question) throw new Error("Question not found");
+
+  const allowedFields = ["questionId", "level"];
+  const filteredData = Object.keys(updateData)
+    .filter((key) => allowedFields.includes(key))
+    .reduce((obj, key) => {
+      obj[key] = updateData[key];
+      return obj;
+    }, {});
+
+  if (Object.keys(filteredData).length === 0) {
+    throw new Error("No valid fields provided to update");
+  }
+
+  Object.assign(question, filteredData);
+  await question.save();
+
+  return { question };
+};
+
+const deleteQuestion = async (questionObjectId) => {
+  const question = await Question.findById(questionObjectId);
+  if (!question) throw new Error("Question not found");
+
+  const isAssigned = await HomeWork.exists({ questionId: questionObjectId });
+
+  if (isAssigned) {
+    question.isDeleted = true;
+    await question.save();
+
+    return { deleteType: "soft", question };
+  }
+
+  await question.deleteOne();
+
+  return { deleteType: "hard" };
+};
+
+const createHomeworkCompletedNotification = async (homework) => {
+  const student = await Student.findById(homework.studentId).select(
+    "studentId name createdBy",
+  );
+
+  if (!student?.createdBy) {
+    return null;
+  }
+
+  const adminDetail = await Admin.findById(student.createdBy).select(
+    "fcmTokens",
+  );
+  const question = await Question.findById(homework.questionId).select(
+    "questionId",
+  );
+  const homeworkName = question?.questionId;
+
+  const notification = await Notification.create({
+    adminId: student.createdBy,
+    sentBy: student._id,
+    sentByModel: "Student",
+    messageHeader: "Homework completed",
+    messageBody: `${student.name} has completed homework - ${homeworkName}.`,
+  });
+
+  await sendPushNotification(
+    adminDetail?.fcmTokens?.[0],
+    notification.messageHeader,
+    notification.messageBody,
+  );
+
+  return notification;
 };
 
 const updateHomework = async (homeworkId, updateData) => {
@@ -445,6 +626,9 @@ const updateHomework = async (homeworkId, updateData) => {
     scoreInc.correct = correct;
     scoreInc.wrong = wrong;
     scoreInc.timeTaken = timer ?? 0;
+
+    // send notification to admin
+    await createHomeworkCompletedNotification(homework);
   }
 
   // 4. Update homework fields
@@ -465,16 +649,25 @@ const updateHomework = async (homeworkId, updateData) => {
   return { homework, score };
 };
 
-const getNotificationList = async (studentId, page = 1, limit = 15) => {
+const getNotificationList = async (
+  recipientId,
+  page = 1,
+  limit = 15,
+  recipientType,
+) => {
   const skip = (page - 1) * limit;
+  const recipientFilter =
+    recipientType === "admin"
+      ? { adminId: recipientId }
+      : { studentId: recipientId };
 
   const [notifications, total] = await Promise.all([
-    Notification.find({ studentId })
-      .select("-studentId") // exclude studentId (already known)
+    Notification.find(recipientFilter)
+      .select("-studentId -adminId") // exclude recipient id (already known)
       .sort({ createdAt: -1 }) // newest first
       .skip(skip)
       .limit(limit),
-    Notification.countDocuments({ studentId }),
+    Notification.countDocuments(recipientFilter),
   ]);
 
   return {
@@ -494,7 +687,7 @@ const sendPushNotification = async (token, title, body) => {
   try {
     if (!token) throw new Error("Invalid fcm token");
 
-    const res = await admin.messaging().send({
+    await admin.messaging().send({
       token,
       notification: { title, body },
     });
@@ -554,9 +747,71 @@ const sendBulkNotification = async (
   };
 };
 
-const getWeeklyRankings = async () => {
+const resolveStudentRankingLevel = (student) => {
+  if (
+    Object.prototype.hasOwnProperty.call(student || {}, "level") &&
+    student.level !== undefined &&
+    student.level !== null &&
+    String(student.level).trim() !== ""
+  ) {
+    return Number(student.level);
+  }
+
+  return null;
+};
+
+const resolveWeeklyRankingScope = async (level, user) => {
+  const scope = {
+    level,
+    adminId: null,
+  };
+
+  if (user?.role === "admin") {
+    scope.adminId = user.id;
+    return scope;
+  }
+
+  if (user?.role === "student") {
+    const needsLevel = level === null;
+    let student = null;
+
+    if (needsLevel) {
+      student = await Student.findById(user.id).select("level").lean();
+    }
+
+    scope.level = needsLevel ? resolveStudentRankingLevel(student) : level;
+    scope.adminId = user.createdBy;
+  }
+
+  return scope;
+};
+
+const getWeeklyRankings = async (level = null, user = null) => {
+  const { level: rankingLevel, adminId: rankingAdminId } =
+    await resolveWeeklyRankingScope(level, user);
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  const studentAdminFilter = rankingAdminId
+    ? [
+        {
+          $match: {
+            "student.createdBy": new mongoose.Types.ObjectId(rankingAdminId),
+          },
+        },
+      ]
+    : [];
+
+  const studentLevelFilter =
+    rankingLevel === null
+      ? []
+      : [
+          {
+            $match: {
+              "student.level": rankingLevel,
+            },
+          },
+        ];
 
   const rankings = await HomeWork.aggregate([
     // Step 1: Filter only COMPLETED homework from last 7 days
@@ -594,7 +849,24 @@ const getWeeklyRankings = async () => {
       },
     },
 
-    // Step 4: Calculate accuracy and a composite score for ranking
+    // Step 4: Join with students collection to get student details
+    {
+      $lookup: {
+        from: "students",
+        localField: "_id",
+        foreignField: "_id",
+        as: "student",
+      },
+    },
+    {
+      $addFields: {
+        student: { $arrayElemAt: ["$student", 0] },
+      },
+    },
+    ...studentAdminFilter,
+    ...studentLevelFilter,
+
+    // Step 5: Calculate accuracy and a composite score for ranking
     {
       $addFields: {
         accuracy: {
@@ -641,13 +913,7 @@ const getWeeklyRankings = async () => {
       },
     },
 
-    // Step 5: Sort by composite score descending
-    { $sort: { compositeScore: -1 } },
-
-    // Step 6: Limit to top 10
-    { $limit: 10 },
-
-    // Step 7: Add rank using $setWindowFields with single sortBy field
+    // Step 6: Add rank using $setWindowFields with single sortBy field
     {
       $setWindowFields: {
         sortBy: { compositeScore: -1 },
@@ -657,22 +923,11 @@ const getWeeklyRankings = async () => {
       },
     },
 
-    // Step 8: Join with students collection to get student details
-    {
-      $lookup: {
-        from: "students",
-        localField: "_id",
-        foreignField: "_id",
-        as: "student",
-      },
-    },
-    {
-      $addFields: {
-        student: { $arrayElemAt: ["$student", 0] },
-      },
-    },
+    // Step 7: Sort and limit to top 10
+    { $sort: { rank: 1 } },
+    { $limit: 10 },
 
-    // Step 9: Shape the final output
+    // Step 8: Shape the final output
     {
       $project: {
         _id: 0,
@@ -680,6 +935,7 @@ const getWeeklyRankings = async () => {
         studentId: "$_id",
         name: "$student.name",
         studentCode: "$student.studentId",
+        level: "$student.level",
         totalCorrect: 1,
         totalQuestions: 1,
         accuracy: 1,
@@ -692,24 +948,53 @@ const getWeeklyRankings = async () => {
   return rankings;
 };
 
-const updatePassword = async (studentId, currentPassword, newPassword) => {
-  // Step 1: Fetch student with password
-  const student = await Student.findById(studentId).select("+password");
-  if (!student) throw new Error("Student not found");
+const seedAdminScreenData = async () => {
+  const adminData = {
+    _id: new mongoose.Types.ObjectId("6a16d4108349e449c87c7806"),
+    adminId: "JW001",
+    name: "Sobhana",
+    password: "$2b$10$tw.cZEpo5FjvxEMe6JDodea4LtodzAM1aV2D7sfcNCKY7hV5ghHk2",
+  };
 
-  // Step 2: Verify current password
-  const isMatch = await bcrypt.compare(currentPassword, student.password);
-  if (!isMatch) throw new Error("Current password is incorrect");
+  const existingAdmin = await Admin.findOne({ adminId: adminData.adminId });
+  const admin =
+    existingAdmin ||
+    (await Admin.findOneAndUpdate(
+      { adminId: adminData.adminId },
+      { $setOnInsert: adminData },
+      { new: true, upsert: true },
+    ));
 
-  // Step 3: Hash new password and save
-  // using save() to trigger the pre-save bcrypt hook in the model
-  student.password = newPassword;
-  await student.save();
+  const existingIdGen = await IdGen.findOne({});
+
+  const idGen = await IdGen.findOneAndUpdate(
+    {},
+    {
+      $setOnInsert: {
+        _id: new mongoose.Types.ObjectId("6a195c89699fb18c51477740"),
+        studentLastId: 100,
+      },
+    },
+    { new: true, upsert: true },
+  );
+
+  return {
+    admin: {
+      data: admin,
+      created: !existingAdmin,
+    },
+    idGen: {
+      data: idGen,
+      created: !existingIdGen,
+    },
+  };
 };
 
 module.exports = {
   login,
+  loginUsingDeviceId,
   getStudentList,
+  getStudentsBySameDeviceId,
   getQuestionList,
   getHomeworkList,
   getAvailableQuestionsForStudent,
@@ -719,10 +1004,13 @@ module.exports = {
   assignQuestion,
   addStudent,
   updateStudent,
+  removeStudentDeviceId,
   addQuestion,
+  deleteQuestion,
   getNotificationList,
   sendBulkNotification,
   updateFcmToken,
   getWeeklyRankings,
-  updatePassword,
+  seedAdminScreenData,
+  updateQuestion,
 };

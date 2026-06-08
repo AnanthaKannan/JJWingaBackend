@@ -19,7 +19,7 @@ const authenticate = (req, res, next) => {
       `Request to ${req.path} — user: ${req.user.id} role: ${req.user.role}`,
     );
     next();
-  } catch (ex) {
+  } catch {
     console.log(`Request to ${req.path} failed — invalid token`);
     return res.status(401).json({
       success: false,

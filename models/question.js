@@ -9,9 +9,17 @@ const questionSchema = new mongoose.Schema(
       trim: true,
       // e.g. "5A-01"
     },
+    level: {
+      type: Number,
+      required: [true, "Level is required"],
+    },
     questions: {
       type: Array,
       default: [],
+    },
+    isDeleted: {
+      type: Boolean,
+      default: false,
     },
   },
   {
