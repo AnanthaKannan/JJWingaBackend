@@ -1,7 +1,9 @@
 const admin = require("firebase-admin");
 const bcrypt = require("bcryptjs");
 const mongoose = require("mongoose");
+const sharp = require("sharp");
 
+const config = require("../config");
 const { generateToken } = require("../middleware/auth");
 const {
   buildUploadPath,
@@ -119,7 +121,13 @@ const loginUsingDeviceId = async (studentId, deviceIds) => {
   return login(student.studentId, null, null, false);
 };
 
-const getStudentList = async (adminId, page = 1, limit = 15, search = "") => {
+const getStudentList = async (
+  adminId,
+  page = 1,
+  limit = 15,
+  search = "",
+  level = null,
+) => {
   const skip = (page - 1) * limit;
   const adminObjectId = new mongoose.Types.ObjectId(adminId);
 
@@ -128,6 +136,7 @@ const getStudentList = async (adminId, page = 1, limit = 15, search = "") => {
     ...(search
       ? [{ $match: { name: { $regex: search, $options: "i" } } }]
       : []),
+    ...(level === null ? [] : [{ $match: { level } }]),
   ];
 
   const pipeline = [
@@ -574,6 +583,9 @@ const downloadSupabaseFile = async (filePath) => {
 };
 
 const isFileUploadType = (type) => ["practice", "celebration"].includes(type);
+const PROFILE_PIC_MAX_BYTES = config.PROFILE_PIC_MAX_BYTES;
+const PROFILE_PIC_MIME_TYPE = "image/jpeg";
+const PROFILE_PIC_EXTENSION = "jpg";
 
 const validateFileUploadRecord = (user, name, type) => {
   if (!isFileUploadType(type)) {
@@ -601,6 +613,64 @@ const createFileUploadRecord = async (name, filePath, type, file) => {
     fileFormat: file.mimetype,
     type,
   });
+};
+
+const isProfileUpload = (formPath) => formPath.trim() === "profile";
+
+const isImageUpload = (file) => file?.mimetype?.startsWith("image/");
+
+const toProfilePicFile = (file, buffer) => ({
+  ...file,
+  buffer,
+  size: buffer.length,
+  mimetype: PROFILE_PIC_MIME_TYPE,
+  originalname: `${file.originalname?.replace(/\.[^.]*$/, "") || "profile"}.${PROFILE_PIC_EXTENSION}`,
+});
+
+const compressProfilePic = async (file, formPath) => {
+  if (!isProfileUpload(formPath)) {
+    return file;
+  }
+
+  if (!isImageUpload(file)) {
+    throw new Error("profile picture must be an image");
+  }
+
+  if (file.size <= PROFILE_PIC_MAX_BYTES) {
+    return file;
+  }
+
+  const metadata = await sharp(file.buffer).metadata();
+  const sourceWidth = metadata.width || 1024;
+  const widthFactors = [1, 0.85, 0.7, 0.55, 0.4, 0.3, 0.22, 0.16, 0.12];
+  const qualities = [82, 72, 62, 52, 42, 32, 24, 18, 14];
+  let smallestBuffer = null;
+
+  for (const widthFactor of widthFactors) {
+    const width = Math.max(120, Math.round(sourceWidth * widthFactor));
+
+    for (const quality of qualities) {
+      let transformer = sharp(file.buffer).rotate();
+
+      if (width < sourceWidth) {
+        transformer = transformer.resize({ width, withoutEnlargement: true });
+      }
+
+      const buffer = await transformer
+        .jpeg({ quality, mozjpeg: true })
+        .toBuffer();
+
+      if (!smallestBuffer || buffer.length < smallestBuffer.length) {
+        smallestBuffer = buffer;
+      }
+
+      if (buffer.length <= PROFILE_PIC_MAX_BYTES) {
+        return toProfilePicFile(file, buffer);
+      }
+    }
+  }
+
+  return toProfilePicFile(file, smallestBuffer);
 };
 
 const getFileUploadList = async (type, page = 1, limit = 15) => {
@@ -646,15 +716,16 @@ const uploadFile = async (file, user, formPath = "", name = "") => {
   const uploadType = formPath.trim();
   validateFileUploadRecord(user, name, uploadType);
 
+  const preparedFile = await compressProfilePic(file, uploadType);
   const { bucket, prefix } = getSupabaseStorageTarget();
 
   const supabase = getSupabaseClient();
-  const path = buildUploadPath(file, user, prefix, formPath);
+  const path = buildUploadPath(preparedFile, user, prefix, formPath);
 
   const { data, error } = await supabase.storage
     .from(bucket)
-    .upload(path, file.buffer, {
-      contentType: file.mimetype,
+    .upload(path, preparedFile.buffer, {
+      contentType: preparedFile.mimetype,
       upsert: false,
     });
 
@@ -674,16 +745,16 @@ const uploadFile = async (file, user, formPath = "", name = "") => {
     name,
     data.path,
     uploadType,
-    file,
+    preparedFile,
   );
 
   return {
     bucket,
     path: data.path,
     url: publicUrlData.publicUrl,
-    originalName: file.originalname,
-    mimeType: file.mimetype,
-    size: file.size,
+    originalName: preparedFile.originalname,
+    mimeType: preparedFile.mimetype,
+    size: preparedFile.size,
     ...(fileUpload ? { fileUpload } : {}),
   };
 };

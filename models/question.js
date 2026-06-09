@@ -15,7 +15,7 @@ const questionSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ["homework", "exam"],
+      enum: ["homework", "exam", "practice"],
       required: [true, "Question type is required"],
       default: "homework",
     },
@@ -26,6 +26,10 @@ const questionSchema = new mongoose.Schema(
     marks: {
       type: Array,
       default: [],
+    },
+    oral: {
+      type: Boolean,
+      default: false,
     },
     isDeleted: {
       type: Boolean,

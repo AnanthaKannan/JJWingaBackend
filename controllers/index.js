@@ -29,6 +29,7 @@ const {
 } = require("../service");
 const {
   hasField,
+  sendOptionalStudentLevelError,
   validateQuestionType,
   validateStudentLevel,
 } = require("../utils/validation");
@@ -97,8 +98,18 @@ const getStudentListController = async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 15;
   const search = req.query.search?.trim() || "";
+  const { level } = req.query;
 
-  const data = await getStudentList(req.user.id, page, limit, search);
+  const levelErrorResponse = sendOptionalStudentLevelError(res, level);
+  if (levelErrorResponse) return levelErrorResponse;
+
+  const data = await getStudentList(
+    req.user.id,
+    page,
+    limit,
+    search,
+    level === undefined ? null : Number(level),
+  );
 
   return res.status(200).json({
     success: true,
@@ -136,15 +147,8 @@ const getStudentsBySameDeviceIdController = async (req, res) => {
 const getRankingController = async (req, res) => {
   const { level } = req.query;
 
-  if (
-    level !== undefined &&
-    (String(level).trim() === "" || Number.isNaN(Number(level)))
-  ) {
-    return res.status(400).json({
-      success: false,
-      message: "level must be a number",
-    });
-  }
+  const levelErrorResponse = sendOptionalStudentLevelError(res, level);
+  if (levelErrorResponse) return levelErrorResponse;
 
   const rankingLevel = level === undefined ? null : Number(level);
   const data = await getWeeklyRankings(rankingLevel, req.user);
@@ -186,12 +190,8 @@ const getQuestionListController = async (req, res) => {
   const { level } = req.query;
   const type = req.query.type?.trim();
 
-  if (
-    level !== undefined &&
-    (String(level).trim() === "" || Number.isNaN(Number(level)))
-  ) {
-    return sendBadRequest(res, "level must be a number");
-  }
+  const levelErrorResponse = sendOptionalStudentLevelError(res, level);
+  if (levelErrorResponse) return levelErrorResponse;
 
   const typeErrorResponse = sendQuestionTypeError(res, type, false);
   if (typeErrorResponse) return typeErrorResponse;
@@ -274,12 +274,8 @@ const getAvailableQuestionsForStudentController = async (req, res) => {
     return sendBadRequest(res, "Student ID is required");
   }
 
-  if (
-    level !== undefined &&
-    (String(level).trim() === "" || Number.isNaN(Number(level)))
-  ) {
-    return sendBadRequest(res, "level must be a number");
-  }
+  const levelErrorResponse = sendOptionalStudentLevelError(res, level);
+  if (levelErrorResponse) return levelErrorResponse;
 
   const typeErrorResponse = sendQuestionTypeError(res, type, false);
   if (typeErrorResponse) return typeErrorResponse;
@@ -458,6 +454,7 @@ const uploadFileController = async (req, res) => {
       "file is required",
       "path is required",
       "name is required",
+      "profile picture must be an image",
     ].includes(error.message);
     const isForbiddenError = [
       "Only admin can upload practice or celebration files",

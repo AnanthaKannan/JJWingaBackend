@@ -64,6 +64,9 @@
  *           type: string
  *         level:
  *           type: number
+ *         type:
+ *           type: string
+ *           enum: [homework, exam, practice]
  *         questions:
  *           type: array
  *           items:
@@ -75,6 +78,9 @@
  *           type: string
  *         level:
  *           type: number
+ *         type:
+ *           type: string
+ *           enum: [homework, exam, practice]
  *     HomeworkUpdateInput:
  *       type: object
  *       properties:
@@ -181,6 +187,10 @@
  *         name: search
  *         schema:
  *           type: string
+ *       - in: query
+ *         name: level
+ *         schema:
+ *           type: number
  *     responses:
  *       200:
  *         description: Student list fetched successfully
@@ -309,6 +319,11 @@
  *         name: level
  *         schema:
  *           type: number
+ *       - in: query
+ *         name: type
+ *         schema:
+ *           type: string
+ *           enum: [homework, exam, practice]
  *     responses:
  *       200:
  *         description: Question list fetched successfully
@@ -417,6 +432,11 @@
  *         name: level
  *         schema:
  *           type: number
+ *       - in: query
+ *         name: type
+ *         schema:
+ *           type: string
+ *           enum: [homework, exam, practice]
  *     responses:
  *       200:
  *         description: Available questions fetched successfully

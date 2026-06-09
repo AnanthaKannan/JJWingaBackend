@@ -18,6 +18,7 @@ https://jjwingabackend.onrender.com
 ### Get all the students for the admin
 GET {{url}}/admin/students
 GET {{url}}/admin/students?limit=15&page=1&search=sonia
+GET {{url}}/admin/students?limit=15&page=1&level=2
 {
     "success": true,
     "message": "Student list fetched successfully",
@@ -122,6 +123,8 @@ POST {{url}}/admin/questions
 payload:
 {
     "questionId": "5A-01",
+    "level": 1,
+    "type": "practice",
     "questions": [
         "1+20+10",
         "10+10+10",
@@ -137,6 +140,7 @@ Response:
 ## Get the questions for admin
 GET {{url}}/admin/questions
 {{url}}/admin/questions?search=w&limit=15&page=1
+{{url}}/admin/questions?type=practice&limit=15&page=1
 
 Response:
 {
@@ -195,6 +199,7 @@ Response:
 ## Questions available for the student, which all are already assigned the list will not come
 GET {{url}}/admin/questions/available/:studentId
 GET {{url}}/admin/questions/available/:studentId?search=w&limit=15&page=1
+GET {{url}}/admin/questions/available/:studentId?type=practice&limit=15&page=1
 Response:
 {
     "success": true,
