@@ -35,6 +35,34 @@ const scoreSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    practiceAssigned: {
+      type: Number,
+      default: 0,
+    },
+    practiceNew: {
+      type: Number,
+      default: 0,
+    },
+    practiceProgress: {
+      type: Number,
+      default: 0,
+    },
+    practiceCompleted: {
+      type: Number,
+      default: 0,
+    },
+    practiceCorrect: {
+      type: Number,
+      default: 0,
+    },
+    practiceWrong: {
+      type: Number,
+      default: 0,
+    },
+    practiceTimeTaken: {
+      type: Number,
+      default: 0,
+    },
   },
   { versionKey: false },
 );

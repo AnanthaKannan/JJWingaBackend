@@ -248,6 +248,13 @@ const getQuestionList = async (
   };
 };
 
+const getPracticeQuestionList = async (
+  page = 1,
+  limit = 15,
+  search = "",
+  level = null,
+) => getQuestionList(page, limit, search, level, "practice");
+
 const getHomeworkList = async (
   studentId,
   state = null,
@@ -370,7 +377,9 @@ const getAvailableQuestionsForStudent = async (
 
 const getScoreByStudentId = async (studentId) => {
   const score = await Score.findOne({ studentId })
-    .select("assigned new progress completed correct wrong timeTaken")
+    .select(
+      "assigned new progress completed correct wrong timeTaken practiceAssigned practiceNew practiceProgress practiceCompleted practiceCorrect practiceWrong practiceTimeTaken",
+    )
     .lean();
 
   if (!score) {
@@ -378,6 +387,14 @@ const getScoreByStudentId = async (studentId) => {
   }
 
   return score;
+};
+
+const toArray = (value) => {
+  if (Array.isArray(value)) {
+    return value;
+  }
+
+  return value ? [value] : [];
 };
 
 const getHomeworkById = async (id) => {
@@ -418,15 +435,101 @@ const assignQuestion = async (studentId, questionIds) => {
   }));
 
   const homeworks = await HomeWork.insertMany(homeworkDocs, { ordered: false });
+  const practiceAssignedCount = questions.filter(
+    (question) => question.type === "practice",
+  ).length;
 
   // 5. Increment assigned and new in score by total count (upsert if score doc doesn't exist)
   const score = await Score.findOneAndUpdate(
     { studentId },
-    { $inc: { assigned: homeworks.length, new: homeworks.length } },
+    {
+      $inc: {
+        assigned: homeworks.length,
+        new: homeworks.length,
+        ...(practiceAssignedCount > 0
+          ? {
+              practiceAssigned: practiceAssignedCount,
+              practiceNew: practiceAssignedCount,
+            }
+          : {}),
+      },
+    },
     { new: true, upsert: true },
   );
 
   return { homeworks, score };
+};
+
+const assignPracticeQuestionsToSelf = async (studentId, questionIds) => {
+  const uniqueQuestionIds = [...new Set(toArray(questionIds).map(String))];
+
+  if (uniqueQuestionIds.length === 0) {
+    throw new Error("questionIds are required");
+  }
+
+  if (
+    uniqueQuestionIds.some(
+      (questionId) => !mongoose.Types.ObjectId.isValid(questionId),
+    )
+  ) {
+    throw new Error("Invalid questionIds");
+  }
+
+  const questions = await Question.find({
+    _id: { $in: uniqueQuestionIds },
+    type: "practice",
+    isDeleted: { $ne: true },
+  }).select("_id");
+
+  if (questions.length !== uniqueQuestionIds.length) {
+    throw new Error("One or more practice questions not found");
+  }
+
+  const existingQuestionIds = await HomeWork.find({
+    studentId,
+    questionId: { $in: uniqueQuestionIds },
+  }).distinct("questionId");
+  const existingSet = new Set(existingQuestionIds.map(String));
+  const questionIdsToAssign = uniqueQuestionIds.filter(
+    (questionId) => !existingSet.has(questionId),
+  );
+
+  if (questionIdsToAssign.length === 0) {
+    return {
+      homeworks: [],
+      skippedQuestionIds: uniqueQuestionIds,
+      score: await Score.findOne({ studentId }),
+    };
+  }
+
+  const homeworkDocs = questionIdsToAssign.map((questionId) => ({
+    studentId,
+    questionId,
+    state: "NEW",
+  }));
+
+  const homeworks = await HomeWork.insertMany(homeworkDocs, { ordered: false });
+
+  const score = await Score.findOneAndUpdate(
+    { studentId },
+    {
+      $inc: {
+        assigned: homeworks.length,
+        new: homeworks.length,
+        practiceAssigned: homeworks.length,
+        practiceNew: homeworks.length,
+      },
+    },
+    { new: true, upsert: true },
+  );
+
+  return {
+    homeworks,
+    skippedQuestionIds: uniqueQuestionIds.filter((questionId) =>
+      existingSet.has(questionId),
+    ),
+    score,
+  };
 };
 
 const addStudent = async (studentData) => {
@@ -833,7 +936,7 @@ const deleteProfilePic = async (user) => {
 };
 
 const addQuestion = async (questionData) => {
-  const { questionId, level, type, questions, marks } = questionData;
+  const { questionId, level, type, questions, marks, oral } = questionData;
 
   // 1. Check if questionId already exists
   const existing = await Question.findOne({ questionId });
@@ -846,6 +949,7 @@ const addQuestion = async (questionData) => {
     type,
     questions: questions ?? [],
     ...(marks === undefined ? {} : { marks }),
+    ...(oral === undefined ? {} : { oral }),
   });
 };
 
@@ -853,7 +957,14 @@ const updateQuestion = async (questionObjectId, updateData) => {
   const question = await Question.findById(questionObjectId);
   if (!question) throw new Error("Question not found");
 
-  const allowedFields = ["questionId", "level", "type", "questions", "marks"];
+  const allowedFields = [
+    "questionId",
+    "level",
+    "type",
+    "questions",
+    "marks",
+    "oral",
+  ];
   const filteredData = Object.keys(updateData)
     .filter((key) => allowedFields.includes(key))
     .reduce((obj, key) => {
@@ -923,6 +1034,25 @@ const createHomeworkCompletedNotification = async (homework) => {
   return notification;
 };
 
+const addScoreIncrement = (scoreInc, field, value, isPractice) => {
+  if (!value) {
+    return;
+  }
+
+  scoreInc[field] = (scoreInc[field] ?? 0) + value;
+
+  if (isPractice) {
+    const practiceField = `practice${field[0].toUpperCase()}${field.slice(1)}`;
+    scoreInc[practiceField] = (scoreInc[practiceField] ?? 0) + value;
+  }
+};
+
+const getCompletionStats = (results = [], timer = 0) => ({
+  correct: results.filter(Boolean).length,
+  wrong: results.filter((result) => !result).length,
+  timeTaken: timer ?? 0,
+});
+
 const updateHomework = async (homeworkId, updateData) => {
   const { state, answers, results, timer } = updateData;
 
@@ -930,50 +1060,78 @@ const updateHomework = async (homeworkId, updateData) => {
   const homework = await HomeWork.findById(homeworkId);
   if (!homework) throw new Error("Homework not found");
 
+  const question = await Question.findById(homework.questionId)
+    .select("type")
+    .lean();
+  const isPractice = question?.type === "practice";
   const prevState = homework.state;
   const newState = state ?? prevState;
+  const nextResults = results ?? homework.results;
+  const nextTimer = timer ?? homework.timer;
 
   // 2. Build score increment object based on state transition
   const scoreInc = {};
 
   if (prevState !== newState) {
     // Decrement previous state
-    if (prevState === "NEW") scoreInc.new = -1;
-    if (prevState === "PROGRESS") scoreInc.progress = -1;
+    if (prevState === "NEW") addScoreIncrement(scoreInc, "new", -1, isPractice);
+    if (prevState === "PROGRESS")
+      addScoreIncrement(scoreInc, "progress", -1, isPractice);
+    if (prevState === "COMPLETED")
+      addScoreIncrement(scoreInc, "completed", -1, isPractice);
 
     // Increment new state
     if (newState === "PROGRESS")
-      scoreInc.progress = (scoreInc.progress ?? 0) + 1;
-    if (newState === "COMPLETED") scoreInc.completed = 1;
+      addScoreIncrement(scoreInc, "progress", 1, isPractice);
+    if (newState === "COMPLETED")
+      addScoreIncrement(scoreInc, "completed", 1, isPractice);
   }
 
-  // 3. If completed, update correct, wrong and add to timeTaken
+  // 3. Keep completion details in sync when entering, leaving, or editing completed homework.
+  if (prevState === "COMPLETED") {
+    const previousStats = getCompletionStats(homework.results, homework.timer);
+
+    addScoreIncrement(scoreInc, "correct", -previousStats.correct, isPractice);
+    addScoreIncrement(scoreInc, "wrong", -previousStats.wrong, isPractice);
+    addScoreIncrement(
+      scoreInc,
+      "timeTaken",
+      -previousStats.timeTaken,
+      isPractice,
+    );
+  }
+
   if (newState === "COMPLETED") {
-    const correct = results?.filter(Boolean).length ?? 0;
-    const wrong = results?.filter((r) => !r).length ?? 0;
+    const nextStats = getCompletionStats(nextResults, nextTimer);
 
-    scoreInc.correct = correct;
-    scoreInc.wrong = wrong;
-    scoreInc.timeTaken = timer ?? 0;
+    addScoreIncrement(scoreInc, "correct", nextStats.correct, isPractice);
+    addScoreIncrement(scoreInc, "wrong", nextStats.wrong, isPractice);
+    addScoreIncrement(scoreInc, "timeTaken", nextStats.timeTaken, isPractice);
+  }
 
-    // send notification to admin
+  if (prevState !== "COMPLETED" && newState === "COMPLETED") {
     await createHomeworkCompletedNotification(homework);
   }
 
   // 4. Update homework fields
   if (state) homework.state = state;
-  if (answers) homework.answers = answers;
-  if (results) homework.results = results;
+  if (Object.prototype.hasOwnProperty.call(updateData, "answers"))
+    homework.answers = answers;
+  if (Object.prototype.hasOwnProperty.call(updateData, "results"))
+    homework.results = results;
   if (timer !== undefined) homework.timer = timer;
 
   await homework.save();
 
   // 5. Update score atomically
-  const score = await Score.findOneAndUpdate(
-    { studentId: homework.studentId },
-    { $inc: scoreInc },
-    { new: true },
-  );
+  const score =
+    Object.keys(scoreInc).length > 0
+      ? await Score.findOneAndUpdate(
+          { studentId: homework.studentId },
+          { $inc: scoreInc },
+          { new: true, upsert: true },
+        )
+      : await Score.findOne({ studentId: homework.studentId });
 
   return { homework, score };
 };
@@ -1325,12 +1483,14 @@ module.exports = {
   getStudentList,
   getStudentsBySameDeviceId,
   getQuestionList,
+  getPracticeQuestionList,
   getHomeworkList,
   getAvailableQuestionsForStudent,
   updateHomework,
   getScoreByStudentId,
   getHomeworkById,
   assignQuestion,
+  assignPracticeQuestionsToSelf,
   addStudent,
   updateStudent,
   removeStudentDeviceId,

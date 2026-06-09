@@ -83,6 +83,21 @@ router.get(
 );
 
 // Question (protected)
+router.get(
+  "/student/questions/practice",
+  authenticate,
+  controller.getPracticeQuestionListController,
+);
+router.post(
+  "/student/questions/practice/assign",
+  authenticate,
+  controller.assignPracticeQuestionsToSelfController,
+);
+router.get(
+  "/questions/practice",
+  authenticate,
+  controller.getPracticeQuestionListController,
+);
 router.get("/admin/questions", ...admin, controller.getQuestionListController);
 router.post("/admin/questions", ...admin, controller.addQuestionController);
 router.patch(

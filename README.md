@@ -91,7 +91,14 @@ Response
     "completed": 0,
     "correct": 0,
     "wrong": 0,
-    "timeTaken": 0
+    "timeTaken": 0,
+    "practiceAssigned": 0,
+    "practiceNew": 0,
+    "practiceProgress": 0,
+    "practiceCompleted": 0,
+    "practiceCorrect": 0,
+    "practiceWrong": 0,
+    "practiceTimeTaken": 0
 }
 
 ## Get weekly ranking
@@ -165,6 +172,67 @@ Response:
         "totalPages": 1,
         "hasNextPage": false,
         "hasPrevPage": false
+    }
+}
+
+## Get practice questions for student
+GET {{url}}/student/questions/practice
+GET {{url}}/student/questions/practice?search=5A&limit=15&page=1
+GET {{url}}/student/questions/practice?level=2&limit=15&page=1
+
+Response:
+{
+    "success": true,
+    "message": "Practice questions fetched successfully",
+    "questions": [
+        {
+            "_id": "6a172d46aec0f68a802e2857",
+            "questionId": "5A-01",
+            "level": 2,
+            "type": "practice",
+            "questions": [ "1+20+10", "10+10+10" ],
+            "marks": [],
+            "oral": false,
+            "isDeleted": false
+        }
+    ],
+    "meta": {
+        "total": 1,
+        "page": 1,
+        "limit": 15,
+        "totalPages": 1,
+        "hasNextPage": false,
+        "hasPrevPage": false
+    }
+}
+
+## Student assign practice questions to self
+POST {{url}}/student/questions/practice/assign
+Payload:
+{
+    "questionIds": ["6a172d46aec0f68a802e2857"]
+}
+
+Response:
+{
+    "success": true,
+    "message": "1 practice question(s) assigned successfully",
+    "homeworks": [
+        {
+            "questionId": "6a172d46aec0f68a802e2857",
+            "state": "NEW"
+        }
+    ],
+    "skippedQuestionIds": [],
+    "score": {
+        "assigned": 1,
+        "new": 1,
+        "progress": 0,
+        "completed": 0,
+        "practiceAssigned": 1,
+        "practiceNew": 1,
+        "practiceProgress": 0,
+        "practiceCompleted": 0
     }
 }
 

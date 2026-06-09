@@ -4,12 +4,14 @@ const {
   getStudentList,
   getStudentsBySameDeviceId,
   getQuestionList,
+  getPracticeQuestionList,
   getHomeworkList,
   getAvailableQuestionsForStudent,
   updateHomework,
   getScoreByStudentId,
   getHomeworkById,
   assignQuestion,
+  assignPracticeQuestionsToSelf,
   addStudent,
   updateStudent,
   removeStudentDeviceId,
@@ -183,6 +185,14 @@ const sendStudentLevelError = (res, level) => {
   return levelError ? sendBadRequest(res, levelError) : null;
 };
 
+const sendBooleanFieldError = (res, field, value) => {
+  if (value === undefined || typeof value === "boolean") {
+    return null;
+  }
+
+  return sendBadRequest(res, `${field} must be a boolean`);
+};
+
 const getQuestionListController = async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 15;
@@ -209,6 +219,31 @@ const getQuestionListController = async (req, res) => {
     message: search
       ? `Search results for "${search}"`
       : "Question list fetched successfully",
+    ...data,
+  });
+};
+
+const getPracticeQuestionListController = async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 15;
+  const search = req.query.search?.trim() || "";
+  const { level } = req.query;
+
+  const levelErrorResponse = sendOptionalStudentLevelError(res, level);
+  if (levelErrorResponse) return levelErrorResponse;
+
+  const data = await getPracticeQuestionList(
+    page,
+    limit,
+    search,
+    level === undefined ? null : Number(level),
+  );
+
+  return res.status(200).json({
+    success: true,
+    message: search
+      ? `Practice questions matching "${search}"`
+      : "Practice questions fetched successfully",
     ...data,
   });
 };
@@ -361,6 +396,52 @@ const assignQuestionController = async (req, res) => {
     const isClientError = ["One or more questions not found"].includes(
       error.message,
     );
+
+    return res.status(isClientError ? 400 : 500).json({
+      success: false,
+      message: error.message || "Internal server error",
+    });
+  }
+};
+
+const normalizeQuestionIds = (body) => {
+  if (Array.isArray(body.questionIds)) {
+    return body.questionIds;
+  }
+
+  return body.questionId ? [body.questionId] : [];
+};
+
+const assignPracticeQuestionsToSelfController = async (req, res) => {
+  try {
+    if (req.user.role !== "student") {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. Student only.",
+      });
+    }
+
+    const questionIds = normalizeQuestionIds(req.body);
+
+    if (questionIds.length < 1) {
+      return sendBadRequest(res, "questionIds are required");
+    }
+
+    const data = await assignPracticeQuestionsToSelf(req.user.id, questionIds);
+
+    return res.status(201).json({
+      success: true,
+      message: `${data.homeworks.length} practice question(s) assigned successfully`,
+      ...data,
+    });
+  } catch (error) {
+    logControllerError("assignPracticeQuestionsToSelfController", error);
+
+    const isClientError = [
+      "questionIds are required",
+      "Invalid questionIds",
+      "One or more practice questions not found",
+    ].includes(error.message);
 
     return res.status(isClientError ? 400 : 500).json({
       success: false,
@@ -659,7 +740,7 @@ const removeStudentDeviceIdController = async (req, res) => {
 };
 
 const addQuestionController = async (req, res) => {
-  const { questionId, level, type, questions, marks } = req.body;
+  const { questionId, level, type, questions, marks, oral } = req.body;
 
   if (!questionId) {
     return sendBadRequest(res, "questionId is required");
@@ -676,10 +757,20 @@ const addQuestionController = async (req, res) => {
     return sendBadRequest(res, "marks must be an array");
   }
 
+  const oralErrorResponse = sendBooleanFieldError(res, "oral", oral);
+  if (oralErrorResponse) return oralErrorResponse;
+
   const levelErrorResponse = sendStudentLevelError(res, level);
   if (levelErrorResponse) return levelErrorResponse;
 
-  await addQuestion({ questionId, level: Number(level), type, questions, marks });
+  await addQuestion({
+    questionId,
+    level: Number(level),
+    type,
+    questions,
+    marks,
+    oral,
+  });
 
   return res.status(201).json({
     success: true,
@@ -714,6 +805,15 @@ const updateQuestionController = async (req, res) => {
 
     if (hasField(updateData, "marks") && !Array.isArray(updateData.marks)) {
       return sendBadRequest(res, "marks must be an array");
+    }
+
+    if (hasField(updateData, "oral")) {
+      const oralErrorResponse = sendBooleanFieldError(
+        res,
+        "oral",
+        updateData.oral,
+      );
+      if (oralErrorResponse) return oralErrorResponse;
     }
 
     if (
@@ -912,10 +1012,12 @@ module.exports = {
   removeStudentDeviceIdController,
   updateStudentFcmTokenController,
   getQuestionListController,
+  getPracticeQuestionListController,
   addQuestionController,
   updateQuestionController,
   deleteQuestionController,
   assignQuestionController,
+  assignPracticeQuestionsToSelfController,
   getHomeworkListController,
   getHomeworkByIdController,
   updateHomeworkController,
