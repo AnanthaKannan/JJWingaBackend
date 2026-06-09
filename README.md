@@ -179,6 +179,7 @@ Response:
 GET {{url}}/student/questions/practice
 GET {{url}}/student/questions/practice?search=5A&limit=15&page=1
 GET {{url}}/student/questions/practice?level=2&limit=15&page=1
+Already assigned practice questions are excluded for the logged-in student.
 
 Response:
 {

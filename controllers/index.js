@@ -237,6 +237,7 @@ const getPracticeQuestionListController = async (req, res) => {
     limit,
     search,
     level === undefined ? null : Number(level),
+    req.user.role === "student" ? req.user.id : null,
   );
 
   return res.status(200).json({

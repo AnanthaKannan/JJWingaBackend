@@ -253,7 +253,21 @@ const getPracticeQuestionList = async (
   limit = 15,
   search = "",
   level = null,
-) => getQuestionList(page, limit, search, level, "practice");
+  studentId = null,
+) => {
+  if (studentId) {
+    return getAvailableQuestionsForStudent(
+      studentId,
+      page,
+      limit,
+      search,
+      level,
+      "practice",
+    );
+  }
+
+  return getQuestionList(page, limit, search, level, "practice");
+};
 
 const getHomeworkList = async (
   studentId,
