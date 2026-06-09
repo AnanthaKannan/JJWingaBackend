@@ -27,6 +27,11 @@ const {
   getNotificationList,
   getWeeklyRankings,
 } = require("../service");
+const {
+  hasField,
+  validateQuestionType,
+  validateStudentLevel,
+} = require("../utils/validation");
 
 const loginController = async (req, res) => {
   try {
@@ -154,28 +159,24 @@ const getRankingController = async (req, res) => {
   });
 };
 
-const hasField = (data, field) =>
-  Object.prototype.hasOwnProperty.call(data, field);
-
-const isMissingRequiredValue = (value) =>
-  value === undefined ||
-  value === null ||
-  (typeof value === "string" && value.trim() === "");
-
-const validateStudentLevel = (level) => {
-  if (isMissingRequiredValue(level)) {
-    return "level is required";
-  }
-
-  if (Number.isNaN(Number(level))) {
-    return "level must be a number";
-  }
-
-  return null;
-};
-
 const logControllerError = (context, error) => {
   console.error(`[${context}]`, error);
+};
+
+const sendBadRequest = (res, message) =>
+  res.status(400).json({
+    success: false,
+    message,
+  });
+
+const sendQuestionTypeError = (res, type, isRequired = true) => {
+  const typeError = validateQuestionType(type, isRequired);
+  return typeError ? sendBadRequest(res, typeError) : null;
+};
+
+const sendStudentLevelError = (res, level) => {
+  const levelError = validateStudentLevel(level);
+  return levelError ? sendBadRequest(res, levelError) : null;
 };
 
 const getQuestionListController = async (req, res) => {
@@ -183,22 +184,24 @@ const getQuestionListController = async (req, res) => {
   const limit = parseInt(req.query.limit) || 15;
   const search = req.query.search?.trim() || "";
   const { level } = req.query;
+  const type = req.query.type?.trim();
 
   if (
     level !== undefined &&
     (String(level).trim() === "" || Number.isNaN(Number(level)))
   ) {
-    return res.status(400).json({
-      success: false,
-      message: "level must be a number",
-    });
+    return sendBadRequest(res, "level must be a number");
   }
+
+  const typeErrorResponse = sendQuestionTypeError(res, type, false);
+  if (typeErrorResponse) return typeErrorResponse;
 
   const data = await getQuestionList(
     page,
     limit,
     search,
     level === undefined ? null : Number(level),
+    type || null,
   );
 
   return res.status(200).json({
@@ -213,39 +216,37 @@ const getQuestionListController = async (req, res) => {
 const getHomeworkListController = async (req, res) => {
   const { studentId, state } = req.params;
   const { page, limit, sortBy, sortOrder } = req.query;
+  const type = req.query.type?.trim();
 
   if (!studentId) {
-    return res.status(400).json({
-      success: false,
-      message: "Student ID is required",
-    });
+    return sendBadRequest(res, "Student ID is required");
   }
 
   // Validate state if provided
   const validStates = ["NEW", "PROGRESS", "COMPLETED"];
   if (state && !validStates.includes(state.toUpperCase())) {
-    return res.status(400).json({
-      success: false,
-      message: `Invalid state. Must be one of: ${validStates.join(", ")}`,
-    });
+    return sendBadRequest(
+      res,
+      `Invalid state. Must be one of: ${validStates.join(", ")}`,
+    );
   }
 
   const validSortFields = ["createdAt", "updatedAt"];
   if (sortBy && !validSortFields.includes(sortBy)) {
-    return res.status(400).json({
-      success: false,
-      message: `Invalid sortBy. Must be one of: ${validSortFields.join(", ")}`,
-    });
+    return sendBadRequest(
+      res,
+      `Invalid sortBy. Must be one of: ${validSortFields.join(", ")}`,
+    );
   }
 
   const normalizedSortOrder = sortOrder?.toLowerCase();
   const validSortOrders = ["asc", "desc"];
   if (normalizedSortOrder && !validSortOrders.includes(normalizedSortOrder)) {
-    return res.status(400).json({
-      success: false,
-      message: "Invalid sortOrder. Must be asc or desc",
-    });
+    return sendBadRequest(res, "Invalid sortOrder. Must be asc or desc");
   }
+
+  const typeErrorResponse = sendQuestionTypeError(res, type, false);
+  if (typeErrorResponse) return typeErrorResponse;
 
   const data = await getHomeworkList(
     studentId,
@@ -254,6 +255,7 @@ const getHomeworkListController = async (req, res) => {
     parseInt(limit) || 15,
     sortBy,
     normalizedSortOrder,
+    type || null,
   );
 
   return res.status(200).json({
@@ -266,23 +268,21 @@ const getHomeworkListController = async (req, res) => {
 const getAvailableQuestionsForStudentController = async (req, res) => {
   const { studentId } = req.params;
   const { page, limit, search, level } = req.query;
+  const type = req.query.type?.trim();
 
   if (!studentId) {
-    return res.status(400).json({
-      success: false,
-      message: "Student ID is required",
-    });
+    return sendBadRequest(res, "Student ID is required");
   }
 
   if (
     level !== undefined &&
     (String(level).trim() === "" || Number.isNaN(Number(level)))
   ) {
-    return res.status(400).json({
-      success: false,
-      message: "level must be a number",
-    });
+    return sendBadRequest(res, "level must be a number");
   }
+
+  const typeErrorResponse = sendQuestionTypeError(res, type, false);
+  if (typeErrorResponse) return typeErrorResponse;
 
   const data = await getAvailableQuestionsForStudent(
     studentId,
@@ -290,6 +290,7 @@ const getAvailableQuestionsForStudentController = async (req, res) => {
     parseInt(limit) || 15,
     search?.trim() || "",
     level === undefined ? null : Number(level),
+    type || null,
   );
 
   return res.status(200).json({
@@ -376,19 +377,11 @@ const addStudentController = async (req, res) => {
   const { name, level } = req.body;
 
   if (!name) {
-    return res.status(400).json({
-      success: false,
-      message: "name is required",
-    });
+    return sendBadRequest(res, "name is required");
   }
 
-  const levelError = validateStudentLevel(level);
-  if (levelError) {
-    return res.status(400).json({
-      success: false,
-      message: levelError,
-    });
-  }
+  const levelErrorResponse = sendStudentLevelError(res, level);
+  if (levelErrorResponse) return levelErrorResponse;
 
   await addStudent({ name, level: Number(level), createdBy: req.user.id });
 
@@ -403,27 +396,16 @@ const updateStudentController = async (req, res) => {
   const updateData = req.body;
 
   if (!id) {
-    return res.status(400).json({
-      success: false,
-      message: "Student ID is required",
-    });
+    return sendBadRequest(res, "Student ID is required");
   }
 
   if (!updateData || Object.keys(updateData).length === 0) {
-    return res.status(400).json({
-      success: false,
-      message: "No update data provided",
-    });
+    return sendBadRequest(res, "No update data provided");
   }
 
   if (hasField(updateData, "level")) {
-    const levelError = validateStudentLevel(updateData.level);
-    if (levelError) {
-      return res.status(400).json({
-        success: false,
-        message: levelError,
-      });
-    }
+    const levelErrorResponse = sendStudentLevelError(res, updateData.level);
+    if (levelErrorResponse) return levelErrorResponse;
 
     updateData.level = Number(updateData.level);
   }
@@ -680,31 +662,27 @@ const removeStudentDeviceIdController = async (req, res) => {
 };
 
 const addQuestionController = async (req, res) => {
-  const { questionId, level, questions } = req.body;
+  const { questionId, level, type, questions, mark } = req.body;
 
   if (!questionId) {
-    return res.status(400).json({
-      success: false,
-      message: "questionId is required",
-    });
+    return sendBadRequest(res, "questionId is required");
   }
 
   if (!questions || !Array.isArray(questions) || questions.length === 0) {
-    return res.status(400).json({
-      success: false,
-      message: "questions must be a non-empty array",
-    });
+    return sendBadRequest(res, "questions must be a non-empty array");
   }
 
-  const levelError = validateStudentLevel(level);
-  if (levelError) {
-    return res.status(400).json({
-      success: false,
-      message: levelError,
-    });
+  const typeErrorResponse = sendQuestionTypeError(res, type);
+  if (typeErrorResponse) return typeErrorResponse;
+
+  if (mark !== undefined && !Array.isArray(mark)) {
+    return sendBadRequest(res, "mark must be an array");
   }
 
-  await addQuestion({ questionId, level: Number(level), questions });
+  const levelErrorResponse = sendStudentLevelError(res, level);
+  if (levelErrorResponse) return levelErrorResponse;
+
+  await addQuestion({ questionId, level: Number(level), type, questions, mark });
 
   return res.status(201).json({
     success: true,
@@ -718,29 +696,34 @@ const updateQuestionController = async (req, res) => {
     const updateData = req.body;
 
     if (!id) {
-      return res.status(400).json({
-        success: false,
-        message: "Question ID is required",
-      });
+      return sendBadRequest(res, "Question ID is required");
     }
 
     if (!updateData || Object.keys(updateData).length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "No update data provided",
-      });
+      return sendBadRequest(res, "No update data provided");
     }
 
     if (hasField(updateData, "level")) {
-      const levelError = validateStudentLevel(updateData.level);
-      if (levelError) {
-        return res.status(400).json({
-          success: false,
-          message: levelError,
-        });
-      }
+      const levelErrorResponse = sendStudentLevelError(res, updateData.level);
+      if (levelErrorResponse) return levelErrorResponse;
 
       updateData.level = Number(updateData.level);
+    }
+
+    if (hasField(updateData, "type")) {
+      const typeErrorResponse = sendQuestionTypeError(res, updateData.type);
+      if (typeErrorResponse) return typeErrorResponse;
+    }
+
+    if (hasField(updateData, "mark") && !Array.isArray(updateData.mark)) {
+      return sendBadRequest(res, "mark must be an array");
+    }
+
+    if (
+      hasField(updateData, "questions") &&
+      (!Array.isArray(updateData.questions) || updateData.questions.length === 0)
+    ) {
+      return sendBadRequest(res, "questions must be a non-empty array");
     }
 
     await updateQuestion(id, updateData);

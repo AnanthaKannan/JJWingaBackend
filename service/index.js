@@ -94,6 +94,14 @@ const login = async (username, password, deviceId, validatePassword = true) => {
   };
 };
 
+const buildQuestionTypeFilter = (type) => {
+  if (type === "homework") {
+    return { $or: [{ type: "homework" }, { type: { $exists: false } }] };
+  }
+
+  return { type };
+};
+
 const loginUsingDeviceId = async (studentId, deviceIds) => {
   if (deviceIds.length === 0) {
     throw new Error("Device ID not found in token");
@@ -198,6 +206,7 @@ const getQuestionList = async (
   limit = 15,
   search = "",
   level = null,
+  type = null,
 ) => {
   const skip = (page - 1) * limit;
 
@@ -205,6 +214,7 @@ const getQuestionList = async (
     isDeleted: { $ne: true },
     ...(search ? { questionId: { $regex: search, $options: "i" } } : {}),
     ...(level === null ? {} : { level }),
+    ...(type === null ? {} : buildQuestionTypeFilter(type)),
   };
 
   const [questions, total] = await Promise.all([
@@ -236,6 +246,7 @@ const getHomeworkList = async (
   limit = 15,
   sortBy = "createdAt",
   sortOrder = "desc",
+  type = null,
 ) => {
   const skip = (page - 1) * limit;
   const sortDirection = sortOrder === "asc" ? 1 : -1;
@@ -244,6 +255,14 @@ const getHomeworkList = async (
   const query = { studentId };
   if (state) {
     query.state = state.toUpperCase();
+  }
+
+  if (type) {
+    const questionIds = await Question.find({
+      isDeleted: { $ne: true },
+      ...buildQuestionTypeFilter(type),
+    }).distinct("_id");
+    query.questionId = { $in: questionIds };
   }
 
   const [homeworks, total] = await Promise.all([
@@ -274,6 +293,7 @@ const getAvailableQuestionsForStudent = async (
   limit = 15,
   search = "",
   level = null,
+  type = null,
 ) => {
   const skip = (page - 1) * limit;
   const studentObjectId = new mongoose.Types.ObjectId(studentId);
@@ -283,6 +303,7 @@ const getAvailableQuestionsForStudent = async (
       $match: { isDeleted: { $ne: true } },
     },
     ...(level === null ? [] : [{ $match: { level } }]),
+    ...(type === null ? [] : [{ $match: buildQuestionTypeFilter(type) }]),
     // Search by questionId if provided
     ...(search
       ? [{ $match: { questionId: { $regex: search, $options: "i" } } }]
@@ -741,7 +762,7 @@ const deleteProfilePic = async (user) => {
 };
 
 const addQuestion = async (questionData) => {
-  const { questionId, level, questions } = questionData;
+  const { questionId, level, type, questions, mark } = questionData;
 
   // 1. Check if questionId already exists
   const existing = await Question.findOne({ questionId });
@@ -751,7 +772,9 @@ const addQuestion = async (questionData) => {
   await Question.create({
     questionId,
     level,
+    type,
     questions: questions ?? [],
+    ...(mark === undefined ? {} : { mark }),
   });
 };
 
@@ -759,7 +782,7 @@ const updateQuestion = async (questionObjectId, updateData) => {
   const question = await Question.findById(questionObjectId);
   if (!question) throw new Error("Question not found");
 
-  const allowedFields = ["questionId", "level"];
+  const allowedFields = ["questionId", "level", "type", "questions", "mark"];
   const filteredData = Object.keys(updateData)
     .filter((key) => allowedFields.includes(key))
     .reduce((obj, key) => {
