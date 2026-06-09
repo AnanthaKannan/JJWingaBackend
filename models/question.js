@@ -23,8 +23,9 @@ const questionSchema = new mongoose.Schema(
       type: Array,
       default: [],
     },
-    mark: {
+    marks: {
       type: Array,
+      default: [],
     },
     isDeleted: {
       type: Boolean,

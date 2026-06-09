@@ -662,7 +662,7 @@ const removeStudentDeviceIdController = async (req, res) => {
 };
 
 const addQuestionController = async (req, res) => {
-  const { questionId, level, type, questions, mark } = req.body;
+  const { questionId, level, type, questions, marks } = req.body;
 
   if (!questionId) {
     return sendBadRequest(res, "questionId is required");
@@ -675,14 +675,14 @@ const addQuestionController = async (req, res) => {
   const typeErrorResponse = sendQuestionTypeError(res, type);
   if (typeErrorResponse) return typeErrorResponse;
 
-  if (mark !== undefined && !Array.isArray(mark)) {
-    return sendBadRequest(res, "mark must be an array");
+  if (marks !== undefined && !Array.isArray(marks)) {
+    return sendBadRequest(res, "marks must be an array");
   }
 
   const levelErrorResponse = sendStudentLevelError(res, level);
   if (levelErrorResponse) return levelErrorResponse;
 
-  await addQuestion({ questionId, level: Number(level), type, questions, mark });
+  await addQuestion({ questionId, level: Number(level), type, questions, marks });
 
   return res.status(201).json({
     success: true,
@@ -715,8 +715,8 @@ const updateQuestionController = async (req, res) => {
       if (typeErrorResponse) return typeErrorResponse;
     }
 
-    if (hasField(updateData, "mark") && !Array.isArray(updateData.mark)) {
-      return sendBadRequest(res, "mark must be an array");
+    if (hasField(updateData, "marks") && !Array.isArray(updateData.marks)) {
+      return sendBadRequest(res, "marks must be an array");
     }
 
     if (

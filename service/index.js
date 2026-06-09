@@ -762,7 +762,7 @@ const deleteProfilePic = async (user) => {
 };
 
 const addQuestion = async (questionData) => {
-  const { questionId, level, type, questions, mark } = questionData;
+  const { questionId, level, type, questions, marks } = questionData;
 
   // 1. Check if questionId already exists
   const existing = await Question.findOne({ questionId });
@@ -774,7 +774,7 @@ const addQuestion = async (questionData) => {
     level,
     type,
     questions: questions ?? [],
-    ...(mark === undefined ? {} : { mark }),
+    ...(marks === undefined ? {} : { marks }),
   });
 };
 
@@ -782,7 +782,7 @@ const updateQuestion = async (questionObjectId, updateData) => {
   const question = await Question.findById(questionObjectId);
   if (!question) throw new Error("Question not found");
 
-  const allowedFields = ["questionId", "level", "type", "questions", "mark"];
+  const allowedFields = ["questionId", "level", "type", "questions", "marks"];
   const filteredData = Object.keys(updateData)
     .filter((key) => allowedFields.includes(key))
     .reduce((obj, key) => {
