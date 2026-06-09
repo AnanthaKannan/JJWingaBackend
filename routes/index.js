@@ -144,8 +144,8 @@ router.delete(
   controller.deleteFileUploadController,
 );
 router.get(
-  "/admin/file-uploads/:id/download",
-  ...admin,
+  "/file-uploads/:id/download",
+  authenticate,
   controller.downloadFileUploadController,
 );
 

@@ -568,7 +568,7 @@ const validateFileUploadRecord = (user, name, type) => {
   }
 };
 
-const createFileUploadRecord = async (name, filePath, type) => {
+const createFileUploadRecord = async (name, filePath, type, file) => {
   if (!["practice", "celebration"].includes(type)) {
     return null;
   }
@@ -576,6 +576,8 @@ const createFileUploadRecord = async (name, filePath, type) => {
   return FileUpload.create({
     name: name.trim(),
     filePath,
+    fileSize: file.size,
+    fileFormat: file.mimetype,
     type,
   });
 };
@@ -647,7 +649,12 @@ const uploadFile = async (file, user, formPath = "", name = "") => {
     await updateProfilePicPath(user, data.path);
   }
 
-  const fileUpload = await createFileUploadRecord(name, data.path, uploadType);
+  const fileUpload = await createFileUploadRecord(
+    name,
+    data.path,
+    uploadType,
+    file,
+  );
 
   return {
     bucket,

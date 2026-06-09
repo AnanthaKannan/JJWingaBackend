@@ -12,6 +12,17 @@ const fileUploadSchema = new mongoose.Schema(
       required: [true, "File path is required"],
       trim: true,
     },
+    fileSize: {
+      type: Number,
+      required: [true, "File size is required"],
+      min: [0, "File size cannot be negative"],
+    },
+    fileFormat: {
+      type: String,
+      required: [true, "File format is required"],
+      trim: true,
+      lowercase: true,
+    },
     type: {
       type: String,
       enum: ["practice", "celebration"],
