@@ -284,6 +284,32 @@ Response:
 {
     "success": true,
     "message": "Homework question(s) assigned successfully",
+    "assignedCount": 1,
+    "skippedCount": 1,
+    "students": [
+        {
+            "id": "6a1726e84273750610292d45",
+            "studentId": "JJ101",
+            "name": "Student A",
+            "level": 1,
+            "assignedQuestionIds": ["6a172d782a3fe12b04e53ba1"],
+            "assignedQuestions": [
+                {
+                    "id": "6a172d782a3fe12b04e53ba1",
+                    "questionId": "5A-01",
+                    "type": "homework"
+                }
+            ],
+            "skippedQuestionIds": ["6a172d782a3fe12b04e53ba2"],
+            "skippedQuestions": [
+                {
+                    "id": "6a172d782a3fe12b04e53ba2",
+                    "questionId": "5A-02",
+                    "type": "homework"
+                }
+            ]
+        }
+    ],
     "notifications": {
         "sentCount": 1,
         "totalRequested": 1

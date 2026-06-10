@@ -510,6 +510,16 @@ const getPracticeAssignedCount = (questionIds, questionMap) =>
     (questionId) => questionMap.get(questionId.toString())?.type === "practice",
   ).length;
 
+const getAssignmentQuestionDetails = (questionIds, questionMap) =>
+  questionIds
+    .map((questionId) => questionMap.get(questionId.toString()))
+    .filter(Boolean)
+    .map((question) => ({
+      id: question._id,
+      questionId: question.questionId,
+      type: question.type,
+    }));
+
 const assignQuestion = async (adminId, studentId, questionIds) => {
   const uniqueQuestionIds = [...new Set(toArray(questionIds).map(String))];
 
@@ -607,7 +617,7 @@ const assignQuestionsByLevels = async (adminId, levels, questionIds) => {
   const students = await Student.find({
     createdBy: adminId,
     level: { $in: uniqueLevels },
-  }).select("_id level");
+  }).select("_id studentId name level");
 
   if (students.length === 0) {
     throw new Error("No students found for levels");
@@ -619,6 +629,30 @@ const assignQuestionsByLevels = async (adminId, levels, questionIds) => {
     uniqueQuestionIds,
   );
   const assignmentsByStudent = {};
+  const skippedByStudent = {};
+  const getStudentAssignmentResult = (student) => {
+    const studentObjectId = student._id.toString();
+    const assignedQuestionIds = assignmentsByStudent[studentObjectId] || [];
+    const skippedQuestionIds = skippedByStudent[studentObjectId] || [];
+
+    return {
+      id: student._id,
+      studentId: student.studentId,
+      name: student.name,
+      level: student.level,
+      assignedQuestionIds,
+      assignedQuestions: getAssignmentQuestionDetails(
+        assignedQuestionIds,
+        questionMap,
+      ),
+      skippedQuestionIds,
+      skippedQuestions: getAssignmentQuestionDetails(
+        skippedQuestionIds,
+        questionMap,
+      ),
+    };
+  };
+
   const homeworkDocs = students.flatMap((student) =>
     uniqueQuestionIds
       .filter((questionId) => {
@@ -628,6 +662,11 @@ const assignQuestionsByLevels = async (adminId, levels, questionIds) => {
         if (shouldAssign) {
           assignmentsByStudent[studentId] = [
             ...(assignmentsByStudent[studentId] || []),
+            questionId,
+          ];
+        } else {
+          skippedByStudent[studentId] = [
+            ...(skippedByStudent[studentId] || []),
             questionId,
           ];
         }
@@ -645,6 +684,7 @@ const assignQuestionsByLevels = async (adminId, levels, questionIds) => {
     return {
       assignedCount: 0,
       skippedCount: students.length * uniqueQuestionIds.length,
+      students: students.map(getStudentAssignmentResult),
       notifications: { sentCount: 0, totalRequested: 0 },
     };
   }
@@ -689,6 +729,7 @@ const assignQuestionsByLevels = async (adminId, levels, questionIds) => {
   return {
     assignedCount: homeworks.length,
     skippedCount: students.length * uniqueQuestionIds.length - homeworks.length,
+    students: students.map(getStudentAssignmentResult),
     notifications,
   };
 };
