@@ -11,6 +11,7 @@ const {
   getScoreByStudentId,
   getHomeworkById,
   assignQuestion,
+  unassignQuestion,
   assignQuestionsByLevels,
   assignPracticeQuestionsToSelf,
   unassignPracticeQuestionsFromSelf,
@@ -394,13 +395,14 @@ const assignQuestionController = async (req, res) => {
       });
     }
 
-    hasStudentId
-      ? await assignQuestion(studentId, questionIds)
+    const data = hasStudentId
+      ? await assignQuestion(req.user.id, studentId, questionIds)
       : await assignQuestionsByLevels(req.user.id, levels, questionIds);
 
     return res.status(201).json({
       success: true,
       message: `Homework question(s) assigned successfully`,
+      ...data,
     });
   } catch (error) {
     logControllerError("assignQuestionController", error);
@@ -409,6 +411,42 @@ const assignQuestionController = async (req, res) => {
       "One or more questions not found",
       "levels must be a non-empty array of numbers",
       "No students found for levels",
+    ].includes(error.message);
+
+    return res.status(isClientError ? 400 : 500).json({
+      success: false,
+      message: error.message || "Internal server error",
+    });
+  }
+};
+
+const unassignQuestionController = async (req, res) => {
+  try {
+    const { studentId, questionIds } = req.body;
+
+    if (!studentId) {
+      return sendBadRequest(res, "studentId is required");
+    }
+
+    if (!Array.isArray(questionIds) || questionIds.length < 1) {
+      return sendBadRequest(res, "questionIds are required");
+    }
+
+    const data = await unassignQuestion(studentId, questionIds);
+
+    return res.status(200).json({
+      success: true,
+      message: `${data.deletedCount} homework question(s) unassigned successfully`,
+      ...data,
+    });
+  } catch (error) {
+    logControllerError("unassignQuestionController", error);
+
+    const isClientError = [
+      "studentId is required",
+      "questionIds are required",
+      "Invalid studentId or questionIds",
+      "One or more questions are not assigned",
     ].includes(error.message);
 
     return res.status(isClientError ? 400 : 500).json({
@@ -1075,6 +1113,7 @@ module.exports = {
   updateQuestionController,
   deleteQuestionController,
   assignQuestionController,
+  unassignQuestionController,
   assignPracticeQuestionsToSelfController,
   unassignPracticeQuestionsFromSelfController,
   getHomeworkListController,

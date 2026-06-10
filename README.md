@@ -278,10 +278,31 @@ Payload with levels:
     "questionIds": ["6a172d782a3fe12b04e53ba1"]
 }
 
+Already assigned student/question pairs are skipped. Notifications are sent only to students who receive newly assigned homework or exam questions. Assignment notification bodies include the assigned question IDs, for example: `You have new homework assigned: 5A-01, 5A-02.`
+
 Response:
 {
     "success": true,
-    "message": "1 question(s) assigned successfully"
+    "message": "Homework question(s) assigned successfully",
+    "notifications": {
+        "sentCount": 1,
+        "totalRequested": 1
+    }
+}
+
+## unassign homework from the student
+DELETE {{url}}/admin/questions/assign
+Payload:
+{
+    "studentId":"6a1726e84273750610292d45" ,
+    "questionIds": ["6a172d782a3fe12b04e53ba1"]
+}
+
+Response:
+{
+    "success": true,
+    "message": "1 homework question(s) unassigned successfully",
+    "unassignedQuestionIds": ["6a172d782a3fe12b04e53ba1"]
 }
 
 ## Delete question by id

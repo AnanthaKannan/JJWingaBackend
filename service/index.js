@@ -18,6 +18,9 @@ const {
   Notification,
   FileUpload,
 } = require("../models");
+const {
+  buildAssignmentNotificationText,
+} = require("../config/notifications");
 
 if (!admin.apps.length) {
   admin.initializeApp({
@@ -419,40 +422,138 @@ const getHomeworkById = async (id) => {
   return homework;
 };
 
-const assignQuestion = async (studentId, questionIds) => {
-  // 1. Validate student exists
-  // const student = await Student.findById(studentId);
-  // if (!student) throw new Error('Student not found');
+const sendAssignmentNotifications = async (
+  assignmentsByStudent,
+  questionMap,
+  sentBy,
+) => {
+  const studentIds = Object.keys(assignmentsByStudent).filter(
+    (studentId) => assignmentsByStudent[studentId].length > 0,
+  );
+
+  if (studentIds.length === 0) {
+    return { sentCount: 0, totalRequested: 0 };
+  }
+
+  const studentDocs = await Student.find(
+    { _id: { $in: studentIds } },
+    { fcmTokens: 1 },
+  );
+  const tokenMap = studentDocs.reduce((acc, student) => {
+    acc[student._id.toString()] = student.fcmTokens?.[0] || null;
+    return acc;
+  }, {});
+
+  const notifications = studentIds
+    .map((studentId) => {
+      const assignedQuestions = assignmentsByStudent[studentId]
+        .map((questionId) => questionMap.get(questionId.toString()))
+        .filter(Boolean);
+      const message = buildAssignmentNotificationText(assignedQuestions);
+
+      return message
+        ? {
+            studentId,
+            sentBy,
+            sentByModel: "Admin",
+            ...message,
+          }
+        : null;
+    })
+    .filter(Boolean);
+
+  if (notifications.length === 0) {
+    return { sentCount: 0, totalRequested: studentIds.length };
+  }
+
+  const result = await Notification.insertMany(notifications, {
+    ordered: false,
+  });
+
+  await Promise.allSettled(
+    notifications.map((notification) =>
+      sendPushNotification(
+        tokenMap[notification.studentId.toString()],
+        notification.messageHeader,
+        notification.messageBody,
+      ),
+    ),
+  );
+
+  return {
+    sentCount: result.length,
+    totalRequested: studentIds.length,
+  };
+};
+
+const getAssignedQuestionIdsByStudent = async (studentIds, questionIds) => {
+  const homeworks = await HomeWork.find({
+    studentId: { $in: studentIds },
+    questionId: { $in: questionIds },
+  }).select("studentId questionId");
+
+  return homeworks.reduce((acc, homework) => {
+    const studentId = homework.studentId.toString();
+    const questionId = homework.questionId.toString();
+
+    if (!acc.has(studentId)) {
+      acc.set(studentId, new Set());
+    }
+
+    acc.get(studentId).add(questionId);
+    return acc;
+  }, new Map());
+};
+
+const getPracticeAssignedCount = (questionIds, questionMap) =>
+  questionIds.filter(
+    (questionId) => questionMap.get(questionId.toString())?.type === "practice",
+  ).length;
+
+const assignQuestion = async (adminId, studentId, questionIds) => {
+  const uniqueQuestionIds = [...new Set(toArray(questionIds).map(String))];
 
   const questions = await Question.find({
-    _id: { $in: questionIds },
+    _id: { $in: uniqueQuestionIds },
     isDeleted: { $ne: true },
   });
-  if (questions.length !== questionIds.length) {
+  if (questions.length !== uniqueQuestionIds.length) {
     throw new Error("One or more questions not found");
   }
 
-  // 3. Check for already assigned questions (avoid duplicates)
-  // const existing = await HomeWork.find({ studentId, questionId: { $in: questionIds } });
-  // if (existing.length > 0) {
-  //   const alreadyAssigned = existing.map((hw) => hw.questionId.toString());
-  //   throw new Error(`Questions already assigned: ${alreadyAssigned.join(', ')}`);
-  // }
+  const questionMap = new Map(
+    questions.map((question) => [question._id.toString(), question]),
+  );
+  const assignedByStudent = await getAssignedQuestionIdsByStudent(
+    [studentId],
+    uniqueQuestionIds,
+  );
+  const existingQuestionIds = assignedByStudent.get(studentId.toString());
+  const questionIdsToAssign = uniqueQuestionIds.filter(
+    (questionId) => !existingQuestionIds?.has(questionId),
+  );
 
-  // 4. Build and bulk insert homework records
-  const homeworkDocs = questionIds.map((questionId) => ({
+  if (questionIdsToAssign.length === 0) {
+    return {
+      assignedCount: 0,
+      skippedQuestionIds: uniqueQuestionIds,
+      notifications: { sentCount: 0, totalRequested: 0 },
+    };
+  }
+
+  const homeworkDocs = questionIdsToAssign.map((questionId) => ({
     studentId,
     questionId,
     state: "NEW",
   }));
 
   const homeworks = await HomeWork.insertMany(homeworkDocs, { ordered: false });
-  const practiceAssignedCount = questions.filter(
-    (question) => question.type === "practice",
-  ).length;
+  const practiceAssignedCount = getPracticeAssignedCount(
+    questionIdsToAssign,
+    questionMap,
+  );
 
-  // 5. Increment assigned and new in score by total count (upsert if score doc doesn't exist)
-  const score = await Score.findOneAndUpdate(
+  await Score.findOneAndUpdate(
     { studentId },
     {
       $inc: {
@@ -468,25 +569,40 @@ const assignQuestion = async (studentId, questionIds) => {
     },
     { new: true, upsert: true },
   );
+  const notifications = await sendAssignmentNotifications(
+    { [studentId.toString()]: questionIdsToAssign },
+    questionMap,
+    adminId,
+  );
 
-  return { homeworks, score };
+  return {
+    assignedCount: homeworks.length,
+    skippedQuestionIds: uniqueQuestionIds.filter((questionId) =>
+      existingQuestionIds?.has(questionId),
+    ),
+    notifications,
+  };
 };
 
 const assignQuestionsByLevels = async (adminId, levels, questionIds) => {
   const uniqueLevels = [...new Set(toArray(levels).map(Number))];
+  const uniqueQuestionIds = [...new Set(toArray(questionIds).map(String))];
 
   if (uniqueLevels.length === 0 || uniqueLevels.some(Number.isNaN)) {
     throw new Error("levels must be a non-empty array of numbers");
   }
 
   const questions = await Question.find({
-    _id: { $in: questionIds },
+    _id: { $in: uniqueQuestionIds },
     isDeleted: { $ne: true },
   });
 
-  if (questions.length !== questionIds.length) {
+  if (questions.length !== uniqueQuestionIds.length) {
     throw new Error("One or more questions not found");
   }
+  const questionMap = new Map(
+    questions.map((question) => [question._id.toString(), question]),
+  );
 
   const students = await Student.find({
     createdBy: adminId,
@@ -497,45 +613,164 @@ const assignQuestionsByLevels = async (adminId, levels, questionIds) => {
     throw new Error("No students found for levels");
   }
 
+  const studentIds = students.map((student) => student._id.toString());
+  const assignedByStudent = await getAssignedQuestionIdsByStudent(
+    studentIds,
+    uniqueQuestionIds,
+  );
+  const assignmentsByStudent = {};
   const homeworkDocs = students.flatMap((student) =>
-    questionIds.map((questionId) => ({
-      studentId: student._id,
-      questionId,
-      state: "NEW",
-    })),
+    uniqueQuestionIds
+      .filter((questionId) => {
+        const studentId = student._id.toString();
+        const shouldAssign = !assignedByStudent.get(studentId)?.has(questionId);
+
+        if (shouldAssign) {
+          assignmentsByStudent[studentId] = [
+            ...(assignmentsByStudent[studentId] || []),
+            questionId,
+          ];
+        }
+
+        return shouldAssign;
+      })
+      .map((questionId) => ({
+        studentId: student._id,
+        questionId,
+        state: "NEW",
+      })),
   );
 
-  const homeworks = await HomeWork.insertMany(homeworkDocs, { ordered: false });
-  const practiceAssignedCount = questions.filter(
-    (question) => question.type === "practice",
-  ).length;
+  if (homeworkDocs.length === 0) {
+    return {
+      assignedCount: 0,
+      skippedCount: students.length * uniqueQuestionIds.length,
+      notifications: { sentCount: 0, totalRequested: 0 },
+    };
+  }
 
-  const scoreUpdates = students.map((student) => ({
-    updateOne: {
-      filter: { studentId: student._id },
-      update: {
-        $inc: {
-          assigned: questionIds.length,
-          new: questionIds.length,
-          ...(practiceAssignedCount > 0
-            ? {
-                practiceAssigned: practiceAssignedCount,
-                practiceNew: practiceAssignedCount,
-              }
-            : {}),
+  const homeworks = await HomeWork.insertMany(homeworkDocs, { ordered: false });
+
+  const scoreUpdates = Object.entries(assignmentsByStudent).map(
+    ([studentId, assignedQuestionIds]) => {
+      const practiceAssignedCount = getPracticeAssignedCount(
+        assignedQuestionIds,
+        questionMap,
+      );
+
+      return {
+        updateOne: {
+          filter: { studentId },
+          update: {
+            $inc: {
+              assigned: assignedQuestionIds.length,
+              new: assignedQuestionIds.length,
+              ...(practiceAssignedCount > 0
+                ? {
+                    practiceAssigned: practiceAssignedCount,
+                    practiceNew: practiceAssignedCount,
+                  }
+                : {}),
+            },
+          },
+          upsert: true,
         },
-      },
-      upsert: true,
+      };
     },
-  }));
+  );
 
   await Score.bulkWrite(scoreUpdates);
+  const notifications = await sendAssignmentNotifications(
+    assignmentsByStudent,
+    questionMap,
+    adminId,
+  );
 
-  // return {
-  //   homeworks,
-  //   studentCount: students.length,
-  //   levels: uniqueLevels,
-  // };
+  return {
+    assignedCount: homeworks.length,
+    skippedCount: students.length * uniqueQuestionIds.length - homeworks.length,
+    notifications,
+  };
+};
+
+const getUnassignScoreIncrement = (homeworks) =>
+  homeworks.reduce((scoreInc, homework) => {
+    const isPractice = homework.questionId?.type === "practice";
+
+    addScoreIncrement(scoreInc, "assigned", -1, isPractice);
+
+    if (homework.state === "NEW") {
+      addScoreIncrement(scoreInc, "new", -1, isPractice);
+    }
+
+    if (homework.state === "PROGRESS") {
+      addScoreIncrement(scoreInc, "progress", -1, isPractice);
+    }
+
+    if (homework.state === "COMPLETED") {
+      addScoreIncrement(scoreInc, "completed", -1, isPractice);
+
+      const stats = getCompletionStats(homework.results, homework.timer);
+      addScoreIncrement(scoreInc, "correct", -stats.correct, isPractice);
+      addScoreIncrement(scoreInc, "wrong", -stats.wrong, isPractice);
+      addScoreIncrement(scoreInc, "timeTaken", -stats.timeTaken, isPractice);
+    }
+
+    return scoreInc;
+  }, {});
+
+const unassignQuestion = async (studentId, questionIds) => {
+  const uniqueQuestionIds = [...new Set(toArray(questionIds).map(String))];
+
+  if (!studentId) {
+    throw new Error("studentId is required");
+  }
+
+  if (uniqueQuestionIds.length === 0) {
+    throw new Error("questionIds are required");
+  }
+
+  if (
+    !mongoose.Types.ObjectId.isValid(studentId) ||
+    uniqueQuestionIds.some(
+      (questionId) => !mongoose.Types.ObjectId.isValid(questionId),
+    )
+  ) {
+    throw new Error("Invalid studentId or questionIds");
+  }
+
+  const homeworks = await HomeWork.find({
+    studentId,
+    questionId: { $in: uniqueQuestionIds },
+  }).populate("questionId", "type");
+
+  const assignedQuestionIds = new Set(
+    homeworks.map((homework) => homework.questionId?._id?.toString()),
+  );
+  const unassignedQuestionIds = uniqueQuestionIds.filter(
+    (questionId) => !assignedQuestionIds.has(questionId),
+  );
+
+  if (unassignedQuestionIds.length > 0) {
+    throw new Error("One or more questions are not assigned");
+  }
+
+  await HomeWork.deleteMany({
+    _id: { $in: homeworks.map((homework) => homework._id) },
+  });
+
+  const scoreInc = getUnassignScoreIncrement(homeworks);
+  const score = await Score.findOneAndUpdate(
+    { studentId },
+    { $inc: scoreInc },
+    { new: true, upsert: true },
+  );
+
+  return {
+    unassignedQuestionIds: uniqueQuestionIds,
+    deletedCount: homeworks.length,
+    score,
+  };
 };
 
 const assignPracticeQuestionsToSelf = async (studentId, questionIds) => {
@@ -1591,6 +1826,7 @@ module.exports = {
   getScoreByStudentId,
   getHomeworkById,
   assignQuestion,
+  unassignQuestion,
   assignQuestionsByLevels,
   assignPracticeQuestionsToSelf,
   unassignPracticeQuestionsFromSelf,

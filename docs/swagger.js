@@ -381,6 +381,7 @@
  * /admin/questions/assign:
  *   post:
  *     summary: Assign questions to a student or levels
+ *     description: Already assigned student/question pairs are skipped. Notifications are sent only to students who receive newly assigned homework or exam questions.
  *     tags: [Questions]
  *     security:
  *       - AccessToken: []
@@ -406,6 +407,28 @@
  *     responses:
  *       201:
  *         description: Questions assigned successfully
+ *   delete:
+ *     summary: Unassign questions from a student
+ *     tags: [Questions]
+ *     security:
+ *       - AccessToken: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [studentId, questionIds]
+ *             properties:
+ *               studentId:
+ *                 type: string
+ *               questionIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *     responses:
+ *       200:
+ *         description: Questions unassigned successfully
  *
  * /admin/questions/available/{studentId}:
  *   get:

@@ -37,6 +37,11 @@ router.post(
   ...admin,
   controller.assignQuestionController,
 );
+router.delete(
+  "/admin/questions/assign",
+  ...admin,
+  controller.unassignQuestionController,
+);
 
 // Student (protected)
 router.get(
