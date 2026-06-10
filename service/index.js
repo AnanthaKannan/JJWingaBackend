@@ -17,6 +17,7 @@ const {
   Score,
   Notification,
   FileUpload,
+  Message,
 } = require("../models");
 const {
   buildAssignmentNotificationText,
@@ -1312,6 +1313,124 @@ const deleteProfilePic = async (user) => {
   await account.save({ validateModifiedOnly: true });
 };
 
+const getMessageUserModel = (role) => {
+  if (role === "admin") return "Admin";
+  if (role === "student") return "Student";
+  return null;
+};
+
+const addMessage = async (user, message, receivedTo) => {
+  if (typeof message !== "string" || message.trim() === "") {
+    throw new Error("message is required");
+  }
+
+  if (!receivedTo) {
+    throw new Error("receivedTo is required");
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(receivedTo)) {
+    throw new Error("Invalid receivedTo");
+  }
+
+  const sendByModel = getMessageUserModel(user?.role);
+  if (!sendByModel) {
+    throw new Error("Invalid sender");
+  }
+
+  const receivedToModel = user.role === "admin" ? "Student" : "Admin";
+
+  if (user.role === "admin") {
+    const student = await Student.findOne({
+      _id: receivedTo,
+      createdBy: user.id,
+    }).select("_id");
+
+    if (!student) {
+      throw new Error("Student not found");
+    }
+  }
+
+  if (user.role === "student") {
+    const student = await Student.findById(user.id).select("createdBy");
+
+    if (!student) {
+      throw new Error("Student not found");
+    }
+
+    if (student.createdBy.toString() !== receivedTo.toString()) {
+      throw new Error("Admin not found");
+    }
+  }
+
+  const createdMessage = await Message.create({
+    message: message.trim(),
+    sendBy: user.id,
+    sendByModel,
+    receivedTo,
+    receivedToModel,
+  });
+
+  return { message: createdMessage };
+};
+
+const getMessageList = async (user, page = 1, limit = 15, userId = null) => {
+  const userModel = getMessageUserModel(user?.role);
+  if (!userModel) {
+    throw new Error("Invalid user");
+  }
+
+  const skip = (page - 1) * limit;
+  let conversationUserId = userId;
+
+  if (
+    conversationUserId &&
+    !mongoose.Types.ObjectId.isValid(conversationUserId)
+  ) {
+    throw new Error("Invalid userId");
+  }
+
+  const currentUserFilter = {
+    $or: [
+      { sendBy: user.id, sendByModel: userModel },
+      { receivedTo: user.id, receivedToModel: userModel },
+    ],
+  };
+
+  const conversationFilter = conversationUserId
+    ? {
+        $or: [
+          { sendBy: conversationUserId },
+          { receivedTo: conversationUserId },
+        ],
+      }
+    : {};
+
+  const query = { $and: [currentUserFilter, conversationFilter] };
+
+  const [messages, total] = await Promise.all([
+    Message.find(query)
+      .populate("sendBy", "name studentId adminId profilePicPath")
+      .populate("receivedTo", "name studentId adminId profilePicPath")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+    Message.countDocuments(query),
+  ]);
+
+  return {
+    messages,
+    meta: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+      hasNextPage: page < Math.ceil(total / limit),
+      hasPrevPage: page > 1,
+    },
+  };
+};
+
 const addQuestion = async (questionData) => {
   const { questionId, level, type, questions, marks, oral } = questionData;
 
@@ -1885,6 +2004,8 @@ module.exports = {
   deleteFileUpload,
   deleteProfilePic,
   downloadFileUpload,
+  addMessage,
+  getMessageList,
   getWeeklyRankings,
   seedAdminScreenData,
   updateQuestion,

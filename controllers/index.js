@@ -25,6 +25,8 @@ const {
   deleteFileUpload,
   deleteProfilePic,
   downloadFileUpload,
+  addMessage,
+  getMessageList,
   addQuestion,
   updateQuestion,
   deleteQuestion,
@@ -1061,6 +1063,66 @@ const sendNotificationController = async (req, res) => {
   });
 };
 
+const addMessageController = async (req, res) => {
+  try {
+    const { message, receivedTo } = req.body;
+
+    const data = await addMessage(req.user, message, receivedTo);
+
+    return res.status(201).json({
+      success: true,
+      message: "Message sent successfully",
+      data: data.message,
+    });
+  } catch (error) {
+    logControllerError("addMessageController", error);
+
+    const isClientError = [
+      "message is required",
+      "receivedTo is required",
+      "Invalid receivedTo",
+      "Invalid sender",
+      "Student not found",
+      "Admin not found",
+    ].includes(error.message);
+
+    return res.status(isClientError ? 400 : 500).json({
+      success: false,
+      message: error.message || "Failed to send message",
+    });
+  }
+};
+
+const getMessagesController = async (req, res) => {
+  try {
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 15;
+    const userId = req.query.userId || req.query.studentId || null;
+
+    const result = await getMessageList(req.user, page, limit, userId);
+
+    return res.status(200).json({
+      success: true,
+      data: result.messages,
+      meta: result.meta,
+    });
+  } catch (error) {
+    logControllerError("getMessagesController", error);
+
+    const isClientError = [
+      "Invalid user",
+      "Invalid userId",
+      "Student not found",
+      "Admin not found",
+    ].includes(error.message);
+
+    return res.status(isClientError ? 400 : 500).json({
+      success: false,
+      message: error.message || "Failed to fetch messages",
+    });
+  }
+};
+
 const updateMyStudentController = async (req, res) => {
   try {
     const studentId = req.user.id; // from auth middleware
@@ -1126,6 +1188,8 @@ module.exports = {
   getNotificationsController,
   getAdminNotificationsController,
   sendNotificationController,
+  addMessageController,
+  getMessagesController,
   getRankingController,
   updateMyStudentController,
   loginUsingDeviceIdController,

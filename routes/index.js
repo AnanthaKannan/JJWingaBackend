@@ -158,6 +158,10 @@ router.post(
   controller.sendNotificationController,
 );
 
+// messages
+router.get("/messages", authenticate, controller.getMessagesController);
+router.post("/messages", authenticate, controller.addMessageController);
+
 router.patch(
   "/admin/file-uploads/:id",
   ...admin,

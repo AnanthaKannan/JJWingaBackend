@@ -6,6 +6,7 @@ const IdGen = require("./idgen");
 const Score = require("./score");
 const Notification = require("./notification");
 const FileUpload = require("./fileUpload");
+const Message = require("./message");
 
 module.exports = {
   Student,
@@ -16,4 +17,5 @@ module.exports = {
   Score,
   Notification,
   FileUpload,
+  Message,
 };
