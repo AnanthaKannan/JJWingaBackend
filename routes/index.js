@@ -93,6 +93,11 @@ router.post(
   authenticate,
   controller.assignPracticeQuestionsToSelfController,
 );
+router.delete(
+  "/student/questions/practice/assign",
+  authenticate,
+  controller.unassignPracticeQuestionsFromSelfController,
+);
 router.get(
   "/questions/practice",
   authenticate,

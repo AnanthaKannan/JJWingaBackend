@@ -380,7 +380,7 @@
  *
  * /admin/questions/assign:
  *   post:
- *     summary: Assign questions to a student
+ *     summary: Assign questions to a student or levels
  *     tags: [Questions]
  *     security:
  *       - AccessToken: []
@@ -390,10 +390,15 @@
  *         application/json:
  *           schema:
  *             type: object
- *             required: [studentId, questionIds]
  *             properties:
  *               studentId:
  *                 type: string
+ *                 description: Send either studentId or levels.
+ *               levels:
+ *                 type: array
+ *                 description: Assign to all students in these levels for the logged-in admin.
+ *                 items:
+ *                   type: number
  *               questionIds:
  *                 type: array
  *                 items:

@@ -226,8 +226,8 @@ Response:
     ],
     "skippedQuestionIds": [],
     "score": {
-        "assigned": 1,
-        "new": 1,
+        "assigned": 0,
+        "new": 0,
         "progress": 0,
         "completed": 0,
         "practiceAssigned": 1,
@@ -237,18 +237,51 @@ Response:
     }
 }
 
-## assign homework to the student
-POST {{url}}/admin/questions/assign
+## Student unassign practice questions from self
+DELETE {{url}}/student/questions/practice/assign
 Payload:
 {
+    "questionIds": ["6a172d46aec0f68a802e2857"]
+}
+
+Only assigned practice questions in `NEW` state can be unassigned. Practice questions in `PROGRESS` or `COMPLETED` state cannot be unassigned.
+
+Response:
+{
+    "success": true,
+    "message": "1 practice question(s) unassigned successfully",
+    "unassignedQuestionIds": ["6a172d46aec0f68a802e2857"],
+    "deletedCount": 1,
+    "score": {
+        "assigned": 0,
+        "new": 0,
+        "progress": 0,
+        "completed": 0,
+        "practiceAssigned": 0,
+        "practiceNew": 0,
+        "practiceProgress": 0,
+        "practiceCompleted": 0
+    }
+}
+
+## assign homework to the student
+POST {{url}}/admin/questions/assign
+Payload with a student:
+{
     "studentId":"6a1726e84273750610292d45" ,
-    "questionId": "6a172d782a3fe12b04e53ba1" 
+    "questionIds": ["6a172d782a3fe12b04e53ba1"]
+}
+
+Payload with levels:
+{
+    "levels": [1, 2],
+    "questionIds": ["6a172d782a3fe12b04e53ba1"]
 }
 
 Response:
 {
     "success": true,
-    "message": "Homework assigned successfully"
+    "message": "1 question(s) assigned successfully"
 }
 
 ## Delete question by id

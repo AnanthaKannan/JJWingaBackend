@@ -11,7 +11,9 @@ const {
   getScoreByStudentId,
   getHomeworkById,
   assignQuestion,
+  assignQuestionsByLevels,
   assignPracticeQuestionsToSelf,
+  unassignPracticeQuestionsFromSelf,
   addStudent,
   updateStudent,
   removeStudentDeviceId,
@@ -374,29 +376,40 @@ const getHomeworkByIdController = async (req, res) => {
 
 const assignQuestionController = async (req, res) => {
   try {
-    const { studentId, questionIds } = req.body;
+    const { studentId, levels, questionIds } = req.body;
+    const hasStudentId = Boolean(studentId);
+    const hasLevels = Array.isArray(levels) && levels.length > 0;
 
-    // Validate inputs
-    if (!studentId || !Array.isArray(questionIds) || questionIds.length < 1) {
+    if (hasStudentId === hasLevels) {
       return res.status(400).json({
         success: false,
-        message: "studentId and questionIds are required",
+        message: "Send either studentId or levels",
       });
     }
 
-    const data = await assignQuestion(studentId, questionIds);
+    if (!Array.isArray(questionIds) || questionIds.length < 1) {
+      return res.status(400).json({
+        success: false,
+        message: "questionIds are required",
+      });
+    }
+
+    hasStudentId
+      ? await assignQuestion(studentId, questionIds)
+      : await assignQuestionsByLevels(req.user.id, levels, questionIds);
 
     return res.status(201).json({
       success: true,
-      message: `${data.homeworks.length} question(s) assigned successfully`,
-      ...data,
+      message: `Homework question(s) assigned successfully`,
     });
   } catch (error) {
     logControllerError("assignQuestionController", error);
 
-    const isClientError = ["One or more questions not found"].includes(
-      error.message,
-    );
+    const isClientError = [
+      "One or more questions not found",
+      "levels must be a non-empty array of numbers",
+      "No students found for levels",
+    ].includes(error.message);
 
     return res.status(isClientError ? 400 : 500).json({
       success: false,
@@ -442,6 +455,48 @@ const assignPracticeQuestionsToSelfController = async (req, res) => {
       "questionIds are required",
       "Invalid questionIds",
       "One or more practice questions not found",
+    ].includes(error.message);
+
+    return res.status(isClientError ? 400 : 500).json({
+      success: false,
+      message: error.message || "Internal server error",
+    });
+  }
+};
+
+const unassignPracticeQuestionsFromSelfController = async (req, res) => {
+  try {
+    if (req.user.role !== "student") {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. Student only.",
+      });
+    }
+
+    const questionIds = normalizeQuestionIds(req.body);
+
+    if (questionIds.length < 1) {
+      return sendBadRequest(res, "questionIds are required");
+    }
+
+    const data = await unassignPracticeQuestionsFromSelf(
+      req.user.id,
+      questionIds,
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: `${data.deletedCount} practice question(s) unassigned successfully`,
+    });
+  } catch (error) {
+    logControllerError("unassignPracticeQuestionsFromSelfController", error);
+
+    const isClientError = [
+      "questionIds are required",
+      "Invalid questionIds",
+      "One or more practice questions not found",
+      "One or more practice questions are not assigned",
+      "Practice questions can only be unassigned while assigned",
     ].includes(error.message);
 
     return res.status(isClientError ? 400 : 500).json({
@@ -673,9 +728,10 @@ const deleteProfilePicController = async (req, res) => {
   } catch (error) {
     logControllerError("deleteProfilePicController", error);
 
-    const isClientError = ["User not found", "Profile picture not found"].includes(
-      error.message,
-    );
+    const isClientError = [
+      "User not found",
+      "Profile picture not found",
+    ].includes(error.message);
 
     return res.status(isClientError ? 400 : 500).json({
       success: false,
@@ -819,7 +875,8 @@ const updateQuestionController = async (req, res) => {
 
     if (
       hasField(updateData, "questions") &&
-      (!Array.isArray(updateData.questions) || updateData.questions.length === 0)
+      (!Array.isArray(updateData.questions) ||
+        updateData.questions.length === 0)
     ) {
       return sendBadRequest(res, "questions must be a non-empty array");
     }
@@ -1019,6 +1076,7 @@ module.exports = {
   deleteQuestionController,
   assignQuestionController,
   assignPracticeQuestionsToSelfController,
+  unassignPracticeQuestionsFromSelfController,
   getHomeworkListController,
   getHomeworkByIdController,
   updateHomeworkController,

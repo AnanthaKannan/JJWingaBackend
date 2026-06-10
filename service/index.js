@@ -1,9 +1,7 @@
 const admin = require("firebase-admin");
 const bcrypt = require("bcryptjs");
 const mongoose = require("mongoose");
-const sharp = require("sharp");
 
-const config = require("../config");
 const { generateToken } = require("../middleware/auth");
 const {
   buildUploadPath,
@@ -474,6 +472,72 @@ const assignQuestion = async (studentId, questionIds) => {
   return { homeworks, score };
 };
 
+const assignQuestionsByLevels = async (adminId, levels, questionIds) => {
+  const uniqueLevels = [...new Set(toArray(levels).map(Number))];
+
+  if (uniqueLevels.length === 0 || uniqueLevels.some(Number.isNaN)) {
+    throw new Error("levels must be a non-empty array of numbers");
+  }
+
+  const questions = await Question.find({
+    _id: { $in: questionIds },
+    isDeleted: { $ne: true },
+  });
+
+  if (questions.length !== questionIds.length) {
+    throw new Error("One or more questions not found");
+  }
+
+  const students = await Student.find({
+    createdBy: adminId,
+    level: { $in: uniqueLevels },
+  }).select("_id level");
+
+  if (students.length === 0) {
+    throw new Error("No students found for levels");
+  }
+
+  const homeworkDocs = students.flatMap((student) =>
+    questionIds.map((questionId) => ({
+      studentId: student._id,
+      questionId,
+      state: "NEW",
+    })),
+  );
+
+  const homeworks = await HomeWork.insertMany(homeworkDocs, { ordered: false });
+  const practiceAssignedCount = questions.filter(
+    (question) => question.type === "practice",
+  ).length;
+
+  const scoreUpdates = students.map((student) => ({
+    updateOne: {
+      filter: { studentId: student._id },
+      update: {
+        $inc: {
+          assigned: questionIds.length,
+          new: questionIds.length,
+          ...(practiceAssignedCount > 0
+            ? {
+                practiceAssigned: practiceAssignedCount,
+                practiceNew: practiceAssignedCount,
+              }
+            : {}),
+        },
+      },
+      upsert: true,
+    },
+  }));
+
+  await Score.bulkWrite(scoreUpdates);
+
+  // return {
+  //   homeworks,
+  //   studentCount: students.length,
+  //   levels: uniqueLevels,
+  // };
+};
+
 const assignPracticeQuestionsToSelf = async (studentId, questionIds) => {
   const uniqueQuestionIds = [...new Set(toArray(questionIds).map(String))];
 
@@ -528,8 +592,6 @@ const assignPracticeQuestionsToSelf = async (studentId, questionIds) => {
     { studentId },
     {
       $inc: {
-        assigned: homeworks.length,
-        new: homeworks.length,
         practiceAssigned: homeworks.length,
         practiceNew: homeworks.length,
       },
@@ -542,6 +604,77 @@ const assignPracticeQuestionsToSelf = async (studentId, questionIds) => {
     skippedQuestionIds: uniqueQuestionIds.filter((questionId) =>
       existingSet.has(questionId),
     ),
+    score,
+  };
+};
+
+const unassignPracticeQuestionsFromSelf = async (studentId, questionIds) => {
+  const uniqueQuestionIds = [...new Set(toArray(questionIds).map(String))];
+
+  if (uniqueQuestionIds.length === 0) {
+    throw new Error("questionIds are required");
+  }
+
+  if (
+    uniqueQuestionIds.some(
+      (questionId) => !mongoose.Types.ObjectId.isValid(questionId),
+    )
+  ) {
+    throw new Error("Invalid questionIds");
+  }
+
+  const questions = await Question.find({
+    _id: { $in: uniqueQuestionIds },
+    type: "practice",
+    isDeleted: { $ne: true },
+  }).select("_id");
+
+  if (questions.length !== uniqueQuestionIds.length) {
+    throw new Error("One or more practice questions not found");
+  }
+
+  const homeworks = await HomeWork.find({
+    studentId,
+    questionId: { $in: uniqueQuestionIds },
+  }).select("_id questionId state");
+
+  const assignedQuestionIds = new Set(
+    homeworks.map((homework) => homework.questionId.toString()),
+  );
+  const unassignedQuestionIds = uniqueQuestionIds.filter(
+    (questionId) => !assignedQuestionIds.has(questionId),
+  );
+
+  if (unassignedQuestionIds.length > 0) {
+    throw new Error("One or more practice questions are not assigned");
+  }
+
+  const nonNewHomeworks = homeworks.filter(
+    (homework) => homework.state !== "NEW",
+  );
+
+  if (nonNewHomeworks.length > 0) {
+    throw new Error("Practice questions can only be unassigned while assigned");
+  }
+
+  await HomeWork.deleteMany({
+    _id: { $in: homeworks.map((homework) => homework._id) },
+  });
+
+  const score = await Score.findOneAndUpdate(
+    { studentId },
+    {
+      $inc: {
+        practiceAssigned: -homeworks.length,
+        practiceNew: -homeworks.length,
+      },
+    },
+    { new: true },
+  );
+
+  return {
+    unassignedQuestionIds: uniqueQuestionIds,
+    deletedCount: homeworks.length,
     score,
   };
 };
@@ -700,10 +833,6 @@ const downloadSupabaseFile = async (filePath) => {
 };
 
 const isFileUploadType = (type) => ["practice", "celebration"].includes(type);
-const PROFILE_PIC_MAX_BYTES = config.PROFILE_PIC_MAX_BYTES;
-const PROFILE_PIC_MIME_TYPE = "image/jpeg";
-const PROFILE_PIC_EXTENSION = "jpg";
-
 const validateFileUploadRecord = (user, name, type) => {
   if (!isFileUploadType(type)) {
     return;
@@ -736,15 +865,7 @@ const isProfileUpload = (formPath) => formPath.trim() === "profile";
 
 const isImageUpload = (file) => file?.mimetype?.startsWith("image/");
 
-const toProfilePicFile = (file, buffer) => ({
-  ...file,
-  buffer,
-  size: buffer.length,
-  mimetype: PROFILE_PIC_MIME_TYPE,
-  originalname: `${file.originalname?.replace(/\.[^.]*$/, "") || "profile"}.${PROFILE_PIC_EXTENSION}`,
-});
-
-const compressProfilePic = async (file, formPath) => {
+const prepareProfilePic = (file, formPath) => {
   if (!isProfileUpload(formPath)) {
     return file;
   }
@@ -753,41 +874,7 @@ const compressProfilePic = async (file, formPath) => {
     throw new Error("profile picture must be an image");
   }
 
-  if (file.size <= PROFILE_PIC_MAX_BYTES) {
-    return file;
-  }
-
-  const metadata = await sharp(file.buffer).metadata();
-  const sourceWidth = metadata.width || 1024;
-  const widthFactors = [1, 0.85, 0.7, 0.55, 0.4, 0.3, 0.22, 0.16, 0.12];
-  const qualities = [82, 72, 62, 52, 42, 32, 24, 18, 14];
-  let smallestBuffer = null;
-
-  for (const widthFactor of widthFactors) {
-    const width = Math.max(120, Math.round(sourceWidth * widthFactor));
-
-    for (const quality of qualities) {
-      let transformer = sharp(file.buffer).rotate();
-
-      if (width < sourceWidth) {
-        transformer = transformer.resize({ width, withoutEnlargement: true });
-      }
-
-      const buffer = await transformer
-        .jpeg({ quality, mozjpeg: true })
-        .toBuffer();
-
-      if (!smallestBuffer || buffer.length < smallestBuffer.length) {
-        smallestBuffer = buffer;
-      }
-
-      if (buffer.length <= PROFILE_PIC_MAX_BYTES) {
-        return toProfilePicFile(file, buffer);
-      }
-    }
-  }
-
-  return toProfilePicFile(file, smallestBuffer);
+  return file;
 };
 
 const getFileUploadList = async (type, page = 1, limit = 15) => {
@@ -833,7 +920,7 @@ const uploadFile = async (file, user, formPath = "", name = "") => {
   const uploadType = formPath.trim();
   validateFileUploadRecord(user, name, uploadType);
 
-  const preparedFile = await compressProfilePic(file, uploadType);
+  const preparedFile = prepareProfilePic(file, uploadType);
   const { bucket, prefix } = getSupabaseStorageTarget();
 
   const supabase = getSupabaseClient();
@@ -1504,7 +1591,9 @@ module.exports = {
   getScoreByStudentId,
   getHomeworkById,
   assignQuestion,
+  assignQuestionsByLevels,
   assignPracticeQuestionsToSelf,
+  unassignPracticeQuestionsFromSelf,
   addStudent,
   updateStudent,
   removeStudentDeviceId,
