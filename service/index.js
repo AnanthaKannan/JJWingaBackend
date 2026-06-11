@@ -18,6 +18,7 @@ const {
   Notification,
   FileUpload,
   Message,
+  Registration,
 } = require("../models");
 const {
   buildAssignmentNotificationText,
@@ -506,6 +507,83 @@ const getHomeworkById = async (id) => {
   }
 
   return homework;
+};
+
+const createRegistration = async (registrationData, createdBy) => {
+  const studentName = registrationData?.studentName?.trim();
+
+  if (!studentName) {
+    throw new Error("studentName is required");
+  }
+
+  const registration = await Registration.create({
+    ...registrationData,
+    studentName,
+    createdBy,
+  });
+
+  return { registration };
+};
+
+const getRegistrationList = async (
+  adminId,
+  page = 1,
+  limit = 15,
+  search = "",
+) => {
+  const skip = (page - 1) * limit;
+  const query = {
+    createdBy: adminId,
+    ...(search
+      ? {
+          $or: [
+            { studentName: { $regex: search, $options: "i" } },
+            { fatherName: { $regex: search, $options: "i" } },
+            { motherName: { $regex: search, $options: "i" } },
+            { studentCode: { $regex: search, $options: "i" } },
+          ],
+        }
+      : {}),
+  };
+
+  const [registrations, total] = await Promise.all([
+    Registration.find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit),
+    Registration.countDocuments(query),
+  ]);
+
+  return {
+    registrations,
+    meta: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+      hasNextPage: page < Math.ceil(total / limit),
+      hasPrevPage: page > 1,
+    },
+  };
+};
+
+const deleteRegistration = async (registrationId, adminId) => {
+  if (!mongoose.Types.ObjectId.isValid(registrationId)) {
+    throw new Error("Invalid registrationId");
+  }
+
+  const registration = await Registration.findOne({
+    _id: registrationId,
+    createdBy: adminId,
+  });
+
+  if (!registration) {
+    throw new Error("Registration not found");
+  }
+
+  await registration.deleteOne();
+
+  return { registrationId };
 };
 
 const sendAssignmentNotifications = async (
@@ -2152,6 +2230,9 @@ module.exports = {
   getStudentList,
   getMessageStudentList,
   getStudentsBySameDeviceId,
+  createRegistration,
+  getRegistrationList,
+  deleteRegistration,
   getQuestionList,
   getPracticeQuestionList,
   getHomeworkList,

@@ -24,6 +24,22 @@ router.patch(
   controller.updateStudentController,
 );
 
+router.get(
+  "/admin/registrations",
+  ...admin,
+  controller.getRegistrationListController,
+);
+router.post(
+  "/admin/registrations",
+  ...admin,
+  controller.createRegistrationController,
+);
+router.delete(
+  "/admin/registrations/:id",
+  ...admin,
+  controller.deleteRegistrationController,
+);
+
 router.get("/ranking", authenticate, controller.getRankingController);
 router.patch("/student", authenticate, controller.updateMyStudentController);
 router.delete(

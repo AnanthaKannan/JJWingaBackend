@@ -7,6 +7,7 @@ const Score = require("./score");
 const Notification = require("./notification");
 const FileUpload = require("./fileUpload");
 const Message = require("./message");
+const Registration = require("./registration");
 
 module.exports = {
   Student,
@@ -18,4 +19,5 @@ module.exports = {
   Notification,
   FileUpload,
   Message,
+  Registration,
 };

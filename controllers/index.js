@@ -4,6 +4,9 @@ const {
   getStudentList,
   getMessageStudentList,
   getStudentsBySameDeviceId,
+  createRegistration,
+  getRegistrationList,
+  deleteRegistration,
   getQuestionList,
   getPracticeQuestionList,
   getHomeworkList,
@@ -1152,6 +1155,72 @@ const getMessagesController = async (req, res) => {
   }
 };
 
+const createRegistrationController = async (req, res) => {
+  try {
+    const data = await createRegistration(req.body, req.user.id);
+
+    return res.status(201).json({
+      success: true,
+      message: "Registration created successfully",
+      ...data,
+    });
+  } catch (error) {
+    logControllerError("createRegistrationController", error);
+
+    const isClientError = ["studentName is required"].includes(error.message);
+
+    return res.status(isClientError ? 400 : 500).json({
+      success: false,
+      message: error.message || "Failed to create registration",
+    });
+  }
+};
+
+const getRegistrationListController = async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 15;
+  const search = req.query.search?.trim() || "";
+
+  const data = await getRegistrationList(req.user.id, page, limit, search);
+
+  return res.status(200).json({
+    success: true,
+    message: search
+      ? `Registration search results for "${search}"`
+      : "Registration list fetched successfully",
+    ...data,
+  });
+};
+
+const deleteRegistrationController = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return sendBadRequest(res, "Registration ID is required");
+    }
+
+    await deleteRegistration(id, req.user.id);
+
+    return res.status(200).json({
+      success: true,
+      message: "Registration deleted successfully",
+    });
+  } catch (error) {
+    logControllerError("deleteRegistrationController", error);
+
+    const isClientError = [
+      "Invalid registrationId",
+      "Registration not found",
+    ].includes(error.message);
+
+    return res.status(isClientError ? 400 : 500).json({
+      success: false,
+      message: error.message || "Failed to delete registration",
+    });
+  }
+};
+
 const getUnreadMessageCountController = async (req, res) => {
   try {
     const result = await getUnreadMessageCount(req.user);
@@ -1246,6 +1315,9 @@ module.exports = {
   getStudentListController,
   getMessageStudentListController,
   getStudentsBySameDeviceIdController,
+  createRegistrationController,
+  getRegistrationListController,
+  deleteRegistrationController,
   addStudentController,
   updateStudentController,
   removeStudentDeviceIdController,
