@@ -164,6 +164,11 @@ router.get(
   ...admin,
   controller.getMessageStudentListController,
 );
+router.get(
+  "/messages/unread-count",
+  authenticate,
+  controller.getUnreadMessageCountController,
+);
 router.get("/messages", authenticate, controller.getMessagesController);
 router.post("/messages", authenticate, controller.addMessageController);
 router.patch(

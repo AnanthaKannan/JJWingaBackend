@@ -256,7 +256,7 @@ const getMessageStudentList = async (
         unreadMessages: 0,
       },
     },
-    { $sort: { name: 1 } },
+    { $sort: { unreadMessageCount: 1, name: 1 } },
   ];
 
   const [students, countResult] = await Promise.all([
@@ -1531,6 +1531,21 @@ const markMessagesAsRead = async (
   };
 };
 
+const getUnreadMessageCount = async (user) => {
+  const userModel = getMessageUserModel(user?.role);
+  if (!userModel) {
+    throw new Error("Invalid user");
+  }
+
+  const unreadCount = await Message.countDocuments({
+    receivedTo: user.id,
+    receivedToModel: userModel,
+    hasRead: { $ne: true },
+  });
+
+  return { unreadCount };
+};
+
 const getMessageList = async (user, page = 1, limit = 15, userId = null) => {
   const userModel = getMessageUserModel(user?.role);
   if (!userModel) {
@@ -2165,6 +2180,7 @@ module.exports = {
   downloadFileUpload,
   addMessage,
   getMessageList,
+  getUnreadMessageCount,
   markMessagesAsRead,
   getWeeklyRankings,
   seedAdminScreenData,

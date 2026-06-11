@@ -28,6 +28,7 @@ const {
   downloadFileUpload,
   addMessage,
   getMessageList,
+  getUnreadMessageCount,
   markMessagesAsRead,
   addQuestion,
   updateQuestion,
@@ -1151,6 +1152,27 @@ const getMessagesController = async (req, res) => {
   }
 };
 
+const getUnreadMessageCountController = async (req, res) => {
+  try {
+    const result = await getUnreadMessageCount(req.user);
+
+    return res.status(200).json({
+      success: true,
+      message: "Unread message count fetched successfully",
+      data: result,
+    });
+  } catch (error) {
+    logControllerError("getUnreadMessageCountController", error);
+
+    const isClientError = ["Invalid user"].includes(error.message);
+
+    return res.status(isClientError ? 400 : 500).json({
+      success: false,
+      message: error.message || "Failed to fetch unread message count",
+    });
+  }
+};
+
 const markMessagesAsReadController = async (req, res) => {
   try {
     const body = req.body || {};
@@ -1249,6 +1271,7 @@ module.exports = {
   sendNotificationController,
   addMessageController,
   getMessagesController,
+  getUnreadMessageCountController,
   markMessagesAsReadController,
   getRankingController,
   updateMyStudentController,
