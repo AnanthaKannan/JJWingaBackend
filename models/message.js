@@ -27,6 +27,10 @@ const messageSchema = new mongoose.Schema(
       enum: ["Admin", "Student"],
       required: true,
     },
+    hasRead: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

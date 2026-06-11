@@ -194,6 +194,91 @@ const getStudentList = async (
   };
 };
 
+const getMessageStudentList = async (
+  adminId,
+  page = 1,
+  limit = 15,
+  search = "",
+  level = null,
+) => {
+  const skip = (page - 1) * limit;
+  const adminObjectId = new mongoose.Types.ObjectId(adminId);
+
+  const matchStage = [
+    { $match: { createdBy: adminObjectId } },
+    ...(search
+      ? [{ $match: { name: { $regex: search, $options: "i" } } }]
+      : []),
+    ...(level === null ? [] : [{ $match: { level } }]),
+  ];
+
+  const pipeline = [
+    ...matchStage,
+    {
+      $lookup: {
+        from: "messages",
+        let: { studentId: "$_id" },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ["$sendBy", "$$studentId"] },
+                  { $eq: ["$sendByModel", "Student"] },
+                  { $eq: ["$receivedTo", adminObjectId] },
+                  { $eq: ["$receivedToModel", "Admin"] },
+                  { $ne: ["$hasRead", true] },
+                ],
+              },
+            },
+          },
+          { $count: "count" },
+        ],
+        as: "unreadMessages",
+      },
+    },
+    {
+      $addFields: {
+        unreadMessageCount: {
+          $ifNull: [{ $arrayElemAt: ["$unreadMessages.count", 0] }, 0],
+        },
+      },
+    },
+    {
+      $project: {
+        password: 0,
+        deviceIds: 0,
+        fcmTokens: 0,
+        createdBy: 0,
+        createdAt: 0,
+        updatedAt: 0,
+        __v: 0,
+        unreadMessages: 0,
+      },
+    },
+    { $sort: { name: 1 } },
+  ];
+
+  const [students, countResult] = await Promise.all([
+    Student.aggregate([...pipeline, { $skip: skip }, { $limit: limit }]),
+    Student.aggregate([...matchStage, { $count: "total" }]),
+  ]);
+
+  const total = countResult[0]?.total || 0;
+
+  return {
+    students,
+    meta: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+      hasNextPage: page < Math.ceil(total / limit),
+      hasPrevPage: page > 1,
+    },
+  };
+};
+
 const getStudentsBySameDeviceId = async (deviceIds) => {
   if (!deviceIds || deviceIds.length === 0) {
     throw new Error("Device ID is not assigned for this student");
@@ -1370,7 +1455,80 @@ const addMessage = async (user, message, receivedTo) => {
     receivedToModel,
   });
 
+  await sendMessageNotification(createdMessage);
+
   return { message: createdMessage };
+};
+
+const getMessageReceiver = async (createdMessage) => {
+  const model = createdMessage.receivedToModel === "Admin" ? Admin : Student;
+
+  return model
+    .findById(createdMessage.receivedTo)
+    .select("fcmTokens")
+    .lean();
+};
+
+const sendMessageNotification = async (createdMessage) => {
+  const receiver = await getMessageReceiver(createdMessage);
+
+  await sendPushNotification(
+    receiver?.fcmTokens?.[0],
+    "New message",
+    createdMessage.message,
+  );
+};
+
+const markMessagesAsRead = async (
+  user,
+  conversationUserId = null,
+  messageIds = [],
+) => {
+  const userModel = getMessageUserModel(user?.role);
+  if (!userModel) {
+    throw new Error("Invalid user");
+  }
+
+  if (
+    conversationUserId &&
+    !mongoose.Types.ObjectId.isValid(conversationUserId)
+  ) {
+    throw new Error("Invalid userId");
+  }
+
+  if (!Array.isArray(messageIds)) {
+    throw new Error("messageIds must be an array");
+  }
+
+  if (
+    messageIds.length > 0 &&
+    messageIds.some((id) => !mongoose.Types.ObjectId.isValid(id))
+  ) {
+    throw new Error("Invalid messageIds");
+  }
+
+  const filter = {
+    receivedTo: user.id,
+    receivedToModel: userModel,
+    hasRead: { $ne: true },
+    ...(conversationUserId
+      ? {
+          sendBy: conversationUserId,
+        }
+      : {}),
+    ...(messageIds.length > 0
+      ? {
+          _id: { $in: messageIds },
+        }
+      : {}),
+  };
+
+  const result = await Message.updateMany(filter, { $set: { hasRead: true } });
+
+  return {
+    matchedCount: result.matchedCount,
+    modifiedCount: result.modifiedCount,
+  };
 };
 
 const getMessageList = async (user, page = 1, limit = 15, userId = null) => {
@@ -1977,6 +2135,7 @@ module.exports = {
   login,
   loginUsingDeviceId,
   getStudentList,
+  getMessageStudentList,
   getStudentsBySameDeviceId,
   getQuestionList,
   getPracticeQuestionList,
@@ -2006,6 +2165,7 @@ module.exports = {
   downloadFileUpload,
   addMessage,
   getMessageList,
+  markMessagesAsRead,
   getWeeklyRankings,
   seedAdminScreenData,
   updateQuestion,

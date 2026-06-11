@@ -2,6 +2,7 @@ const {
   login,
   loginUsingDeviceId,
   getStudentList,
+  getMessageStudentList,
   getStudentsBySameDeviceId,
   getQuestionList,
   getPracticeQuestionList,
@@ -27,6 +28,7 @@ const {
   downloadFileUpload,
   addMessage,
   getMessageList,
+  markMessagesAsRead,
   addQuestion,
   updateQuestion,
   deleteQuestion,
@@ -123,6 +125,32 @@ const getStudentListController = async (req, res) => {
     message: search
       ? `Search results for "${search}"`
       : "Student list fetched successfully",
+    ...data,
+  });
+};
+
+const getMessageStudentListController = async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 15;
+  const search = req.query.search?.trim() || "";
+  const { level } = req.query;
+
+  const levelErrorResponse = sendOptionalStudentLevelError(res, level);
+  if (levelErrorResponse) return levelErrorResponse;
+
+  const data = await getMessageStudentList(
+    req.user.id,
+    page,
+    limit,
+    search,
+    level === undefined ? null : Number(level),
+  );
+
+  return res.status(200).json({
+    success: true,
+    message: search
+      ? `Message student search results for "${search}"`
+      : "Message student list fetched successfully",
     ...data,
   });
 };
@@ -1123,6 +1151,36 @@ const getMessagesController = async (req, res) => {
   }
 };
 
+const markMessagesAsReadController = async (req, res) => {
+  try {
+    const body = req.body || {};
+    const userId = body.userId || body.studentId || null;
+    const messageIds = body.messageIds || [];
+
+    const result = await markMessagesAsRead(req.user, userId, messageIds);
+
+    return res.status(200).json({
+      success: true,
+      message: "Messages marked as read",
+      ...result,
+    });
+  } catch (error) {
+    logControllerError("markMessagesAsReadController", error);
+
+    const isClientError = [
+      "Invalid user",
+      "Invalid userId",
+      "messageIds must be an array",
+      "Invalid messageIds",
+    ].includes(error.message);
+
+    return res.status(isClientError ? 400 : 500).json({
+      success: false,
+      message: error.message || "Failed to update messages",
+    });
+  }
+};
+
 const updateMyStudentController = async (req, res) => {
   try {
     const studentId = req.user.id; // from auth middleware
@@ -1164,6 +1222,7 @@ const updateMyStudentController = async (req, res) => {
 
 module.exports = {
   getStudentListController,
+  getMessageStudentListController,
   getStudentsBySameDeviceIdController,
   addStudentController,
   updateStudentController,
@@ -1190,6 +1249,7 @@ module.exports = {
   sendNotificationController,
   addMessageController,
   getMessagesController,
+  markMessagesAsReadController,
   getRankingController,
   updateMyStudentController,
   loginUsingDeviceIdController,

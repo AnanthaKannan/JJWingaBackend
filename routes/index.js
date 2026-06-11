@@ -159,8 +159,18 @@ router.post(
 );
 
 // messages
+router.get(
+  "/admin/messages/students",
+  ...admin,
+  controller.getMessageStudentListController,
+);
 router.get("/messages", authenticate, controller.getMessagesController);
 router.post("/messages", authenticate, controller.addMessageController);
+router.patch(
+  "/messages/read",
+  authenticate,
+  controller.markMessagesAsReadController,
+);
 
 router.patch(
   "/admin/file-uploads/:id",
