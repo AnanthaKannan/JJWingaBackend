@@ -101,7 +101,7 @@ Response
     "practiceTimeTaken": 0
 }
 
-## Get weekly ranking
+## Get monthly ranking
 GET {{url}}/ranking
 GET {{url}}/ranking?level=2
 

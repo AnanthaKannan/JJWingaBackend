@@ -281,7 +281,7 @@
  *
  * /ranking:
  *   get:
- *     summary: Weekly ranking scoped by related admin
+ *     summary: Monthly ranking scoped by related admin
  *     tags: [Ranking]
  *     security:
  *       - AccessToken: []

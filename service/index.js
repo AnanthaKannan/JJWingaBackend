@@ -20,9 +20,7 @@ const {
   Message,
   Registration,
 } = require("../models");
-const {
-  buildAssignmentNotificationText,
-} = require("../config/notifications");
+const { buildAssignmentNotificationText } = require("../config/notifications");
 
 if (!admin.apps.length) {
   admin.initializeApp({
@@ -547,10 +545,7 @@ const getRegistrationList = async (
   };
 
   const [registrations, total] = await Promise.all([
-    Registration.find(query)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit),
+    Registration.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit),
     Registration.countDocuments(query),
   ]);
 
@@ -1541,10 +1536,7 @@ const addMessage = async (user, message, receivedTo) => {
 const getMessageReceiver = async (createdMessage) => {
   const model = createdMessage.receivedToModel === "Admin" ? Admin : Student;
 
-  return model
-    .findById(createdMessage.receivedTo)
-    .select("fcmTokens")
-    .lean();
+  return model.findById(createdMessage.receivedTo).select("fcmTokens").lean();
 };
 
 const sendMessageNotification = async (createdMessage) => {
@@ -1747,6 +1739,33 @@ const deleteQuestion = async (questionObjectId) => {
   return { deleteType: "hard" };
 };
 
+const COMPLETION_NOTIFICATION_TEXT = {
+  homework: {
+    label: "homework",
+    messageHeader: "Homework completed",
+  },
+  exam: {
+    label: "exam",
+    messageHeader: "Exam completed",
+  },
+  practice: {
+    label: "practice",
+    messageHeader: "Practice completed",
+  },
+};
+
+const buildCompletionNotificationText = (studentName, question) => {
+  const typeText =
+    COMPLETION_NOTIFICATION_TEXT[question?.type] ||
+    COMPLETION_NOTIFICATION_TEXT.homework;
+  const questionText = question?.questionId ? ` - ${question.questionId}` : "";
+
+  return {
+    messageHeader: typeText.messageHeader,
+    messageBody: `${studentName} has completed ${typeText.label}${questionText}.`,
+  };
+};
+
 const createHomeworkCompletedNotification = async (homework) => {
   const student = await Student.findById(homework.studentId).select(
     "studentId name createdBy",
@@ -1759,17 +1778,19 @@ const createHomeworkCompletedNotification = async (homework) => {
   const adminDetail = await Admin.findById(student.createdBy).select(
     "fcmTokens",
   );
-  const question = await Question.findById(homework.questionId).select(
-    "questionId",
+  const question = await Question.findById(homework.questionId)
+    .select("questionId type")
+    .lean();
+  const completionMessage = buildCompletionNotificationText(
+    student.name,
+    question,
   );
-  const homeworkName = question?.questionId;
 
   const notification = await Notification.create({
     adminId: student.createdBy,
     sentBy: student._id,
     sentByModel: "Student",
-    messageHeader: "Homework completed",
-    messageBody: `${student.name} has completed homework - ${homeworkName}.`,
+    ...completionMessage,
   });
 
   await sendPushNotification(
@@ -1994,7 +2015,7 @@ const resolveStudentRankingLevel = (student) => {
   return null;
 };
 
-const resolveWeeklyRankingScope = async (level, user) => {
+const resolveMonthlyRankingScope = async (level, user) => {
   const scope = {
     level,
     adminId: null,
@@ -2022,9 +2043,10 @@ const resolveWeeklyRankingScope = async (level, user) => {
 
 const getWeeklyRankings = async (level = null, user = null) => {
   const { level: rankingLevel, adminId: rankingAdminId } =
-    await resolveWeeklyRankingScope(level, user);
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    await resolveMonthlyRankingScope(level, user);
+  const monthStart = new Date();
+  monthStart.setDate(1);
+  monthStart.setHours(0, 0, 0, 0);
 
   const studentAdminFilter = rankingAdminId
     ? [
@@ -2048,11 +2070,11 @@ const getWeeklyRankings = async (level = null, user = null) => {
         ];
 
   const rankings = await HomeWork.aggregate([
-    // Step 1: Filter only COMPLETED homework from last 7 days
+    // Step 1: Filter only COMPLETED homework from the current month
     {
       $match: {
         state: "COMPLETED",
-        updatedAt: { $gte: sevenDaysAgo },
+        updatedAt: { $gte: monthStart },
       },
     },
 
