@@ -664,10 +664,16 @@ const getAssignedQuestionIdsByStudent = async (studentIds, questionIds) => {
   }, new Map());
 };
 
-const getPracticeAssignedCount = (questionIds, questionMap) =>
-  questionIds.filter(
-    (questionId) => questionMap.get(questionId.toString())?.type === "practice",
-  ).length;
+const getAssignmentScoreIncrement = (questionIds, questionMap) =>
+  questionIds.reduce((scoreInc, questionId) => {
+    const isPractice =
+      questionMap.get(questionId.toString())?.type === "practice";
+
+    addScoreIncrement(scoreInc, "assigned", 1, isPractice);
+    addScoreIncrement(scoreInc, "new", 1, isPractice);
+
+    return scoreInc;
+  }, {});
 
 const getAssignmentQuestionDetails = (questionIds, questionMap) =>
   questionIds
@@ -717,24 +723,11 @@ const assignQuestion = async (adminId, studentId, questionIds) => {
   }));
 
   const homeworks = await HomeWork.insertMany(homeworkDocs, { ordered: false });
-  const practiceAssignedCount = getPracticeAssignedCount(
-    questionIdsToAssign,
-    questionMap,
-  );
 
   await Score.findOneAndUpdate(
     { studentId },
     {
-      $inc: {
-        assigned: homeworks.length,
-        new: homeworks.length,
-        ...(practiceAssignedCount > 0
-          ? {
-              practiceAssigned: practiceAssignedCount,
-              practiceNew: practiceAssignedCount,
-            }
-          : {}),
-      },
+      $inc: getAssignmentScoreIncrement(questionIdsToAssign, questionMap),
     },
     { new: true, upsert: true },
   );
@@ -852,25 +845,11 @@ const assignQuestionsByLevels = async (adminId, levels, questionIds) => {
 
   const scoreUpdates = Object.entries(assignmentsByStudent).map(
     ([studentId, assignedQuestionIds]) => {
-      const practiceAssignedCount = getPracticeAssignedCount(
-        assignedQuestionIds,
-        questionMap,
-      );
-
       return {
         updateOne: {
           filter: { studentId },
           update: {
-            $inc: {
-              assigned: assignedQuestionIds.length,
-              new: assignedQuestionIds.length,
-              ...(practiceAssignedCount > 0
-                ? {
-                    practiceAssigned: practiceAssignedCount,
-                    practiceNew: practiceAssignedCount,
-                  }
-                : {}),
-            },
+            $inc: getAssignmentScoreIncrement(assignedQuestionIds, questionMap),
           },
           upsert: true,
         },
@@ -1807,12 +1786,11 @@ const addScoreIncrement = (scoreInc, field, value, isPractice) => {
     return;
   }
 
-  scoreInc[field] = (scoreInc[field] ?? 0) + value;
+  const scoreField = isPractice
+    ? `practice${field[0].toUpperCase()}${field.slice(1)}`
+    : field;
 
-  if (isPractice) {
-    const practiceField = `practice${field[0].toUpperCase()}${field.slice(1)}`;
-    scoreInc[practiceField] = (scoreInc[practiceField] ?? 0) + value;
-  }
+  scoreInc[scoreField] = (scoreInc[scoreField] ?? 0) + value;
 };
 
 const getCompletionStats = (results = [], timer = 0) => ({

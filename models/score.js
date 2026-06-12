@@ -8,30 +8,37 @@ const scoreSchema = new mongoose.Schema(
       required: [true, "Student reference is required"],
     },
     assigned: {
+      // homeworkAssigned
       type: Number,
       default: 0,
     },
     new: {
+      // homeworkNew
       type: Number,
       default: 0,
     },
     progress: {
+      // homeworkProgress
       type: Number,
       default: 0,
     },
     completed: {
+      // homeworkCompleted
       type: Number,
       default: 0,
     },
     correct: {
+      // homeworkCorrect
       type: Number,
       default: 0,
     },
     wrong: {
+      // homeworkWrong
       type: Number,
       default: 0,
     },
     timeTaken: {
+      // homeworkTimeTaken
       type: Number,
       default: 0,
     },
