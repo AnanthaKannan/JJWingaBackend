@@ -2,18 +2,37 @@ const {
   login,
   loginUsingDeviceId,
   getStudentList,
+  getMessageStudentList,
   getStudentsBySameDeviceId,
+  createRegistration,
+  getRegistrationList,
+  deleteRegistration,
   getQuestionList,
+  getPracticeQuestionList,
   getHomeworkList,
   getAvailableQuestionsForStudent,
   updateHomework,
   getScoreByStudentId,
   getHomeworkById,
   assignQuestion,
+  unassignQuestion,
+  assignQuestionsByLevels,
+  assignPracticeQuestionsToSelf,
+  unassignPracticeQuestionsFromSelf,
   addStudent,
   updateStudent,
   removeStudentDeviceId,
   updateFcmToken,
+  uploadFile,
+  getFileUploadList,
+  updateFileUploadName,
+  deleteFileUpload,
+  deleteProfilePic,
+  downloadFileUpload,
+  addMessage,
+  getMessageList,
+  getUnreadMessageCount,
+  markMessagesAsRead,
   addQuestion,
   updateQuestion,
   deleteQuestion,
@@ -21,6 +40,12 @@ const {
   getNotificationList,
   getWeeklyRankings,
 } = require("../service");
+const {
+  hasField,
+  sendOptionalStudentLevelError,
+  validateQuestionType,
+  validateStudentLevel,
+} = require("../utils/validation");
 
 const loginController = async (req, res) => {
   try {
@@ -86,14 +111,50 @@ const getStudentListController = async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 15;
   const search = req.query.search?.trim() || "";
+  const { level } = req.query;
 
-  const data = await getStudentList(req.user.id, page, limit, search);
+  const levelErrorResponse = sendOptionalStudentLevelError(res, level);
+  if (levelErrorResponse) return levelErrorResponse;
+
+  const data = await getStudentList(
+    req.user.id,
+    page,
+    limit,
+    search,
+    level === undefined ? null : Number(level),
+  );
 
   return res.status(200).json({
     success: true,
     message: search
       ? `Search results for "${search}"`
       : "Student list fetched successfully",
+    ...data,
+  });
+};
+
+const getMessageStudentListController = async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 15;
+  const search = req.query.search?.trim() || "";
+  const { level } = req.query;
+
+  const levelErrorResponse = sendOptionalStudentLevelError(res, level);
+  if (levelErrorResponse) return levelErrorResponse;
+
+  const data = await getMessageStudentList(
+    req.user.id,
+    page,
+    limit,
+    search,
+    level === undefined ? null : Number(level),
+  );
+
+  return res.status(200).json({
+    success: true,
+    message: search
+      ? `Message student search results for "${search}"`
+      : "Message student list fetched successfully",
     ...data,
   });
 };
@@ -125,15 +186,8 @@ const getStudentsBySameDeviceIdController = async (req, res) => {
 const getRankingController = async (req, res) => {
   const { level } = req.query;
 
-  if (
-    level !== undefined &&
-    (String(level).trim() === "" || Number.isNaN(Number(level)))
-  ) {
-    return res.status(400).json({
-      success: false,
-      message: "level must be a number",
-    });
-  }
+  const levelErrorResponse = sendOptionalStudentLevelError(res, level);
+  if (levelErrorResponse) return levelErrorResponse;
 
   const rankingLevel = level === undefined ? null : Number(level);
   const data = await getWeeklyRankings(rankingLevel, req.user);
@@ -148,28 +202,32 @@ const getRankingController = async (req, res) => {
   });
 };
 
-const hasField = (data, field) =>
-  Object.prototype.hasOwnProperty.call(data, field);
-
-const isMissingRequiredValue = (value) =>
-  value === undefined ||
-  value === null ||
-  (typeof value === "string" && value.trim() === "");
-
-const validateStudentLevel = (level) => {
-  if (isMissingRequiredValue(level)) {
-    return "level is required";
-  }
-
-  if (Number.isNaN(Number(level))) {
-    return "level must be a number";
-  }
-
-  return null;
-};
-
 const logControllerError = (context, error) => {
   console.error(`[${context}]`, error);
+};
+
+const sendBadRequest = (res, message) =>
+  res.status(400).json({
+    success: false,
+    message,
+  });
+
+const sendQuestionTypeError = (res, type, isRequired = true) => {
+  const typeError = validateQuestionType(type, isRequired);
+  return typeError ? sendBadRequest(res, typeError) : null;
+};
+
+const sendStudentLevelError = (res, level) => {
+  const levelError = validateStudentLevel(level);
+  return levelError ? sendBadRequest(res, levelError) : null;
+};
+
+const sendBooleanFieldError = (res, field, value) => {
+  if (value === undefined || typeof value === "boolean") {
+    return null;
+  }
+
+  return sendBadRequest(res, `${field} must be a boolean`);
 };
 
 const getQuestionListController = async (req, res) => {
@@ -177,22 +235,20 @@ const getQuestionListController = async (req, res) => {
   const limit = parseInt(req.query.limit) || 15;
   const search = req.query.search?.trim() || "";
   const { level } = req.query;
+  const type = req.query.type?.trim();
 
-  if (
-    level !== undefined &&
-    (String(level).trim() === "" || Number.isNaN(Number(level)))
-  ) {
-    return res.status(400).json({
-      success: false,
-      message: "level must be a number",
-    });
-  }
+  const levelErrorResponse = sendOptionalStudentLevelError(res, level);
+  if (levelErrorResponse) return levelErrorResponse;
+
+  const typeErrorResponse = sendQuestionTypeError(res, type, false);
+  if (typeErrorResponse) return typeErrorResponse;
 
   const data = await getQuestionList(
     page,
     limit,
     search,
     level === undefined ? null : Number(level),
+    type || null,
   );
 
   return res.status(200).json({
@@ -204,42 +260,66 @@ const getQuestionListController = async (req, res) => {
   });
 };
 
+const getPracticeQuestionListController = async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 15;
+  const search = req.query.search?.trim() || "";
+  const { level } = req.query;
+
+  const levelErrorResponse = sendOptionalStudentLevelError(res, level);
+  if (levelErrorResponse) return levelErrorResponse;
+
+  const data = await getPracticeQuestionList(
+    page,
+    limit,
+    search,
+    level === undefined ? null : Number(level),
+    req.user.role === "student" ? req.user.id : null,
+  );
+
+  return res.status(200).json({
+    success: true,
+    message: search
+      ? `Practice questions matching "${search}"`
+      : "Practice questions fetched successfully",
+    ...data,
+  });
+};
+
 const getHomeworkListController = async (req, res) => {
   const { studentId, state } = req.params;
   const { page, limit, sortBy, sortOrder } = req.query;
+  const type = req.query.type?.trim();
 
   if (!studentId) {
-    return res.status(400).json({
-      success: false,
-      message: "Student ID is required",
-    });
+    return sendBadRequest(res, "Student ID is required");
   }
 
   // Validate state if provided
   const validStates = ["NEW", "PROGRESS", "COMPLETED"];
   if (state && !validStates.includes(state.toUpperCase())) {
-    return res.status(400).json({
-      success: false,
-      message: `Invalid state. Must be one of: ${validStates.join(", ")}`,
-    });
+    return sendBadRequest(
+      res,
+      `Invalid state. Must be one of: ${validStates.join(", ")}`,
+    );
   }
 
   const validSortFields = ["createdAt", "updatedAt"];
   if (sortBy && !validSortFields.includes(sortBy)) {
-    return res.status(400).json({
-      success: false,
-      message: `Invalid sortBy. Must be one of: ${validSortFields.join(", ")}`,
-    });
+    return sendBadRequest(
+      res,
+      `Invalid sortBy. Must be one of: ${validSortFields.join(", ")}`,
+    );
   }
 
   const normalizedSortOrder = sortOrder?.toLowerCase();
   const validSortOrders = ["asc", "desc"];
   if (normalizedSortOrder && !validSortOrders.includes(normalizedSortOrder)) {
-    return res.status(400).json({
-      success: false,
-      message: "Invalid sortOrder. Must be asc or desc",
-    });
+    return sendBadRequest(res, "Invalid sortOrder. Must be asc or desc");
   }
+
+  const typeErrorResponse = sendQuestionTypeError(res, type, false);
+  if (typeErrorResponse) return typeErrorResponse;
 
   const data = await getHomeworkList(
     studentId,
@@ -248,6 +328,7 @@ const getHomeworkListController = async (req, res) => {
     parseInt(limit) || 15,
     sortBy,
     normalizedSortOrder,
+    type || null,
   );
 
   return res.status(200).json({
@@ -260,23 +341,17 @@ const getHomeworkListController = async (req, res) => {
 const getAvailableQuestionsForStudentController = async (req, res) => {
   const { studentId } = req.params;
   const { page, limit, search, level } = req.query;
+  const type = req.query.type?.trim();
 
   if (!studentId) {
-    return res.status(400).json({
-      success: false,
-      message: "Student ID is required",
-    });
+    return sendBadRequest(res, "Student ID is required");
   }
 
-  if (
-    level !== undefined &&
-    (String(level).trim() === "" || Number.isNaN(Number(level)))
-  ) {
-    return res.status(400).json({
-      success: false,
-      message: "level must be a number",
-    });
-  }
+  const levelErrorResponse = sendOptionalStudentLevelError(res, level);
+  if (levelErrorResponse) return levelErrorResponse;
+
+  const typeErrorResponse = sendQuestionTypeError(res, type, false);
+  if (typeErrorResponse) return typeErrorResponse;
 
   const data = await getAvailableQuestionsForStudent(
     studentId,
@@ -284,6 +359,7 @@ const getAvailableQuestionsForStudentController = async (req, res) => {
     parseInt(limit) || 15,
     search?.trim() || "",
     level === undefined ? null : Number(level),
+    type || null,
   );
 
   return res.status(200).json({
@@ -335,29 +411,165 @@ const getHomeworkByIdController = async (req, res) => {
 
 const assignQuestionController = async (req, res) => {
   try {
-    const { studentId, questionIds } = req.body;
+    const { studentId, levels, questionIds } = req.body;
+    const hasStudentId = Boolean(studentId);
+    const hasLevels = Array.isArray(levels) && levels.length > 0;
 
-    // Validate inputs
-    if (!studentId || !Array.isArray(questionIds) || questionIds.length < 1) {
+    if (hasStudentId === hasLevels) {
       return res.status(400).json({
         success: false,
-        message: "studentId and questionIds are required",
+        message: "Send either studentId or levels",
       });
     }
 
-    const data = await assignQuestion(studentId, questionIds);
+    if (!Array.isArray(questionIds) || questionIds.length < 1) {
+      return res.status(400).json({
+        success: false,
+        message: "questionIds are required",
+      });
+    }
+
+    const data = hasStudentId
+      ? await assignQuestion(req.user.id, studentId, questionIds)
+      : await assignQuestionsByLevels(req.user.id, levels, questionIds);
 
     return res.status(201).json({
       success: true,
-      message: `${data.homeworks.length} question(s) assigned successfully`,
+      message: `Homework question(s) assigned successfully`,
       ...data,
     });
   } catch (error) {
     logControllerError("assignQuestionController", error);
 
-    const isClientError = ["One or more questions not found"].includes(
-      error.message,
+    const isClientError = [
+      "One or more questions not found",
+      "levels must be a non-empty array of numbers",
+      "No students found for levels",
+    ].includes(error.message);
+
+    return res.status(isClientError ? 400 : 500).json({
+      success: false,
+      message: error.message || "Internal server error",
+    });
+  }
+};
+
+const unassignQuestionController = async (req, res) => {
+  try {
+    const { studentId, questionIds } = req.body;
+
+    if (!studentId) {
+      return sendBadRequest(res, "studentId is required");
+    }
+
+    if (!Array.isArray(questionIds) || questionIds.length < 1) {
+      return sendBadRequest(res, "questionIds are required");
+    }
+
+    const data = await unassignQuestion(studentId, questionIds);
+
+    return res.status(200).json({
+      success: true,
+      message: `${data.deletedCount} homework question(s) unassigned successfully`,
+      ...data,
+    });
+  } catch (error) {
+    logControllerError("unassignQuestionController", error);
+
+    const isClientError = [
+      "studentId is required",
+      "questionIds are required",
+      "Invalid studentId or questionIds",
+      "One or more questions are not assigned",
+    ].includes(error.message);
+
+    return res.status(isClientError ? 400 : 500).json({
+      success: false,
+      message: error.message || "Internal server error",
+    });
+  }
+};
+
+const normalizeQuestionIds = (body) => {
+  if (Array.isArray(body.questionIds)) {
+    return body.questionIds;
+  }
+
+  return body.questionId ? [body.questionId] : [];
+};
+
+const assignPracticeQuestionsToSelfController = async (req, res) => {
+  try {
+    if (req.user.role !== "student") {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. Student only.",
+      });
+    }
+
+    const questionIds = normalizeQuestionIds(req.body);
+
+    if (questionIds.length < 1) {
+      return sendBadRequest(res, "questionIds are required");
+    }
+
+    const data = await assignPracticeQuestionsToSelf(req.user.id, questionIds);
+
+    return res.status(201).json({
+      success: true,
+      message: `${data.homeworks.length} practice question(s) assigned successfully`,
+      ...data,
+    });
+  } catch (error) {
+    logControllerError("assignPracticeQuestionsToSelfController", error);
+
+    const isClientError = [
+      "questionIds are required",
+      "Invalid questionIds",
+      "One or more practice questions not found",
+    ].includes(error.message);
+
+    return res.status(isClientError ? 400 : 500).json({
+      success: false,
+      message: error.message || "Internal server error",
+    });
+  }
+};
+
+const unassignPracticeQuestionsFromSelfController = async (req, res) => {
+  try {
+    if (req.user.role !== "student") {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. Student only.",
+      });
+    }
+
+    const questionIds = normalizeQuestionIds(req.body);
+
+    if (questionIds.length < 1) {
+      return sendBadRequest(res, "questionIds are required");
+    }
+
+    const data = await unassignPracticeQuestionsFromSelf(
+      req.user.id,
+      questionIds,
     );
+
+    return res.status(200).json({
+      success: true,
+      message: `${data.deletedCount} practice question(s) unassigned successfully`,
+    });
+  } catch (error) {
+    logControllerError("unassignPracticeQuestionsFromSelfController", error);
+
+    const isClientError = [
+      "questionIds are required",
+      "Invalid questionIds",
+      "One or more practice questions not found",
+      "One or more practice questions are not assigned",
+      "Practice questions can only be unassigned while assigned",
+    ].includes(error.message);
 
     return res.status(isClientError ? 400 : 500).json({
       success: false,
@@ -370,19 +582,11 @@ const addStudentController = async (req, res) => {
   const { name, level } = req.body;
 
   if (!name) {
-    return res.status(400).json({
-      success: false,
-      message: "name is required",
-    });
+    return sendBadRequest(res, "name is required");
   }
 
-  const levelError = validateStudentLevel(level);
-  if (levelError) {
-    return res.status(400).json({
-      success: false,
-      message: levelError,
-    });
-  }
+  const levelErrorResponse = sendStudentLevelError(res, level);
+  if (levelErrorResponse) return levelErrorResponse;
 
   await addStudent({ name, level: Number(level), createdBy: req.user.id });
 
@@ -397,27 +601,16 @@ const updateStudentController = async (req, res) => {
   const updateData = req.body;
 
   if (!id) {
-    return res.status(400).json({
-      success: false,
-      message: "Student ID is required",
-    });
+    return sendBadRequest(res, "Student ID is required");
   }
 
   if (!updateData || Object.keys(updateData).length === 0) {
-    return res.status(400).json({
-      success: false,
-      message: "No update data provided",
-    });
+    return sendBadRequest(res, "No update data provided");
   }
 
   if (hasField(updateData, "level")) {
-    const levelError = validateStudentLevel(updateData.level);
-    if (levelError) {
-      return res.status(400).json({
-        success: false,
-        message: levelError,
-      });
-    }
+    const levelErrorResponse = sendStudentLevelError(res, updateData.level);
+    if (levelErrorResponse) return levelErrorResponse;
 
     updateData.level = Number(updateData.level);
   }
@@ -447,6 +640,176 @@ const updateStudentFcmTokenController = async (req, res) => {
     success: true,
     message: "FCM token updated successfully",
   });
+};
+
+const uploadFileController = async (req, res) => {
+  try {
+    const file = await uploadFile(
+      req.file,
+      req.user,
+      req.body?.path,
+      req.body?.name,
+    );
+
+    return res.status(201).json({
+      success: true,
+      message: "File uploaded successfully",
+      file,
+    });
+  } catch (error) {
+    logControllerError("uploadFileController", error);
+
+    const isClientError = [
+      "file is required",
+      "path is required",
+      "name is required",
+      "profile picture must be an image",
+    ].includes(error.message);
+    const isForbiddenError = [
+      "Only admin can upload practice or celebration files",
+    ].includes(error.message);
+
+    return res.status(isForbiddenError ? 403 : isClientError ? 400 : 500).json({
+      success: false,
+      message: error.message || "Failed to upload file",
+    });
+  }
+};
+
+const getFileUploadListController = async (req, res) => {
+  try {
+    const type = req.query.type?.trim();
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 15;
+
+    const data = await getFileUploadList(type, page, limit);
+
+    return res.status(200).json({
+      success: true,
+      message: "File upload list fetched successfully",
+      ...data,
+    });
+  } catch (error) {
+    logControllerError("getFileUploadListController", error);
+
+    const isClientError = [
+      "type must be one of: practice, celebration",
+    ].includes(error.message);
+
+    return res.status(isClientError ? 400 : 500).json({
+      success: false,
+      message: error.message || "Failed to fetch file uploads",
+    });
+  }
+};
+
+const sendDownloadResponse = (res, file) => {
+  const downloadName = String(file.downloadName || file.fileName || "download")
+    .replace(/[\r\n"]/g, "")
+    .trim();
+
+  res.setHeader("Content-Type", file.contentType);
+  res.setHeader(
+    "Content-Disposition",
+    `attachment; filename="${downloadName || "download"}"`,
+  );
+  return res.status(200).send(file.buffer);
+};
+
+const updateFileUploadNameController = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name } = req.body;
+
+    await updateFileUploadName(id, name);
+
+    return res.status(200).json({
+      success: true,
+      message: "File upload name updated successfully",
+    });
+  } catch (error) {
+    logControllerError("updateFileUploadNameController", error);
+
+    const isClientError = [
+      "fileUploadId is required",
+      "name is required",
+      "File upload not found",
+    ].includes(error.message);
+
+    return res.status(isClientError ? 400 : 500).json({
+      success: false,
+      message: error.message || "Failed to update file upload",
+    });
+  }
+};
+
+const downloadFileUploadController = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const file = await downloadFileUpload(id);
+
+    return sendDownloadResponse(res, file);
+  } catch (error) {
+    logControllerError("downloadFileUploadController", error);
+
+    const isClientError = [
+      "fileUploadId is required",
+      "File upload not found",
+    ].includes(error.message);
+
+    return res.status(isClientError ? 400 : 500).json({
+      success: false,
+      message: error.message || "Failed to download file upload",
+    });
+  }
+};
+
+const deleteFileUploadController = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    await deleteFileUpload(id);
+
+    return res.status(200).json({
+      success: true,
+      message: "File upload deleted successfully",
+    });
+  } catch (error) {
+    logControllerError("deleteFileUploadController", error);
+
+    const isClientError = [
+      "fileUploadId is required",
+      "File upload not found",
+    ].includes(error.message);
+
+    return res.status(isClientError ? 400 : 500).json({
+      success: false,
+      message: error.message || "Failed to delete file upload",
+    });
+  }
+};
+
+const deleteProfilePicController = async (req, res) => {
+  try {
+    await deleteProfilePic(req.user);
+
+    return res.status(200).json({
+      success: true,
+      message: "Profile picture deleted successfully",
+    });
+  } catch (error) {
+    logControllerError("deleteProfilePicController", error);
+
+    const isClientError = [
+      "User not found",
+      "Profile picture not found",
+    ].includes(error.message);
+
+    return res.status(isClientError ? 400 : 500).json({
+      success: false,
+      message: error.message || "Failed to delete profile picture",
+    });
+  }
 };
 
 const removeStudentDeviceIdController = async (req, res) => {
@@ -506,31 +869,37 @@ const removeStudentDeviceIdController = async (req, res) => {
 };
 
 const addQuestionController = async (req, res) => {
-  const { questionId, level, questions } = req.body;
+  const { questionId, level, type, questions, marks, oral } = req.body;
 
   if (!questionId) {
-    return res.status(400).json({
-      success: false,
-      message: "questionId is required",
-    });
+    return sendBadRequest(res, "questionId is required");
   }
 
   if (!questions || !Array.isArray(questions) || questions.length === 0) {
-    return res.status(400).json({
-      success: false,
-      message: "questions must be a non-empty array",
-    });
+    return sendBadRequest(res, "questions must be a non-empty array");
   }
 
-  const levelError = validateStudentLevel(level);
-  if (levelError) {
-    return res.status(400).json({
-      success: false,
-      message: levelError,
-    });
+  const typeErrorResponse = sendQuestionTypeError(res, type);
+  if (typeErrorResponse) return typeErrorResponse;
+
+  if (marks !== undefined && !Array.isArray(marks)) {
+    return sendBadRequest(res, "marks must be an array");
   }
 
-  await addQuestion({ questionId, level: Number(level), questions });
+  const oralErrorResponse = sendBooleanFieldError(res, "oral", oral);
+  if (oralErrorResponse) return oralErrorResponse;
+
+  const levelErrorResponse = sendStudentLevelError(res, level);
+  if (levelErrorResponse) return levelErrorResponse;
+
+  await addQuestion({
+    questionId,
+    level: Number(level),
+    type,
+    questions,
+    marks,
+    oral,
+  });
 
   return res.status(201).json({
     success: true,
@@ -544,29 +913,44 @@ const updateQuestionController = async (req, res) => {
     const updateData = req.body;
 
     if (!id) {
-      return res.status(400).json({
-        success: false,
-        message: "Question ID is required",
-      });
+      return sendBadRequest(res, "Question ID is required");
     }
 
     if (!updateData || Object.keys(updateData).length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "No update data provided",
-      });
+      return sendBadRequest(res, "No update data provided");
     }
 
     if (hasField(updateData, "level")) {
-      const levelError = validateStudentLevel(updateData.level);
-      if (levelError) {
-        return res.status(400).json({
-          success: false,
-          message: levelError,
-        });
-      }
+      const levelErrorResponse = sendStudentLevelError(res, updateData.level);
+      if (levelErrorResponse) return levelErrorResponse;
 
       updateData.level = Number(updateData.level);
+    }
+
+    if (hasField(updateData, "type")) {
+      const typeErrorResponse = sendQuestionTypeError(res, updateData.type);
+      if (typeErrorResponse) return typeErrorResponse;
+    }
+
+    if (hasField(updateData, "marks") && !Array.isArray(updateData.marks)) {
+      return sendBadRequest(res, "marks must be an array");
+    }
+
+    if (hasField(updateData, "oral")) {
+      const oralErrorResponse = sendBooleanFieldError(
+        res,
+        "oral",
+        updateData.oral,
+      );
+      if (oralErrorResponse) return oralErrorResponse;
+    }
+
+    if (
+      hasField(updateData, "questions") &&
+      (!Array.isArray(updateData.questions) ||
+        updateData.questions.length === 0)
+    ) {
+      return sendBadRequest(res, "questions must be a non-empty array");
     }
 
     await updateQuestion(id, updateData);
@@ -711,6 +1095,183 @@ const sendNotificationController = async (req, res) => {
   });
 };
 
+const addMessageController = async (req, res) => {
+  try {
+    const { message, receivedTo } = req.body;
+
+    const data = await addMessage(req.user, message, receivedTo);
+
+    return res.status(201).json({
+      success: true,
+      message: "Message sent successfully",
+      data: data.message,
+    });
+  } catch (error) {
+    logControllerError("addMessageController", error);
+
+    const isClientError = [
+      "message is required",
+      "receivedTo is required",
+      "Invalid receivedTo",
+      "Invalid sender",
+      "Student not found",
+      "Admin not found",
+    ].includes(error.message);
+
+    return res.status(isClientError ? 400 : 500).json({
+      success: false,
+      message: error.message || "Failed to send message",
+    });
+  }
+};
+
+const getMessagesController = async (req, res) => {
+  try {
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 15;
+    const userId = req.query.userId || req.query.studentId || null;
+
+    const result = await getMessageList(req.user, page, limit, userId);
+
+    return res.status(200).json({
+      success: true,
+      data: result.messages,
+      meta: result.meta,
+    });
+  } catch (error) {
+    logControllerError("getMessagesController", error);
+
+    const isClientError = [
+      "Invalid user",
+      "Invalid userId",
+      "Student not found",
+      "Admin not found",
+    ].includes(error.message);
+
+    return res.status(isClientError ? 400 : 500).json({
+      success: false,
+      message: error.message || "Failed to fetch messages",
+    });
+  }
+};
+
+const createRegistrationController = async (req, res) => {
+  try {
+    const data = await createRegistration(req.body, req.user.id);
+
+    return res.status(201).json({
+      success: true,
+      message: "Registration created successfully",
+      ...data,
+    });
+  } catch (error) {
+    logControllerError("createRegistrationController", error);
+
+    const isClientError = ["studentName is required"].includes(error.message);
+
+    return res.status(isClientError ? 400 : 500).json({
+      success: false,
+      message: error.message || "Failed to create registration",
+    });
+  }
+};
+
+const getRegistrationListController = async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 15;
+  const search = req.query.search?.trim() || "";
+
+  const data = await getRegistrationList(req.user.id, page, limit, search);
+
+  return res.status(200).json({
+    success: true,
+    message: search
+      ? `Registration search results for "${search}"`
+      : "Registration list fetched successfully",
+    ...data,
+  });
+};
+
+const deleteRegistrationController = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return sendBadRequest(res, "Registration ID is required");
+    }
+
+    await deleteRegistration(id, req.user.id);
+
+    return res.status(200).json({
+      success: true,
+      message: "Registration deleted successfully",
+    });
+  } catch (error) {
+    logControllerError("deleteRegistrationController", error);
+
+    const isClientError = [
+      "Invalid registrationId",
+      "Registration not found",
+    ].includes(error.message);
+
+    return res.status(isClientError ? 400 : 500).json({
+      success: false,
+      message: error.message || "Failed to delete registration",
+    });
+  }
+};
+
+const getUnreadMessageCountController = async (req, res) => {
+  try {
+    const result = await getUnreadMessageCount(req.user);
+
+    return res.status(200).json({
+      success: true,
+      message: "Unread message count fetched successfully",
+      data: result,
+    });
+  } catch (error) {
+    logControllerError("getUnreadMessageCountController", error);
+
+    const isClientError = ["Invalid user"].includes(error.message);
+
+    return res.status(isClientError ? 400 : 500).json({
+      success: false,
+      message: error.message || "Failed to fetch unread message count",
+    });
+  }
+};
+
+const markMessagesAsReadController = async (req, res) => {
+  try {
+    const body = req.body || {};
+    const userId = body.userId || body.studentId || null;
+    const messageIds = body.messageIds || [];
+
+    const result = await markMessagesAsRead(req.user, userId, messageIds);
+
+    return res.status(200).json({
+      success: true,
+      message: "Messages marked as read",
+      ...result,
+    });
+  } catch (error) {
+    logControllerError("markMessagesAsReadController", error);
+
+    const isClientError = [
+      "Invalid user",
+      "Invalid userId",
+      "messageIds must be an array",
+      "Invalid messageIds",
+    ].includes(error.message);
+
+    return res.status(isClientError ? 400 : 500).json({
+      success: false,
+      message: error.message || "Failed to update messages",
+    });
+  }
+};
+
 const updateMyStudentController = async (req, res) => {
   try {
     const studentId = req.user.id; // from auth middleware
@@ -752,16 +1313,24 @@ const updateMyStudentController = async (req, res) => {
 
 module.exports = {
   getStudentListController,
+  getMessageStudentListController,
   getStudentsBySameDeviceIdController,
+  createRegistrationController,
+  getRegistrationListController,
+  deleteRegistrationController,
   addStudentController,
   updateStudentController,
   removeStudentDeviceIdController,
   updateStudentFcmTokenController,
   getQuestionListController,
+  getPracticeQuestionListController,
   addQuestionController,
   updateQuestionController,
   deleteQuestionController,
   assignQuestionController,
+  unassignQuestionController,
+  assignPracticeQuestionsToSelfController,
+  unassignPracticeQuestionsFromSelfController,
   getHomeworkListController,
   getHomeworkByIdController,
   updateHomeworkController,
@@ -772,7 +1341,17 @@ module.exports = {
   getNotificationsController,
   getAdminNotificationsController,
   sendNotificationController,
+  addMessageController,
+  getMessagesController,
+  getUnreadMessageCountController,
+  markMessagesAsReadController,
   getRankingController,
   updateMyStudentController,
   loginUsingDeviceIdController,
+  uploadFileController,
+  getFileUploadListController,
+  updateFileUploadNameController,
+  deleteFileUploadController,
+  deleteProfilePicController,
+  downloadFileUploadController,
 };

@@ -44,6 +44,11 @@ const studentSchema = new mongoose.Schema(
       default: [],
       // Array to support multiple devices per student
     },
+    profilePicPath: {
+      type: String,
+      trim: true,
+      default: "",
+    },
     hasLoginSameDevice: {
       type: Boolean,
       default: false,

@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const controller = require("../controllers");
 const { authenticate, authorizeAdmin } = require("../middleware/auth");
+const { uploadSingleFile } = require("../middleware/upload");
 
 const admin = [authenticate, authorizeAdmin];
 
@@ -23,6 +24,22 @@ router.patch(
   controller.updateStudentController,
 );
 
+router.get(
+  "/admin/registrations",
+  ...admin,
+  controller.getRegistrationListController,
+);
+router.post(
+  "/admin/registrations",
+  ...admin,
+  controller.createRegistrationController,
+);
+router.delete(
+  "/admin/registrations/:id",
+  ...admin,
+  controller.deleteRegistrationController,
+);
+
 router.get("/ranking", authenticate, controller.getRankingController);
 router.patch("/student", authenticate, controller.updateMyStudentController);
 router.delete(
@@ -35,6 +52,11 @@ router.post(
   "/admin/questions/assign",
   ...admin,
   controller.assignQuestionController,
+);
+router.delete(
+  "/admin/questions/assign",
+  ...admin,
+  controller.unassignQuestionController,
 );
 
 // Student (protected)
@@ -57,6 +79,23 @@ router.patch(
   controller.updateStudentFcmTokenController,
 );
 
+router.post(
+  "/uploads",
+  authenticate,
+  uploadSingleFile,
+  controller.uploadFileController,
+);
+router.get(
+  "/file-uploads",
+  authenticate,
+  controller.getFileUploadListController,
+);
+router.delete(
+  "/profile-pic",
+  authenticate,
+  controller.deleteProfilePicController,
+);
+
 // Score (protected)
 router.get(
   "/scores/:studentId",
@@ -65,6 +104,26 @@ router.get(
 );
 
 // Question (protected)
+router.get(
+  "/student/questions/practice",
+  authenticate,
+  controller.getPracticeQuestionListController,
+);
+router.post(
+  "/student/questions/practice/assign",
+  authenticate,
+  controller.assignPracticeQuestionsToSelfController,
+);
+router.delete(
+  "/student/questions/practice/assign",
+  authenticate,
+  controller.unassignPracticeQuestionsFromSelfController,
+);
+router.get(
+  "/questions/practice",
+  authenticate,
+  controller.getPracticeQuestionListController,
+);
 router.get("/admin/questions", ...admin, controller.getQuestionListController);
 router.post("/admin/questions", ...admin, controller.addQuestionController);
 router.patch(
@@ -113,6 +172,41 @@ router.post(
   "/admin/notifications",
   ...admin,
   controller.sendNotificationController,
+);
+
+// messages
+router.get(
+  "/admin/messages/students",
+  ...admin,
+  controller.getMessageStudentListController,
+);
+router.get(
+  "/messages/unread-count",
+  authenticate,
+  controller.getUnreadMessageCountController,
+);
+router.get("/messages", authenticate, controller.getMessagesController);
+router.post("/messages", authenticate, controller.addMessageController);
+router.patch(
+  "/messages/read",
+  authenticate,
+  controller.markMessagesAsReadController,
+);
+
+router.patch(
+  "/admin/file-uploads/:id",
+  ...admin,
+  controller.updateFileUploadNameController,
+);
+router.delete(
+  "/admin/file-uploads/:id",
+  ...admin,
+  controller.deleteFileUploadController,
+);
+router.get(
+  "/file-uploads/:id/download",
+  authenticate,
+  controller.downloadFileUploadController,
 );
 
 module.exports = router;
