@@ -1034,6 +1034,20 @@ const updateHomeworkController = async (req, res) => {
 };
 
 const healthCheckController = (req, res) => {
+  if (req.query.status) {
+    const memUsage = process.memoryUsage();
+    return res.status(200).json({
+      status: "OK",
+      uptime: process.uptime(),
+      memory: {
+        rss: `${Math.round(memUsage.rss / 1024 / 1024)} MB`,
+        heapUsed: `${Math.round(memUsage.heapUsed / 1024 / 1024)} MB`,
+        heapTotal: `${Math.round(memUsage.heapTotal / 1024 / 1024)} MB`,
+      },
+      timestamp: new Date().toISOString(),
+    });
+  }
+
   return res.status(200).json({
     success: true,
     message: "Server is running",
