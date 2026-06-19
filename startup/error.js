@@ -1,4 +1,4 @@
-// const logger = require('../startup/logging');
+// const logger = require("../middleware/logger");
 module.exports = function (err, req, res, _next) {
   console.error(err.message, err);
   res.status(500).json({

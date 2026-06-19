@@ -1,4 +1,10 @@
+const logger = require("./logger");
+
 const responseTracker = (req, res, next) => {
+  if (req.path === "/v1/api/health" || req.path === "/") {
+    return next();
+  }
+
   const startTime = Date.now();
 
   res.on("finish", () => {
@@ -8,7 +14,9 @@ const responseTracker = (req, res, next) => {
       method: req.method,
       url: req.originalUrl,
       statusCode: res.statusCode,
-
+      userId: req?.user?.id,
+      name: req?.user?.name,
+      role: req?.user?.role,
       // Response size (from header, no override needed)
       responseSizeBytes: parseInt(responseSize),
       responseSizeKB: (parseInt(responseSize) / 1024).toFixed(2),
@@ -21,7 +29,7 @@ const responseTracker = (req, res, next) => {
       appVersion: req.headers["x-app-version"],
       networkType: req.headers["x-network-type"],
     };
-    console.log(JSON.stringify(logData));
+    logger.info(logData, "api_response");
   });
 
   next();
