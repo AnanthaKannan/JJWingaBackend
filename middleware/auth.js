@@ -16,7 +16,7 @@ const authenticate = (req, res, next) => {
     const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded;
     console.log(
-      `Request to ${req.path} — user: ${req.user.id} role: ${req.user.role}`,
+      `Request to ${req.path} — user: ${req.user.id} - name: ${req?.user?.name} role: ${req.user.role}`,
     );
     next();
   } catch {

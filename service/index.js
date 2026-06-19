@@ -71,6 +71,7 @@ const login = async (username, password, deviceId, validatePassword = true) => {
   }
   const payload = {
     id: user._id,
+    name: user.name,
     role,
     ...(role === "student"
       ? { studentId: user.studentId, deviceIds, createdBy: user.createdBy }
