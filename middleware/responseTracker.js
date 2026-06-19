@@ -4,8 +4,7 @@ const responseTracker = (req, res, next) => {
   res.on("finish", () => {
     const responseSize = res.getHeader("Content-Length") || 0;
     const duration = Date.now() - startTime;
-
-    console.log({
+    const logData = {
       method: req.method,
       url: req.originalUrl,
       statusCode: res.statusCode,
@@ -21,7 +20,8 @@ const responseTracker = (req, res, next) => {
       deviceId: req.headers["x-device-id"],
       appVersion: req.headers["x-app-version"],
       networkType: req.headers["x-network-type"],
-    });
+    };
+    console.log(JSON.stringify(logData));
   });
 
   next();
