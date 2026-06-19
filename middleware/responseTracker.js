@@ -1,6 +1,10 @@
 const responseTracker = (req, res, next) => {
   const startTime = Date.now();
 
+  if (req.path === "/v1/api/health" || req.path === "/") {
+    return next();
+  }
+
   res.on("finish", () => {
     const responseSize = res.getHeader("Content-Length") || 0;
     const duration = Date.now() - startTime;
