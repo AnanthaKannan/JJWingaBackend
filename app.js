@@ -2,12 +2,12 @@ require('dotenv').config();
 require("express-async-errors");
 
 const express = require("express");
+const logger = require("./middleware/logger");
 const app = express();
-let counter = 0
 
 app.use(express.static('dist', {
-    setHeaders: (_res, _path, _stat) => {
-        console.log(++counter)
+    setHeaders: (_res, path, stat) => {
+        logger.debug({ path, sizeBytes: stat?.size }, "static_asset_served")
     }
 }));
 
@@ -19,5 +19,5 @@ require("./startup/db")();
 
 const port = process.env.PORT;
 app.listen(port, () => {
-    console.log(`Listening on port ${port}...`);
+    logger.info({ port }, "server_listening");
 });

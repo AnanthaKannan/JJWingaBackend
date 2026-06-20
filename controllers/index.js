@@ -46,6 +46,7 @@ const {
   validateQuestionType,
   validateStudentLevel,
 } = require("../utils/validation");
+const logger = require("../middleware/logger");
 
 const loginController = async (req, res) => {
   try {
@@ -203,7 +204,7 @@ const getRankingController = async (req, res) => {
 };
 
 const logControllerError = (context, error) => {
-  console.error(`[${context}]`, error);
+  logger.error({ err: error, context }, "controller_error");
 };
 
 const sendBadRequest = (res, message) =>
