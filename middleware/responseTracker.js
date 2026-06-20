@@ -21,6 +21,7 @@ const responseTracker = (req, res, next) => {
       userId: req?.user?.id,
       name: req?.user?.name,
       role: req?.user?.role,
+      body: JSON.stringify(req?.body || {}),
       // Response size (from header, no override needed)
       responseSizeBytes: parseInt(responseSize),
       responseSizeKB: (parseInt(responseSize) / 1024).toFixed(2),

@@ -2,6 +2,7 @@ require("dotenv").config();
 
 const express = require("express");
 const admin = require("firebase-admin");
+const logger = require("../middleware/logger");
 
 admin.initializeApp({
   credential: admin.credential.cert({
@@ -20,10 +21,12 @@ app.post("/send-notification", async (req, res) => {
     await admin.messaging().send({ token, notification: { title, body } });
     res.json({ success: true });
   } catch (error) {
-    console.log(error);
+    logger.error({ err: error }, "standalone_notification_failed");
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () =>
+  logger.info({ port: PORT }, "notification_server_listening"),
+);

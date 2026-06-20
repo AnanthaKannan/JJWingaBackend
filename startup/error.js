@@ -1,6 +1,17 @@
-// const logger = require("../middleware/logger");
+const logger = require("../middleware/logger");
+
 module.exports = function (err, req, res, _next) {
-  console.error(err.message, err);
+  logger.error(
+    {
+      err,
+      method: req.method,
+      url: req.originalUrl,
+      userId: req?.user?.id,
+      role: req?.user?.role,
+    },
+    "unhandled_request_error",
+  );
+
   res.status(500).json({
     status: 500,
     success: false,

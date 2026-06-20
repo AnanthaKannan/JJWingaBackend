@@ -3,6 +3,7 @@ const bcrypt = require("bcryptjs");
 const mongoose = require("mongoose");
 
 const { generateToken } = require("../middleware/auth");
+const logger = require("../middleware/logger");
 const {
   buildUploadPath,
   getSupabaseClient,
@@ -592,6 +593,7 @@ const sendAssignmentNotifications = async (
   );
 
   if (studentIds.length === 0) {
+    logger.info("assignment_notifications_skipped_no_students");
     return { sentCount: 0, totalRequested: 0 };
   }
 
@@ -623,6 +625,10 @@ const sendAssignmentNotifications = async (
     .filter(Boolean);
 
   if (notifications.length === 0) {
+    logger.info(
+      { totalRequested: studentIds.length },
+      "assignment_notifications_skipped_no_notifiable_questions",
+    );
     return { sentCount: 0, totalRequested: studentIds.length };
   }
 
@@ -638,6 +644,14 @@ const sendAssignmentNotifications = async (
         notification.messageBody,
       ),
     ),
+  );
+
+  logger.info(
+    {
+      sentCount: result.length,
+      totalRequested: studentIds.length,
+    },
+    "assignment_notifications_created",
   );
 
   return {
@@ -1752,6 +1766,10 @@ const createHomeworkCompletedNotification = async (homework) => {
   );
 
   if (!student?.createdBy) {
+    logger.warn(
+      { homeworkId: homework._id, studentId: homework.studentId },
+      "homework_completion_notification_skipped_missing_admin",
+    );
     return null;
   }
 
@@ -1777,6 +1795,16 @@ const createHomeworkCompletedNotification = async (homework) => {
     adminDetail?.fcmTokens?.[0],
     notification.messageHeader,
     notification.messageBody,
+  );
+
+  logger.info(
+    {
+      notificationId: notification._id,
+      homeworkId: homework._id,
+      studentId: student._id,
+      adminId: student.createdBy,
+    },
+    "homework_completion_notification_created",
   );
 
   return notification;
@@ -1917,9 +1945,15 @@ const getNotificationList = async (
   };
 };
 
+const getTokenSuffix = (token) =>
+  typeof token === "string" && token.length > 6 ? token.slice(-6) : null;
+
 const sendPushNotification = async (token, title, body) => {
   try {
-    if (!token) throw new Error("Invalid fcm token");
+    if (!token) {
+      logger.warn({ title }, "push_notification_skipped_missing_token");
+      return;
+    }
 
     await admin.messaging().send({
       token,
@@ -1927,9 +1961,13 @@ const sendPushNotification = async (token, title, body) => {
     });
   } catch (error) {
     // Log but don't throw — DB entry already saved, push failure is non-critical
-    console.error(
-      `Failed to send push notification to token ${token}:`,
-      error.message,
+    logger.error(
+      {
+        err: error,
+        title,
+        tokenSuffix: getTokenSuffix(token),
+      },
+      "push_notification_failed",
     );
   }
 };
@@ -1974,6 +2012,14 @@ const sendBulkNotification = async (
     ),
   );
   // Promise.allSettled — ensures all push attempts run even if some fail
+
+  logger.info(
+    {
+      sentCount: result.length,
+      totalRequested: students.length,
+    },
+    "bulk_notifications_created",
+  );
 
   return {
     sentCount: result.length,
