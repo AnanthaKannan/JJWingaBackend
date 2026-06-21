@@ -163,16 +163,26 @@ const getStudentList = async (
   const skip = (page - 1) * limit;
   const adminObjectId = new mongoose.Types.ObjectId(adminId);
 
-  const matchStage = [
-    { $match: { createdBy: adminObjectId } },
-    ...(search
-      ? [{ $match: { name: { $regex: search, $options: "i" } } }]
-      : []),
-    ...(level === null ? [] : [{ $match: { level } }]),
-  ];
+  const matchStage = {
+    createdBy: adminObjectId,
+    ...(search && {
+      name: { $regex: search, $options: "i" },
+    }),
+    ...(level !== null && { level }),
+  };
 
   const pipeline = [
-    ...matchStage,
+    {
+      $match: matchStage,
+    },
+
+    // Sort before pagination
+    {
+      $sort: {
+        studentId: 1,
+      },
+    },
+
     {
       $lookup: {
         from: "scores",
@@ -181,11 +191,15 @@ const getStudentList = async (
         as: "score",
       },
     },
+
     {
       $addFields: {
-        score: { $arrayElemAt: ["$score", 0] },
+        score: {
+          $arrayElemAt: ["$score", 0],
+        },
       },
     },
+
     {
       $project: {
         password: 0,
@@ -201,15 +215,30 @@ const getStudentList = async (
         "score.__v": 0,
       },
     },
-    { $sort: { createdAt: -1 } },
+
+    {
+      $skip: skip,
+    },
+
+    {
+      $limit: limit,
+    },
   ];
 
   const [students, countResult] = await Promise.all([
-    Student.aggregate([...pipeline, { $skip: skip }, { $limit: limit }]),
-    Student.aggregate([...pipeline, { $count: "total" }]),
+    Student.aggregate(pipeline),
+    Student.aggregate([
+      {
+        $match: matchStage,
+      },
+      {
+        $count: "total",
+      },
+    ]),
   ]);
 
   const total = countResult[0]?.total || 0;
+  const totalPages = Math.ceil(total / limit);
 
   return {
     students,
@@ -217,8 +246,8 @@ const getStudentList = async (
       total,
       page,
       limit,
-      totalPages: Math.ceil(total / limit),
-      hasNextPage: page < Math.ceil(total / limit),
+      totalPages,
+      hasNextPage: page < totalPages,
       hasPrevPage: page > 1,
     },
   };
