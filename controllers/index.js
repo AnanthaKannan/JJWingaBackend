@@ -7,6 +7,7 @@ const {
   createRegistration,
   getRegistrationList,
   deleteRegistration,
+  changePassword,
   getQuestionList,
   getPracticeQuestionList,
   getHomeworkList,
@@ -21,6 +22,7 @@ const {
   unassignPracticeQuestionsFromSelf,
   addStudent,
   updateStudent,
+  resetStudentPassword,
   removeStudentDeviceId,
   updateFcmToken,
   uploadFile,
@@ -622,6 +624,32 @@ const updateStudentController = async (req, res) => {
     success: true,
     message: "Student updated successfully",
   });
+};
+
+const resetStudentPasswordController = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return sendBadRequest(res, "Student ID is required");
+    }
+
+    const data = await resetStudentPassword(id);
+
+    return res.status(200).json({
+      success: true,
+      message: "Student password reset successfully",
+      data,
+    });
+  } catch (error) {
+    logControllerError("resetStudentPasswordController", error);
+
+    const isClientError = ["Student not found"].includes(error.message);
+    return res.status(isClientError ? 400 : 500).json({
+      success: false,
+      message: error.message || "Failed to reset student password",
+    });
+  }
 };
 
 const updateStudentFcmTokenController = async (req, res) => {
@@ -1326,6 +1354,52 @@ const updateMyStudentController = async (req, res) => {
   }
 };
 
+const changePasswordController = async (req, res) => {
+  try {
+    const { oldPassword, newPassword, confirmNewPassword } = req.body;
+
+    if (!oldPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Old password and new password are required",
+      });
+    }
+
+    if (
+      confirmNewPassword !== undefined &&
+      confirmNewPassword !== newPassword
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "New password confirmation does not match",
+      });
+    }
+
+    await changePassword(req.user.id, req.user.role, oldPassword, newPassword);
+
+    return res.status(200).json({
+      success: true,
+      message: "Password updated successfully",
+    });
+  } catch (error) {
+    logControllerError("changePasswordController", error);
+
+    const isClientError = [
+      "Old password and new password are required",
+      "Old password is incorrect",
+      "New password must be different from the current password",
+      "User not found",
+      "Invalid user role",
+      "New password confirmation does not match",
+    ].includes(error.message);
+
+    return res.status(isClientError ? 400 : 500).json({
+      success: false,
+      message: error.message || "Failed to update password",
+    });
+  }
+};
+
 module.exports = {
   getStudentListController,
   getMessageStudentListController,
@@ -1335,6 +1409,7 @@ module.exports = {
   deleteRegistrationController,
   addStudentController,
   updateStudentController,
+  resetStudentPasswordController,
   removeStudentDeviceIdController,
   updateStudentFcmTokenController,
   getQuestionListController,
@@ -1362,6 +1437,7 @@ module.exports = {
   markMessagesAsReadController,
   getRankingController,
   updateMyStudentController,
+  changePasswordController,
   loginUsingDeviceIdController,
   uploadFileController,
   getFileUploadListController,

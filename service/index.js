@@ -107,6 +107,35 @@ const buildQuestionTypeFilter = (type) => {
   return { type };
 };
 
+const changePassword = async (userId, role, oldPassword, newPassword) => {
+  if (!oldPassword || !newPassword) {
+    throw new Error("Old password and new password are required");
+  }
+
+  if (role !== "student" && role !== "admin") {
+    throw new Error("Invalid user role");
+  }
+
+  const Model = role === "student" ? Student : Admin;
+  const user = await Model.findById(userId);
+
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  const isMatch = await bcrypt.compare(oldPassword, user.password);
+  if (!isMatch) {
+    throw new Error("Old password is incorrect");
+  }
+
+  if (oldPassword === newPassword) {
+    throw new Error("New password must be different from the current password");
+  }
+
+  user.password = newPassword;
+  await user.save();
+};
+
 const loginUsingDeviceId = async (studentId, deviceIds) => {
   if (deviceIds.length === 0) {
     throw new Error("Device ID not found in token");
@@ -1139,6 +1168,23 @@ const addStudent = async (studentData) => {
   await Score.create({ studentId: student._id });
 
   return { student };
+};
+
+const resetStudentPassword = async (studentObjectId) => {
+  const student = await Student.findById(studentObjectId);
+  if (!student) {
+    throw new Error("Student not found");
+  }
+
+  const newPassword = `Welcome${student.studentId.replace(/\D/g, "")}`;
+  student.password = newPassword;
+  await student.save();
+
+  return {
+    studentId: student.studentId,
+    name: student.name,
+    password: newPassword,
+  };
 };
 
 const updateStudent = async (studentObjectId, updateData) => {
@@ -2274,6 +2320,7 @@ const seedAdminScreenData = async () => {
 module.exports = {
   login,
   loginUsingDeviceId,
+  changePassword,
   getStudentList,
   getMessageStudentList,
   getStudentsBySameDeviceId,
@@ -2294,6 +2341,7 @@ module.exports = {
   unassignPracticeQuestionsFromSelf,
   addStudent,
   updateStudent,
+  resetStudentPassword,
   removeStudentDeviceId,
   addQuestion,
   deleteQuestion,

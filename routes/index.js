@@ -23,6 +23,11 @@ router.patch(
   ...admin,
   controller.updateStudentController,
 );
+router.post(
+  "/admin/students/:id/reset-password",
+  ...admin,
+  controller.resetStudentPasswordController,
+);
 
 router.get(
   "/admin/registrations",
@@ -42,6 +47,11 @@ router.delete(
 
 router.get("/ranking", authenticate, controller.getRankingController);
 router.patch("/student", authenticate, controller.updateMyStudentController);
+router.patch(
+  "/change-password",
+  authenticate,
+  controller.changePasswordController,
+);
 router.delete(
   "/student/device-id",
   authenticate,

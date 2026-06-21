@@ -28,11 +28,6 @@ const responseTracker = (req, res, next) => {
 
       // Response time
       durationMs: duration,
-
-      // Device context
-      deviceId: req.headers["x-device-id"],
-      appVersion: req.headers["x-app-version"],
-      networkType: req.headers["x-network-type"],
     };
     logger.info(logData, "api_response");
   });
