@@ -38,14 +38,17 @@ const login = async (username, password, deviceId, validatePassword = true) => {
   let role = null;
 
   // Step 1: Try Student login
-  user = await Student.findOne({ studentId: username });
+  user = await Student.findOne({
+    studentId: username,
+    isDeleted: { $ne: true },
+  });
   if (user) {
     role = "student";
   }
 
   // Step 2: Fallback to Admin login
   if (!user) {
-    user = await Admin.findOne({ adminId: username });
+    user = await Admin.findOne({ adminId: username, isDeleted: { $ne: true } });
     if (user) {
       role = "admin";
     }
@@ -1246,10 +1249,10 @@ const updateStudent = async (studentObjectId, updateData) => {
     throw new Error("No valid fields provided to update");
   }
 
-  if (updateData?.isDeleted === true) {
-    updateData.deletedDate = new Date();
-  } else if (updateData?.isDeleted === false) {
-    updateData.deletedDate = null;
+  if (filteredData?.isDeleted === true) {
+    filteredData.deletedDate = new Date();
+  } else if (filteredData?.isDeleted === false) {
+    filteredData.deletedDate = null;
   }
 
   if (Object.prototype.hasOwnProperty.call(filteredData, "deviceId")) {
