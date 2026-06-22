@@ -2297,6 +2297,7 @@ const getWeeklyRankings = async (level = null, user = null) => {
         name: "$student.name",
         studentCode: "$student.studentId",
         level: "$student.level",
+        profilePicPath: "$student.profilePicPath",
         totalCorrect: 1,
         totalQuestions: 1,
         accuracy: 1,
