@@ -38,14 +38,17 @@ const login = async (username, password, deviceId, validatePassword = true) => {
   let role = null;
 
   // Step 1: Try Student login
-  user = await Student.findOne({ studentId: username });
+  user = await Student.findOne({
+    studentId: username,
+    isDeleted: { $ne: true },
+  });
   if (user) {
     role = "student";
   }
 
   // Step 2: Fallback to Admin login
   if (!user) {
-    user = await Admin.findOne({ adminId: username });
+    user = await Admin.findOne({ adminId: username, isDeleted: { $ne: true } });
     if (user) {
       role = "admin";
     }
@@ -62,6 +65,11 @@ const login = async (username, password, deviceId, validatePassword = true) => {
     if (!isMatch) {
       throw new Error("Invalid username or password");
     }
+  }
+
+  if (!user?.deviceIds?.some((id) => id === deviceId) && role === "student") {
+    // add the deviceId to the student if it is not exist
+    await updateStudent(user._id, { deviceId });
   }
 
   // Step 5: Generate JWT
@@ -92,7 +100,6 @@ const login = async (username, password, deviceId, validatePassword = true) => {
             studentId: user.studentId,
             level: user.level,
             vertical: user.vertical,
-            hasLoginSameDevice: user.hasLoginSameDevice,
           }
         : { adminId: user.adminId }),
     },
@@ -338,15 +345,16 @@ const getMessageStudentList = async (
   };
 };
 
-const getStudentsBySameDeviceId = async (deviceIds) => {
+const getStudentsBySameDeviceId = async (deviceIds, id) => {
   if (!deviceIds || deviceIds.length === 0) {
     throw new Error("Device ID is not assigned for this student");
   }
-
+  console.log(deviceIds, id);
   const students = await Student.find({
+    _id: { $ne: id },
     deviceIds: { $in: deviceIds },
   })
-    .select("_id studentId name deviceIds vertical")
+    .select("_id studentId name deviceIds profilePicPath")
     .sort({ name: 1 })
     .lean();
 
@@ -1222,7 +1230,14 @@ const updateStudent = async (studentObjectId, updateData) => {
   if (!student) throw new Error("Student not found");
 
   // 2. Whitelist allowed fields
-  const allowedFields = ["name", "password", "vertical", "deviceId", "level"];
+  const allowedFields = [
+    "name",
+    "password",
+    "vertical",
+    "deviceId",
+    "level",
+    "isDeleted",
+  ];
   const filteredData = Object.keys(updateData)
     .filter((key) => allowedFields.includes(key))
     .reduce((obj, key) => {
@@ -1232,6 +1247,12 @@ const updateStudent = async (studentObjectId, updateData) => {
 
   if (Object.keys(filteredData).length === 0) {
     throw new Error("No valid fields provided to update");
+  }
+
+  if (filteredData?.isDeleted === true) {
+    filteredData.deletedDate = new Date();
+  } else if (filteredData?.isDeleted === false) {
+    filteredData.deletedDate = null;
   }
 
   if (Object.prototype.hasOwnProperty.call(filteredData, "deviceId")) {
@@ -1974,16 +1995,15 @@ const updateHomework = async (homeworkId, updateData) => {
   await homework.save();
 
   // 5. Update score atomically
-  const score =
-    Object.keys(scoreInc).length > 0
-      ? await Score.findOneAndUpdate(
-          { studentId: homework.studentId },
-          { $inc: scoreInc },
-          { new: true, upsert: true },
-        )
-      : await Score.findOne({ studentId: homework.studentId });
+  if (Object.keys(scoreInc).length > 0) {
+    await Score.findOneAndUpdate(
+      { studentId: homework.studentId },
+      { $inc: scoreInc },
+      { new: true, upsert: true },
+    );
+  }
 
-  return { homework, score };
+  return {};
 };
 
 const getNotificationList = async (
@@ -2292,6 +2312,7 @@ const getWeeklyRankings = async (level = null, user = null) => {
         name: "$student.name",
         studentCode: "$student.studentId",
         level: "$student.level",
+        profilePicPath: "$student.profilePicPath",
         totalCorrect: 1,
         totalQuestions: 1,
         accuracy: 1,

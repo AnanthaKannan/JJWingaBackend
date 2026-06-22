@@ -164,7 +164,10 @@ const getMessageStudentListController = async (req, res) => {
 
 const getStudentsBySameDeviceIdController = async (req, res) => {
   try {
-    const data = await getStudentsBySameDeviceId(req.user.deviceIds);
+    const data = await getStudentsBySameDeviceId(
+      req.user.deviceIds,
+      req.user.id,
+    );
 
     return res.status(200).json({
       success: true,
