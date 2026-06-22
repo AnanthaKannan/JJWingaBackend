@@ -1979,16 +1979,15 @@ const updateHomework = async (homeworkId, updateData) => {
   await homework.save();
 
   // 5. Update score atomically
-  const score =
-    Object.keys(scoreInc).length > 0
-      ? await Score.findOneAndUpdate(
-          { studentId: homework.studentId },
-          { $inc: scoreInc },
-          { new: true, upsert: true },
-        )
-      : await Score.findOne({ studentId: homework.studentId });
+  if (Object.keys(scoreInc).length > 0) {
+    await Score.findOneAndUpdate(
+      { studentId: homework.studentId },
+      { $inc: scoreInc },
+      { new: true, upsert: true },
+    );
+  }
 
-  return { homework, score };
+  return {};
 };
 
 const getNotificationList = async (
