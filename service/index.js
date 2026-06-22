@@ -1227,7 +1227,14 @@ const updateStudent = async (studentObjectId, updateData) => {
   if (!student) throw new Error("Student not found");
 
   // 2. Whitelist allowed fields
-  const allowedFields = ["name", "password", "vertical", "deviceId", "level"];
+  const allowedFields = [
+    "name",
+    "password",
+    "vertical",
+    "deviceId",
+    "level",
+    "isDeleted",
+  ];
   const filteredData = Object.keys(updateData)
     .filter((key) => allowedFields.includes(key))
     .reduce((obj, key) => {
@@ -1237,6 +1244,12 @@ const updateStudent = async (studentObjectId, updateData) => {
 
   if (Object.keys(filteredData).length === 0) {
     throw new Error("No valid fields provided to update");
+  }
+
+  if (updateData?.isDeleted === true) {
+    updateData.deletedDate = new Date();
+  } else if (updateData?.isDeleted === false) {
+    updateData.deletedDate = null;
   }
 
   if (Object.prototype.hasOwnProperty.call(filteredData, "deviceId")) {

@@ -39,6 +39,10 @@ const studentSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
     fcmTokens: {
       type: [String],
       default: [],
@@ -48,6 +52,10 @@ const studentSchema = new mongoose.Schema(
       type: String,
       trim: true,
       default: "",
+    },
+    deletedDate: {
+      type: Date,
+      default: null,
     },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
