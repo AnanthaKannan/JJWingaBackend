@@ -49,10 +49,6 @@ const studentSchema = new mongoose.Schema(
       trim: true,
       default: "",
     },
-    hasLoginSameDevice: {
-      type: Boolean,
-      default: false,
-    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Admin",

@@ -64,6 +64,11 @@ const login = async (username, password, deviceId, validatePassword = true) => {
     }
   }
 
+  if (!user?.deviceIds?.some((id) => id === deviceId) && role === "student") {
+    // add the deviceId to the student if it is not exist
+    await updateStudent(user._id, { deviceId });
+  }
+
   // Step 5: Generate JWT
   let deviceIds = user.deviceIds;
   if (deviceId) {
@@ -92,7 +97,6 @@ const login = async (username, password, deviceId, validatePassword = true) => {
             studentId: user.studentId,
             level: user.level,
             vertical: user.vertical,
-            hasLoginSameDevice: user.hasLoginSameDevice,
           }
         : { adminId: user.adminId }),
     },
