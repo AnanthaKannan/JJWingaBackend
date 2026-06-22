@@ -342,15 +342,16 @@ const getMessageStudentList = async (
   };
 };
 
-const getStudentsBySameDeviceId = async (deviceIds) => {
+const getStudentsBySameDeviceId = async (deviceIds, id) => {
   if (!deviceIds || deviceIds.length === 0) {
     throw new Error("Device ID is not assigned for this student");
   }
-
+  console.log(deviceIds, id);
   const students = await Student.find({
+    _id: { $ne: id },
     deviceIds: { $in: deviceIds },
   })
-    .select("_id studentId name deviceIds vertical")
+    .select("_id studentId name deviceIds profilePicPath")
     .sort({ name: 1 })
     .lean();
 
