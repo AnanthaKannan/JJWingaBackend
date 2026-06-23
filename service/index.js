@@ -2384,7 +2384,7 @@ const updateAdmin = async (adminId, orgId, updates) => {
   if (!Object.keys(filtered).length)
     throw new Error("No valid fields to update");
 
-  const admin = await Admin.findOne({ _id: adminId, orgId, isDeleted: false });
+  const admin = await Admin.findOne({ _id: adminId, orgId });
   if (!admin) throw new Error("Admin not found");
 
   if (filtered?.isDeleted === true) {
