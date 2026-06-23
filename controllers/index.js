@@ -1409,9 +1409,9 @@ const changePasswordController = async (req, res) => {
 const addAdminController = async (req, res) => {
   try {
     const { orgId } = req.user;
-    const { name, password, profilePicPath } = req.body;
+    const { name, profilePicPath } = req.body;
 
-    if (!name || !password || !orgId) {
+    if (!name || !orgId) {
       return res
         .status(400)
         .json({ message: "name, password and orgId are required" });

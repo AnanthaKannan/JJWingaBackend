@@ -93,11 +93,11 @@ const login = async (username, password, deviceId, validatePassword = true) => {
   return {
     token,
     role,
+    orgId: user.orgId,
     user: {
       id: user._id,
       name: user.name,
       profilePicPath: user.profilePicPath,
-      orgId: user.orgId,
       ...(role === "student"
         ? {
             studentId: user.studentId,
@@ -2355,7 +2355,7 @@ const getAdminList = async (id, orgId, page = 1, limit = 15) => {
 
   const [admins, total] = await Promise.all([
     Admin.find(query)
-      .select("-password -fcmTokens -orgId") // exclude recipient id (already known)
+      .select("-password -fcmTokens -orgId -roles -updatedAt") // exclude recipient id (already known)
       .sort({ createdAt: -1 }) // newest first
       .skip(skip)
       .limit(limit),

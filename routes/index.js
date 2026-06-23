@@ -232,4 +232,6 @@ router.patch(
   controller.updateAdminController,
 );
 
+// router.patch("/admin/org/:id", ...superAdmin, controller.getOrgDetail);
+
 module.exports = router;
