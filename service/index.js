@@ -2384,7 +2384,7 @@ const updateAdmin = async (adminId, orgId, updates) => {
   if (!Object.keys(filtered).length)
     throw new Error("No valid fields to update");
 
-  const admin = await Admin.findOne({ adminId, orgId, isDeleted: false });
+  const admin = await Admin.findOne({ _id: adminId, orgId, isDeleted: false });
   if (!admin) throw new Error("Admin not found");
 
   if (filtered?.isDeleted === true) {
@@ -2394,7 +2394,8 @@ const updateAdmin = async (adminId, orgId, updates) => {
   }
 
   Object.assign(admin, filtered);
-  return await admin.save(); // triggers bcrypt pre-save hook if password changed
+  await admin.save(); // triggers bcrypt pre-save hook if password changed
+  return {};
 };
 
 const addAdmin = async ({ name, orgId, roles, profilePicPath }) => {
