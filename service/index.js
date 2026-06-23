@@ -20,6 +20,7 @@ const {
   FileUpload,
   Message,
   Registration,
+  Organization,
 } = require("../models");
 const { buildAssignmentNotificationText } = require("../config/notifications");
 
@@ -186,7 +187,7 @@ const getStudentList = async (
     // Sort before pagination
     {
       $sort: {
-        studentId: 1,
+        studentId: -1,
       },
     },
 
@@ -2325,51 +2326,107 @@ const getWeeklyRankings = async (level = null, user = null) => {
   return rankings;
 };
 
-const seedAdminScreenData = async () => {
-  const adminData = {
-    _id: new mongoose.Types.ObjectId("6a16d4108349e449c87c7806"),
-    adminId: "JW001",
-    name: "Sobhana",
-    password: "$2b$10$tw.cZEpo5FjvxEMe6JDodea4LtodzAM1aV2D7sfcNCKY7hV5ghHk2",
-  };
+const addOrganization = async ({
+  name,
+  studentPrefix,
+  teacherPrefix,
+  profilePicPath,
+}) => {
+  if (!name) throw new Error("name not found");
+  if (!studentPrefix) throw new Error("studentPrefix not found");
+  if (!teacherPrefix) throw new Error("teacherPrefix not found");
 
-  const existingAdmin = await Admin.findOne({ adminId: adminData.adminId });
-  const admin =
-    existingAdmin ||
-    (await Admin.findOneAndUpdate(
-      { adminId: adminData.adminId },
-      { $setOnInsert: adminData },
-      { new: true, upsert: true },
-    ));
+  const org = new Organization({
+    name,
+    studentPrefix,
+    teacherPrefix,
+    ...(profilePicPath && { profilePicPath }),
+  });
 
-  const existingIdGen = await IdGen.findOne({});
+  return await org.save();
+};
 
-  const idGen = await IdGen.findOneAndUpdate(
-    {},
-    {
-      $setOnInsert: {
-        _id: new mongoose.Types.ObjectId("6a195c89699fb18c51477740"),
-        studentLastId: 100,
-      },
-    },
-    { new: true, upsert: true },
-  );
+const getAdminList = async (id, orgId, page = 1, limit = 15) => {
+  const skip = (page - 1) * limit;
+
+  const query = { orgId, _id: { $ne: id } };
+
+  const [admins, total] = await Promise.all([
+    Admin.find(query)
+      .select("-password -fcmTokens -orgId") // exclude recipient id (already known)
+      .sort({ createdAt: -1 }) // newest first
+      .skip(skip)
+      .limit(limit),
+    Admin.countDocuments(query),
+  ]);
 
   return {
-    admin: {
-      data: admin,
-      created: !existingAdmin,
-    },
-    idGen: {
-      data: idGen,
-      created: !existingIdGen,
+    admins,
+    meta: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+      hasNextPage: page < Math.ceil(total / limit),
+      hasPrevPage: page > 1,
     },
   };
 };
 
+const updateAdmin = async (adminId, orgId, updates) => {
+  const allowed = ["name", "profilePicPath", "password", "isDeleted"];
+  const filtered = Object.fromEntries(
+    Object.entries(updates).filter(([key]) => allowed.includes(key)),
+  );
+
+  if (!Object.keys(filtered).length)
+    throw new Error("No valid fields to update");
+
+  const admin = await Admin.findOne({ adminId, orgId, isDeleted: false });
+  if (!admin) throw new Error("Admin not found");
+
+  if (filtered?.isDeleted === true) {
+    filtered.deletedDate = new Date();
+  } else if (filtered?.isDeleted === false) {
+    filtered.deletedDate = null;
+  }
+
+  Object.assign(admin, filtered);
+  return await admin.save(); // triggers bcrypt pre-save hook if password changed
+};
+
+const addAdmin = async ({ name, orgId, roles, profilePicPath }) => {
+  if (!orgId) throw new Error("Organization not found");
+  if (!name) throw new Error("Name not found");
+
+  const org = await Organization.findByIdAndUpdate(
+    orgId,
+    { $inc: { teacherIdGen: 1 } },
+    { new: false }, // get the value BEFORE increment
+  );
+
+  const adminId = `${org.teacherPrefix}${org.teacherIdGen}`; // e.g. TE100
+  const password = `Teacher${org.teacherIdGen}`;
+
+  const admin = new Admin({
+    adminId,
+    name,
+    orgId,
+    password,
+    ...(profilePicPath && { profilePicPath }),
+    ...(roles && { roles }),
+  });
+
+  await admin.save();
+  return { password, adminId };
+};
+
 module.exports = {
   login,
+  addAdmin,
+  updateAdmin,
   loginUsingDeviceId,
+  getAdminList,
   changePassword,
   getStudentList,
   getMessageStudentList,
@@ -2409,6 +2466,6 @@ module.exports = {
   getUnreadMessageCount,
   markMessagesAsRead,
   getWeeklyRankings,
-  seedAdminScreenData,
   updateQuestion,
+  addOrganization,
 };

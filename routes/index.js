@@ -219,4 +219,12 @@ router.get(
   controller.downloadFileUploadController,
 );
 
+router.post("/admin/teacher", authenticate, controller.addAdminController);
+router.get("/admin/teacher", authenticate, controller.getAdminListController);
+router.patch(
+  "/admin/teacher/:d",
+  authenticate,
+  controller.updateAdminController,
+);
+
 module.exports = router;

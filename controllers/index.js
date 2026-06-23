@@ -41,6 +41,9 @@ const {
   sendBulkNotification,
   getNotificationList,
   getWeeklyRankings,
+  addAdmin,
+  updateAdmin,
+  getAdminList,
 } = require("../service");
 const {
   hasField,
@@ -1403,7 +1406,70 @@ const changePasswordController = async (req, res) => {
   }
 };
 
+const addAdminController = async (req, res) => {
+  try {
+    const { orgId } = req.user;
+    const { name, password, profilePicPath } = req.body;
+
+    if (!name || !password || !orgId) {
+      return res
+        .status(400)
+        .json({ message: "name, password and orgId are required" });
+    }
+
+    const admin = await addAdmin({ name, profilePicPath, orgId });
+    return res
+      .status(201)
+      .json({ message: "Admin created successfully", data: admin });
+  } catch (error) {
+    logControllerError("changePasswordController", error);
+    if (error.message === "Organization not found") {
+      return res.status(404).json({ message: error.message });
+    }
+    return res
+      .status(500)
+      .json({ message: "Internal server error", error: error.message });
+  }
+};
+
+const updateAdminController = async (req, res) => {
+  try {
+    const { adminId } = req.params;
+    const { orgId } = req.user;
+    const admin = await updateAdmin(adminId, orgId, req.body);
+    return res
+      .status(200)
+      .json({ message: "Admin updated successfully", data: admin });
+  } catch (error) {
+    logControllerError("changePasswordController", error);
+    if (error.message === "Admin not found") {
+      return res.status(404).json({ message: error.message });
+    }
+    if (error.message === "No valid fields to update") {
+      return res.status(400).json({ message: error.message });
+    }
+    return res
+      .status(500)
+      .json({ message: "Internal server error", error: error.message });
+  }
+};
+
+const getAdminListController = async (req, res) => {
+  try {
+    const { orgId, id } = req.user;
+    const admins = await getAdminList(id, orgId);
+    return res.status(200).json({ data: admins });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ message: "Internal server error", error: error.message });
+  }
+};
+
 module.exports = {
+  addAdminController,
+  updateAdminController,
+  getAdminListController,
   getStudentListController,
   getMessageStudentListController,
   getStudentsBySameDeviceIdController,

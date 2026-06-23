@@ -9,6 +9,10 @@ https://jjwingabackend.onrender.com
 
 ## Deployed - https://render.com/#
 
+release NOTE:
+* IGEN removed, so need to update properly with orgName
+* orgId need to be update in the student and admin
+
 
 ## Relook 
 1. fcmTokens should be unique for update

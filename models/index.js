@@ -8,6 +8,7 @@ const Notification = require("./notification");
 const FileUpload = require("./fileUpload");
 const Message = require("./message");
 const Registration = require("./registration");
+const Organization = require("./organization");
 
 module.exports = {
   Student,
@@ -20,4 +21,5 @@ module.exports = {
   FileUpload,
   Message,
   Registration,
+  Organization,
 };

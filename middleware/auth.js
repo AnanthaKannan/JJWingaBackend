@@ -3,6 +3,7 @@ const logger = require("./logger");
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN;
+const API_KEY = process.env.API_KEY;
 
 const getRequestContext = (req) => ({
   method: req.method,
@@ -65,8 +66,21 @@ const authorizeAdmin = (req, res, next) => {
   next();
 };
 
+const apiKeyValidation = (req, res, next) => {
+  const apiKey = req.header("api-key");
+  if (apiKey !== API_KEY) {
+    logger.warn({ ...getRequestContext(req) }, "auth_invalid_api_key");
+    return res.status(401).json({
+      success: false,
+      message: "Access denied.",
+    });
+  }
+  next();
+};
+
 module.exports = {
   authenticate,
   generateToken,
   authorizeAdmin,
+  apiKeyValidation,
 };
