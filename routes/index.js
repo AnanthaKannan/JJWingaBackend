@@ -227,7 +227,7 @@ router.get(
 router.post("/admin/teacher", ...superAdmin, controller.addAdminController);
 router.get("/admin/teacher", ...superAdmin, controller.getAdminListController);
 router.patch(
-  "/admin/teacher/:d",
+  "/admin/teacher/:id",
   ...superAdmin,
   controller.updateAdminController,
 );

@@ -1434,9 +1434,9 @@ const addAdminController = async (req, res) => {
 
 const updateAdminController = async (req, res) => {
   try {
-    const { adminId } = req.params;
+    const { id } = req.params;
     const { orgId } = req.user;
-    const admin = await updateAdmin(adminId, orgId, req.body);
+    const admin = await updateAdmin(id, orgId, req.body);
     return res
       .status(200)
       .json({ message: "Admin updated successfully", data: admin });
