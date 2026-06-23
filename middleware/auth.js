@@ -66,6 +66,24 @@ const authorizeAdmin = (req, res, next) => {
   next();
 };
 
+const authorizeSuperAdminRole = (req, res, next) => {
+  if (!req.user.roles?.some((role) => role === "superadmin")) {
+    logger.warn(
+      {
+        ...getRequestContext(req),
+        userId: req.user.id,
+        role: req.user.role,
+      },
+      "auth_superadmin_required",
+    );
+    return res.status(403).json({
+      success: false,
+      message: "Access denied. Superadmin only.",
+    });
+  }
+  next();
+};
+
 const apiKeyValidation = (req, res, next) => {
   const apiKey = req.header("api-key");
   if (apiKey !== API_KEY) {
@@ -83,4 +101,5 @@ module.exports = {
   generateToken,
   authorizeAdmin,
   apiKeyValidation,
+  authorizeSuperAdminRole,
 };

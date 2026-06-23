@@ -1,10 +1,15 @@
 const express = require("express");
 const router = express.Router();
 const controller = require("../controllers");
-const { authenticate, authorizeAdmin } = require("../middleware/auth");
+const {
+  authenticate,
+  authorizeAdmin,
+  authorizeSuperAdminRole,
+} = require("../middleware/auth");
 const { uploadSingleFile } = require("../middleware/upload");
 
 const admin = [authenticate, authorizeAdmin];
+const superAdmin = [authenticate, authorizeSuperAdminRole];
 
 // Auth (public)
 router.get("/health", controller.healthCheckController);
@@ -219,11 +224,11 @@ router.get(
   controller.downloadFileUploadController,
 );
 
-router.post("/admin/teacher", authenticate, controller.addAdminController);
-router.get("/admin/teacher", authenticate, controller.getAdminListController);
+router.post("/admin/teacher", ...superAdmin, controller.addAdminController);
+router.get("/admin/teacher", ...superAdmin, controller.getAdminListController);
 router.patch(
   "/admin/teacher/:d",
-  authenticate,
+  ...superAdmin,
   controller.updateAdminController,
 );
 

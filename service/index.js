@@ -82,10 +82,11 @@ const login = async (username, password, deviceId, validatePassword = true) => {
   const payload = {
     id: user._id,
     name: user.name,
+    orgId: user.orgId,
     role,
     ...(role === "student"
       ? { studentId: user.studentId, deviceIds, createdBy: user.createdBy }
-      : { adminId: user.adminId }),
+      : { adminId: user.adminId, roles: user.roles }),
   };
 
   const token = generateToken(payload);
@@ -96,13 +97,14 @@ const login = async (username, password, deviceId, validatePassword = true) => {
       id: user._id,
       name: user.name,
       profilePicPath: user.profilePicPath,
+      orgId: user.orgId,
       ...(role === "student"
         ? {
             studentId: user.studentId,
             level: user.level,
             vertical: user.vertical,
           }
-        : { adminId: user.adminId }),
+        : { adminId: user.adminId, roles: user.roles }),
     },
   };
 };
