@@ -13,7 +13,6 @@ const {
   Student,
   HomeWork,
   Admin,
-  IdGen,
   Question,
   Score,
   Notification,
@@ -117,7 +116,13 @@ const buildQuestionTypeFilter = (type) => {
   return { type };
 };
 
-const changePassword = async (userId, role, oldPassword, newPassword) => {
+const changePassword = async (
+  orgId,
+  userId,
+  role,
+  oldPassword,
+  newPassword,
+) => {
   if (!oldPassword || !newPassword) {
     throw new Error("Old password and new password are required");
   }
@@ -127,8 +132,10 @@ const changePassword = async (userId, role, oldPassword, newPassword) => {
   }
 
   const Model = role === "student" ? Student : Admin;
-  const user = await Model.findById(userId);
-
+  const user = await Model.findOne({
+    _id: userId,
+    orgId,
+  });
   if (!user) {
     throw new Error("User not found");
   }
@@ -165,6 +172,7 @@ const loginUsingDeviceId = async (studentId, deviceIds) => {
 
 const getStudentList = async (
   adminId,
+  orgId,
   page = 1,
   limit = 15,
   search = "",
@@ -348,13 +356,14 @@ const getMessageStudentList = async (
   };
 };
 
-const getStudentsBySameDeviceId = async (deviceIds, id) => {
+const getStudentsBySameDeviceId = async (orgId, deviceIds, id) => {
   if (!deviceIds || deviceIds.length === 0) {
     throw new Error("Device ID is not assigned for this student");
   }
   console.log(deviceIds, id);
   const students = await Student.find({
     _id: { $ne: id },
+    orgId,
     deviceIds: { $in: deviceIds },
   })
     .select("_id studentId name deviceIds profilePicPath")
@@ -368,6 +377,7 @@ const getStudentsBySameDeviceId = async (deviceIds, id) => {
 };
 
 const getQuestionList = async (
+  orgId,
   page = 1,
   limit = 15,
   search = "",
@@ -377,6 +387,7 @@ const getQuestionList = async (
   const skip = (page - 1) * limit;
 
   const query = {
+    orgId,
     isDeleted: { $ne: true },
     ...(search ? { questionId: { $regex: search, $options: "i" } } : {}),
     ...(level === null ? {} : { level }),
@@ -1178,26 +1189,24 @@ const unassignPracticeQuestionsFromSelf = async (studentId, questionIds) => {
 };
 
 const addStudent = async (studentData) => {
-  const { name, level, createdBy } = studentData;
-
-  // 1. Validate admin exists
-  // const admin = await Admin.findById(createdBy);
-  // if (!admin) throw new Error("Admin not found");
+  const { name, level, createdBy, orgId } = studentData;
 
   // 2. Increment idGen and get new studentLastId
-  const idGen = await IdGen.findOneAndUpdate(
-    {},
-    { $inc: { studentLastId: 1 } },
-    { new: true, upsert: true },
+
+  const org = await Organization.findByIdAndUpdate(
+    orgId,
+    { $inc: { studentIdGen: 1 } },
+    { new: false }, // get the value BEFORE increment
   );
 
   // 3. Generate studentId e.g. "JJ101"
-  const studentId = `JJ${idGen.studentLastId}`;
-  const password = `Welcome${idGen.studentLastId}`;
+  const studentId = `${org.studentPrefix}${org.studentIdGen}`;
+  const password = `Welcome${org.studentIdGen}`;
 
   // 4. Create student
   const student = await Student.create({
     studentId,
+    orgId,
     name,
     level,
     password,
@@ -1210,8 +1219,12 @@ const addStudent = async (studentData) => {
   return { student };
 };
 
-const resetStudentPassword = async (studentObjectId) => {
-  const student = await Student.findById(studentObjectId);
+const resetStudentPassword = async (studentObjectId, orgId) => {
+  const student = await Student.findOne({
+    _id: studentObjectId,
+    orgId,
+  });
+
   if (!student) {
     throw new Error("Student not found");
   }
@@ -1227,9 +1240,12 @@ const resetStudentPassword = async (studentObjectId) => {
   };
 };
 
-const updateStudent = async (studentObjectId, updateData) => {
+const updateStudent = async (studentObjectId, updateData, orgId) => {
   // 1. Validate student exists
-  const student = await Student.findById(studentObjectId);
+  const student = await Student.findOne({
+    _id: studentObjectId,
+    orgId,
+  });
   if (!student) throw new Error("Student not found");
 
   // 2. Whitelist allowed fields
@@ -1276,14 +1292,17 @@ const updateStudent = async (studentObjectId, updateData) => {
   await student.save({ validateModifiedOnly: true });
 };
 
-const removeStudentDeviceId = async (studentObjectId, deviceId) => {
+const removeStudentDeviceId = async (orgId, studentObjectId, deviceId) => {
   const deviceIdsToRemove = [deviceId];
 
   if (deviceIdsToRemove.length === 0) {
     throw new Error("deviceId is required");
   }
 
-  const student = await Student.findById(studentObjectId);
+  const student = await Student.findOne({
+    _id: studentObjectId,
+    orgId,
+  });
   if (!student) throw new Error("Student not found");
 
   const removeSet = new Set(deviceIdsToRemove);
@@ -1294,17 +1313,17 @@ const removeStudentDeviceId = async (studentObjectId, deviceId) => {
   await student.save({ validateModifiedOnly: true });
 };
 
-const updateFcmToken = async (userId, fcmToken, isStudent) => {
+const updateFcmToken = async (orgId, userId, fcmToken, isStudent) => {
   if (isStudent) {
     const studentId = userId;
-    await Student.findByIdAndUpdate(
-      studentId,
+    await Student.findOneAndUpdate(
+      { _id: studentId, orgId },
       { fcmTokens: [fcmToken] }, // replace entire array with the new single token
     );
   } else {
     const adminId = userId;
-    await Admin.findByIdAndUpdate(
-      adminId,
+    await Admin.findOneAndUpdate(
+      { _id: adminId, orgId },
       { fcmTokens: [fcmToken] }, // replace entire array with the new single token
     );
   }
@@ -1312,7 +1331,7 @@ const updateFcmToken = async (userId, fcmToken, isStudent) => {
 
 const updateProfilePicPath = async (user, profilePicPath) => {
   if (user?.role === "student") {
-    await Student.findByIdAndUpdate(user.id, { profilePicPath });
+    await Student.findOneAndUpdate(user.id, { profilePicPath });
     return;
   }
 
@@ -1547,9 +1566,12 @@ const downloadFileUpload = async (fileUploadId) => {
   };
 };
 
-const deleteProfilePic = async (user) => {
+const deleteProfilePic = async (orgId, user) => {
   const Model = user?.role === "student" ? Student : Admin;
-  const account = await Model.findById(user?.id).select("profilePicPath");
+  const account = await Model.findOne({
+    _id: user?.id,
+    orgId,
+  }).select("profilePicPath");
 
   if (!account) {
     throw new Error("User not found");
@@ -1768,10 +1790,15 @@ const getMessageList = async (user, page = 1, limit = 15, userId = null) => {
 };
 
 const addQuestion = async (questionData) => {
-  const { questionId, level, type, questions, marks, oral } = questionData;
+  const { orgId, questionId, level, type, questions, marks, oral } =
+    questionData;
 
   // 1. Check if questionId already exists
-  const existing = await Question.findOne({ questionId });
+  const existing = await Question.findOne({
+    questionId,
+    orgId,
+    isDeleted: { $ne: true },
+  });
   if (existing) throw new Error("Question ID already exists");
 
   // 2. Create question
@@ -1814,8 +1841,11 @@ const updateQuestion = async (questionObjectId, updateData) => {
   return { question };
 };
 
-const deleteQuestion = async (questionObjectId) => {
-  const question = await Question.findById(questionObjectId);
+const deleteQuestion = async (orgId, questionObjectId) => {
+  const question = await Question.findOne({
+    _id: questionObjectId,
+    orgId,
+  });
   if (!question) throw new Error("Question not found");
 
   const isAssigned = await HomeWork.exists({ questionId: questionObjectId });
@@ -1824,7 +1854,7 @@ const deleteQuestion = async (questionObjectId) => {
     question.isDeleted = true;
     await question.save();
 
-    return { deleteType: "soft", question };
+    return { deleteType: "soft" };
   }
 
   await question.deleteOne();

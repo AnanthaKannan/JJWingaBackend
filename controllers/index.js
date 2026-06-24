@@ -118,12 +118,14 @@ const getStudentListController = async (req, res) => {
   const limit = parseInt(req.query.limit) || 15;
   const search = req.query.search?.trim() || "";
   const { level } = req.query;
+  const { orgId } = req.user;
 
   const levelErrorResponse = sendOptionalStudentLevelError(res, level);
   if (levelErrorResponse) return levelErrorResponse;
 
   const data = await getStudentList(
     req.user.id,
+    orgId,
     page,
     limit,
     search,
@@ -168,6 +170,7 @@ const getMessageStudentListController = async (req, res) => {
 const getStudentsBySameDeviceIdController = async (req, res) => {
   try {
     const data = await getStudentsBySameDeviceId(
+      req.user.orgId,
       req.user.deviceIds,
       req.user.id,
     );
@@ -245,6 +248,7 @@ const getQuestionListController = async (req, res) => {
   const search = req.query.search?.trim() || "";
   const { level } = req.query;
   const type = req.query.type?.trim();
+  const { orgId } = req.user;
 
   const levelErrorResponse = sendOptionalStudentLevelError(res, level);
   if (levelErrorResponse) return levelErrorResponse;
@@ -253,6 +257,7 @@ const getQuestionListController = async (req, res) => {
   if (typeErrorResponse) return typeErrorResponse;
 
   const data = await getQuestionList(
+    orgId,
     page,
     limit,
     search,
@@ -589,6 +594,7 @@ const unassignPracticeQuestionsFromSelfController = async (req, res) => {
 
 const addStudentController = async (req, res) => {
   const { name, level } = req.body;
+  const { orgId, id: createdBy } = req.user;
 
   if (!name) {
     return sendBadRequest(res, "name is required");
@@ -597,7 +603,12 @@ const addStudentController = async (req, res) => {
   const levelErrorResponse = sendStudentLevelError(res, level);
   if (levelErrorResponse) return levelErrorResponse;
 
-  await addStudent({ name, level: Number(level), createdBy: req.user.id });
+  await addStudent({
+    name,
+    level: Number(level),
+    orgId,
+    createdBy,
+  });
 
   return res.status(201).json({
     success: true,
@@ -624,7 +635,7 @@ const updateStudentController = async (req, res) => {
     updateData.level = Number(updateData.level);
   }
 
-  await updateStudent(id, updateData);
+  await updateStudent(id, updateData, req.user.orgId);
 
   return res.status(200).json({
     success: true,
@@ -635,12 +646,13 @@ const updateStudentController = async (req, res) => {
 const resetStudentPasswordController = async (req, res) => {
   try {
     const { id } = req.params;
+    const { orgId } = req.user;
 
     if (!id) {
       return sendBadRequest(res, "Student ID is required");
     }
 
-    const data = await resetStudentPassword(id);
+    const data = await resetStudentPassword(id, orgId);
 
     return res.status(200).json({
       success: true,
@@ -660,6 +672,7 @@ const resetStudentPasswordController = async (req, res) => {
 
 const updateStudentFcmTokenController = async (req, res) => {
   const { fcmToken } = req.body;
+  const { orgId } = req.user;
 
   if (!fcmToken) {
     return res.status(400).json({
@@ -669,7 +682,7 @@ const updateStudentFcmTokenController = async (req, res) => {
   }
 
   const isStudent = req.user.role === "student";
-  await updateFcmToken(req.user.id, fcmToken, isStudent);
+  await updateFcmToken(orgId, req.user.id, fcmToken, isStudent);
 
   return res.status(200).json({
     success: true,
@@ -826,7 +839,7 @@ const deleteFileUploadController = async (req, res) => {
 
 const deleteProfilePicController = async (req, res) => {
   try {
-    await deleteProfilePic(req.user);
+    await deleteProfilePic(req.user.orgId, req.user);
 
     return res.status(200).json({
       success: true,
@@ -850,7 +863,7 @@ const deleteProfilePicController = async (req, res) => {
 const removeStudentDeviceIdController = async (req, res) => {
   try {
     const { studentId, deviceId } = req.body;
-    const { deviceIds } = req.user;
+    const { deviceIds, orgId } = req.user;
 
     if (req.user.role !== "student") {
       return res.status(403).json({
@@ -881,7 +894,7 @@ const removeStudentDeviceIdController = async (req, res) => {
       });
     }
 
-    await removeStudentDeviceId(studentId, deviceId);
+    await removeStudentDeviceId(orgId, studentId, deviceId);
 
     return res.status(200).json({
       success: true,
@@ -905,6 +918,7 @@ const removeStudentDeviceIdController = async (req, res) => {
 
 const addQuestionController = async (req, res) => {
   const { questionId, level, type, questions, marks, oral } = req.body;
+  const { orgId } = req.user;
 
   if (!questionId) {
     return sendBadRequest(res, "questionId is required");
@@ -928,6 +942,7 @@ const addQuestionController = async (req, res) => {
   if (levelErrorResponse) return levelErrorResponse;
 
   await addQuestion({
+    orgId,
     questionId,
     level: Number(level),
     type,
@@ -1012,6 +1027,7 @@ const updateQuestionController = async (req, res) => {
 const deleteQuestionController = async (req, res) => {
   try {
     const { id } = req.params;
+    const { orgId } = req.user;
 
     if (!id) {
       return res.status(400).json({
@@ -1020,7 +1036,7 @@ const deleteQuestionController = async (req, res) => {
       });
     }
 
-    const data = await deleteQuestion(id);
+    const data = await deleteQuestion(orgId, id);
 
     return res.status(200).json({
       success: true,
@@ -1325,6 +1341,7 @@ const updateMyStudentController = async (req, res) => {
   try {
     const studentId = req.user.id; // from auth middleware
     const updateData = req.body;
+    const { orgId } = req.user;
 
     if (req.user.role !== "student") {
       return res.status(403).json({
@@ -1340,7 +1357,7 @@ const updateMyStudentController = async (req, res) => {
       });
     }
 
-    await updateStudent(studentId, updateData);
+    await updateStudent(studentId, updateData, orgId);
 
     return res.status(200).json({
       success: true,
@@ -1363,6 +1380,7 @@ const updateMyStudentController = async (req, res) => {
 const changePasswordController = async (req, res) => {
   try {
     const { oldPassword, newPassword, confirmNewPassword } = req.body;
+    const { orgId } = req.user;
 
     if (!oldPassword || !newPassword) {
       return res.status(400).json({
@@ -1381,7 +1399,13 @@ const changePasswordController = async (req, res) => {
       });
     }
 
-    await changePassword(req.user.id, req.user.role, oldPassword, newPassword);
+    await changePassword(
+      orgId,
+      req.user.id,
+      req.user.role,
+      oldPassword,
+      newPassword,
+    );
 
     return res.status(200).json({
       success: true,

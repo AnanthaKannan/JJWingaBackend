@@ -26,6 +26,10 @@ const organizationSchema = new mongoose.Schema(
       type: Number,
       default: 100,
     },
+    pricePerStudent: {
+      type: Number,
+      default: 19,
+    },
     teacherIdGen: {
       type: Number,
       default: 100,

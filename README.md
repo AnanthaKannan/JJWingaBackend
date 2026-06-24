@@ -10,7 +10,7 @@ https://jjwingabackend.onrender.com
 ## Deployed - https://render.com/#
 
 release NOTE:
-* IGEN removed, so need to update properly with orgName
+* IGEN removed, so need to update properly with organizion. like current count need to update
 * orgId need to be update in the student and admin
 * admin should be a superadmin
 
