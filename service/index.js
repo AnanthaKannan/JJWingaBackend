@@ -180,9 +180,10 @@ const getStudentList = async (
 ) => {
   const skip = (page - 1) * limit;
   const adminObjectId = new mongoose.Types.ObjectId(adminId);
+  const orgObjectId = new mongoose.Types.ObjectId(orgId);
 
   const matchStage = {
-    orgId,
+    orgId: orgObjectId,
     createdBy: adminObjectId,
     ...(search && {
       name: { $regex: search, $options: "i" },
