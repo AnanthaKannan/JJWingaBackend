@@ -25,7 +25,7 @@ const responseTracker = (req, res, next) => {
       // Response size (from header, no override needed)
       responseSizeBytes: parseInt(responseSize),
       responseSizeKB: (parseInt(responseSize) / 1024).toFixed(2),
-
+      deviceId: req.headers["x-device-id"] || null,
       // Response time
       durationMs: duration,
     };

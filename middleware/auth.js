@@ -9,6 +9,7 @@ const getRequestContext = (req) => ({
   method: req.method,
   path: req.originalUrl || req.path,
   ip: req.ip,
+  deviceId: req.headers["x-device-id"] || null,
 });
 
 const authenticate = (req, res, next) => {
