@@ -171,8 +171,8 @@ const loginUsingDeviceId = async (studentId, deviceIds) => {
 };
 
 const getStudentList = async (
-  adminId,
   orgId,
+  adminId,
   page = 1,
   limit = 15,
   search = "",
@@ -182,6 +182,7 @@ const getStudentList = async (
   const adminObjectId = new mongoose.Types.ObjectId(adminId);
 
   const matchStage = {
+    orgId,
     createdBy: adminObjectId,
     ...(search && {
       name: { $regex: search, $options: "i" },
@@ -1806,14 +1807,18 @@ const addQuestion = async (questionData) => {
     questionId,
     level,
     type,
+    orgId,
     questions: questions ?? [],
     ...(marks === undefined ? {} : { marks }),
     ...(oral === undefined ? {} : { oral }),
   });
 };
 
-const updateQuestion = async (questionObjectId, updateData) => {
-  const question = await Question.findById(questionObjectId);
+const updateQuestion = async (orgId, questionObjectId, updateData) => {
+  const question = await Question.findOne({
+    _id: questionObjectId,
+    orgId,
+  });
   if (!question) throw new Error("Question not found");
 
   const allowedFields = [

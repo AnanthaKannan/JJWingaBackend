@@ -124,8 +124,8 @@ const getStudentListController = async (req, res) => {
   if (levelErrorResponse) return levelErrorResponse;
 
   const data = await getStudentList(
-    req.user.id,
     orgId,
+    req.user.id,
     page,
     limit,
     search,
@@ -1003,7 +1003,7 @@ const updateQuestionController = async (req, res) => {
       return sendBadRequest(res, "questions must be a non-empty array");
     }
 
-    await updateQuestion(id, updateData);
+    await updateQuestion(req.user.orgId, id, updateData);
 
     return res.status(200).json({
       success: true,
