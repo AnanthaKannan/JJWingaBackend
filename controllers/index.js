@@ -694,7 +694,9 @@ const updateStudentFcmTokenController = async (req, res) => {
 
 const uploadFileController = async (req, res) => {
   try {
+    const { orgId } = req.user;
     const file = await uploadFile(
+      orgId,
       req.file,
       req.user,
       req.body?.path,
@@ -731,8 +733,9 @@ const getFileUploadListController = async (req, res) => {
     const type = req.query.type?.trim();
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 15;
+    const { orgId } = req.user;
 
-    const data = await getFileUploadList(type, page, limit);
+    const data = await getFileUploadList(orgId, type, page, limit);
 
     return res.status(200).json({
       success: true,
@@ -770,8 +773,9 @@ const updateFileUploadNameController = async (req, res) => {
   try {
     const { id } = req.params;
     const { name } = req.body;
+    const { orgId } = req.user;
 
-    await updateFileUploadName(id, name);
+    await updateFileUploadName(orgId, id, name);
 
     return res.status(200).json({
       success: true,
@@ -817,8 +821,9 @@ const downloadFileUploadController = async (req, res) => {
 const deleteFileUploadController = async (req, res) => {
   try {
     const { id } = req.params;
+    const { orgId } = req.user;
 
-    await deleteFileUpload(id);
+    await deleteFileUpload(orgId, id);
 
     return res.status(200).json({
       success: true,

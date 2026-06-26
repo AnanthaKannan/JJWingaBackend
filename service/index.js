@@ -1398,13 +1398,14 @@ const validateFileUploadRecord = (user, name, type) => {
   }
 };
 
-const createFileUploadRecord = async (name, filePath, type, file) => {
+const createFileUploadRecord = async (orgId, name, filePath, type, file) => {
   if (!["practice", "celebration"].includes(type)) {
     return null;
   }
 
   return FileUpload.create({
     name: name.trim(),
+    orgId,
     filePath,
     fileSize: file.size,
     fileFormat: file.mimetype,
@@ -1428,13 +1429,13 @@ const prepareProfilePic = (file, formPath) => {
   return file;
 };
 
-const getFileUploadList = async (type, page = 1, limit = 15) => {
+const getFileUploadList = async (orgId, type, page = 1, limit = 15) => {
   if (!isFileUploadType(type)) {
     throw new Error("type must be one of: practice, celebration");
   }
 
   const skip = (page - 1) * limit;
-  const query = { type };
+  const query = { type, orgId };
 
   const [fileUploads, total] = await Promise.all([
     FileUpload.find(query)
@@ -1459,7 +1460,7 @@ const getFileUploadList = async (type, page = 1, limit = 15) => {
   };
 };
 
-const uploadFile = async (file, user, formPath = "", name = "") => {
+const uploadFile = async (orgId, file, user, formPath = "", name = "") => {
   if (!file) {
     throw new Error("file is required");
   }
@@ -1497,6 +1498,7 @@ const uploadFile = async (file, user, formPath = "", name = "") => {
   }
 
   const fileUpload = await createFileUploadRecord(
+    orgId,
     name,
     data.path,
     uploadType,
@@ -1514,7 +1516,7 @@ const uploadFile = async (file, user, formPath = "", name = "") => {
   };
 };
 
-const updateFileUploadName = async (fileUploadId, name) => {
+const updateFileUploadName = async (orgId, fileUploadId, name) => {
   if (!fileUploadId) {
     throw new Error("fileUploadId is required");
   }
@@ -1523,8 +1525,11 @@ const updateFileUploadName = async (fileUploadId, name) => {
     throw new Error("name is required");
   }
 
-  const fileUpload = await FileUpload.findByIdAndUpdate(
-    fileUploadId,
+  const fileUpload = await FileUpload.findOneAndUpdate(
+    {
+      orgId: new mongoose.Types.ObjectId(orgId),
+      _id: new mongoose.Types.ObjectId(fileUploadId),
+    },
     { name: name.trim() },
     { new: true, runValidators: true },
   );
@@ -1536,12 +1541,12 @@ const updateFileUploadName = async (fileUploadId, name) => {
   return { fileUpload };
 };
 
-const deleteFileUpload = async (fileUploadId) => {
+const deleteFileUpload = async (orgId, fileUploadId) => {
   if (!fileUploadId) {
     throw new Error("fileUploadId is required");
   }
 
-  const fileUpload = await FileUpload.findById(fileUploadId);
+  const fileUpload = await FileUpload.findOne({ _id: fileUploadId, orgId });
   if (!fileUpload) {
     throw new Error("File upload not found");
   }

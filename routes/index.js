@@ -210,19 +210,19 @@ router.patch(
 
 router.patch(
   "/admin/file-uploads/:id",
-  ...admin,
+  ...superAdmin,
   controller.updateFileUploadNameController,
 );
 router.delete(
   "/admin/file-uploads/:id",
-  ...admin,
+  ...superAdmin,
   controller.deleteFileUploadController,
 );
-router.get(
-  "/file-uploads/:id/download",
-  authenticate,
-  controller.downloadFileUploadController,
-);
+// router.get(
+//   "/file-uploads/:id/download",
+//   authenticate,
+//   controller.downloadFileUploadController,
+// );
 
 router.post("/admin/teacher", ...superAdmin, controller.addAdminController);
 router.get("/admin/teacher", ...superAdmin, controller.getAdminListController);

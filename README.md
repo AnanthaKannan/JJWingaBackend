@@ -11,7 +11,7 @@ https://jjwingabackend.onrender.com
 
 release NOTE:
 * IGEN removed, so need to update properly with organizion. like current count need to update
-* orgId need to be update in the student and admin
+* orgId need to be update in the student, fileUpload and admin
 * admin should be a superadmin
 
 
