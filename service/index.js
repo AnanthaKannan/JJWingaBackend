@@ -274,6 +274,7 @@ const getStudentList = async (
 };
 
 const getMessageStudentList = async (
+  orgId,
   adminId,
   page = 1,
   limit = 15,
@@ -282,9 +283,10 @@ const getMessageStudentList = async (
 ) => {
   const skip = (page - 1) * limit;
   const adminObjectId = new mongoose.Types.ObjectId(adminId);
+  const orgObjectId = new mongoose.Types.ObjectId(orgId);
 
   const matchStage = [
-    { $match: { createdBy: adminObjectId } },
+    { $match: { createdBy: adminObjectId, orgId: orgObjectId } },
     ...(search
       ? [{ $match: { name: { $regex: search, $options: "i" } } }]
       : []),
@@ -2200,23 +2202,21 @@ const resolveMonthlyRankingScope = async (level, user) => {
   return scope;
 };
 
-const getWeeklyRankings = async (level = null, user = null) => {
+const getWeeklyRankings = async (orgId, level = null, user = null) => {
   const { level: rankingLevel, adminId: rankingAdminId } =
     await resolveMonthlyRankingScope(level, user);
   const monthStart = new Date();
   monthStart.setDate(1);
   monthStart.setHours(0, 0, 0, 0);
 
-  const studentAdminFilter = rankingAdminId
-    ? [
-        {
-          $match: {
-            "student.createdBy": new mongoose.Types.ObjectId(rankingAdminId),
-          },
-        },
-      ]
-    : [];
-
+  const studentAdminFilter = [
+    {
+      $match: {
+        "student.createdBy": new mongoose.Types.ObjectId(rankingAdminId),
+        "student.orgId": new mongoose.Types.ObjectId(orgId),
+      },
+    },
+  ];
   const studentLevelFilter =
     rankingLevel === null
       ? []

@@ -151,6 +151,7 @@ const getMessageStudentListController = async (req, res) => {
   if (levelErrorResponse) return levelErrorResponse;
 
   const data = await getMessageStudentList(
+    req.user.orgId,
     req.user.id,
     page,
     limit,
@@ -197,12 +198,13 @@ const getStudentsBySameDeviceIdController = async (req, res) => {
 
 const getRankingController = async (req, res) => {
   const { level } = req.query;
+  const { orgId } = req.user;
 
   const levelErrorResponse = sendOptionalStudentLevelError(res, level);
   if (levelErrorResponse) return levelErrorResponse;
 
   const rankingLevel = level === undefined ? null : Number(level);
-  const data = await getWeeklyRankings(rankingLevel, req.user);
+  const data = await getWeeklyRankings(orgId, rankingLevel, req.user);
 
   return res.status(200).json({
     success: true,
