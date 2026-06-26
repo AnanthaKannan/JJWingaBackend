@@ -281,11 +281,13 @@ const getPracticeQuestionListController = async (req, res) => {
   const limit = parseInt(req.query.limit) || 15;
   const search = req.query.search?.trim() || "";
   const { level } = req.query;
+  const { orgId } = req.query;
 
   const levelErrorResponse = sendOptionalStudentLevelError(res, level);
   if (levelErrorResponse) return levelErrorResponse;
 
   const data = await getPracticeQuestionList(
+    orgId,
     page,
     limit,
     search,
@@ -357,6 +359,7 @@ const getHomeworkListController = async (req, res) => {
 const getAvailableQuestionsForStudentController = async (req, res) => {
   const { studentId } = req.params;
   const { page, limit, search, level } = req.query;
+  const { orgId } = req.user;
   const type = req.query.type?.trim();
 
   if (!studentId) {
@@ -370,6 +373,7 @@ const getAvailableQuestionsForStudentController = async (req, res) => {
   if (typeErrorResponse) return typeErrorResponse;
 
   const data = await getAvailableQuestionsForStudent(
+    orgId,
     studentId,
     parseInt(page) || 1,
     parseInt(limit) || 15,

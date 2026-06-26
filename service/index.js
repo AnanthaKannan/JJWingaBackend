@@ -422,6 +422,7 @@ const getQuestionList = async (
 };
 
 const getPracticeQuestionList = async (
+  orgId,
   page = 1,
   limit = 15,
   search = "",
@@ -430,6 +431,7 @@ const getPracticeQuestionList = async (
 ) => {
   if (studentId) {
     return getAvailableQuestionsForStudent(
+      orgId,
       studentId,
       page,
       limit,
@@ -491,6 +493,7 @@ const getHomeworkList = async (
 };
 
 const getAvailableQuestionsForStudent = async (
+  orgId,
   studentId,
   page = 1,
   limit = 15,
@@ -500,10 +503,11 @@ const getAvailableQuestionsForStudent = async (
 ) => {
   const skip = (page - 1) * limit;
   const studentObjectId = new mongoose.Types.ObjectId(studentId);
+  const orgObjectId = new mongoose.Types.ObjectId(orgId);
 
   const pipeline = [
     {
-      $match: { isDeleted: { $ne: true } },
+      $match: { orgId: orgObjectId, isDeleted: { $ne: true } },
     },
     ...(level === null ? [] : [{ $match: { level } }]),
     ...(type === null ? [] : [{ $match: buildQuestionTypeFilter(type) }]),
