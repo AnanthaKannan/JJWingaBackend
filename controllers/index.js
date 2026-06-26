@@ -281,7 +281,7 @@ const getPracticeQuestionListController = async (req, res) => {
   const limit = parseInt(req.query.limit) || 15;
   const search = req.query.search?.trim() || "";
   const { level } = req.query;
-  const { orgId } = req.query;
+  const { orgId } = req.user;
 
   const levelErrorResponse = sendOptionalStudentLevelError(res, level);
   if (levelErrorResponse) return levelErrorResponse;
@@ -930,7 +930,7 @@ const removeStudentDeviceIdController = async (req, res) => {
 
 const addQuestionController = async (req, res) => {
   const { questionId, level, type, questions, marks, oral } = req.body;
-  const { orgId } = req.user;
+  const { orgId, id: createdBy } = req.user;
 
   if (!questionId) {
     return sendBadRequest(res, "questionId is required");
@@ -954,6 +954,7 @@ const addQuestionController = async (req, res) => {
   if (levelErrorResponse) return levelErrorResponse;
 
   await addQuestion({
+    createdBy,
     orgId,
     questionId,
     level: Number(level),

@@ -26,6 +26,11 @@ const questionSchema = new mongoose.Schema(
       type: Array,
       default: [],
     },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Admin",
+      required: [true, "Creator (Admin) reference is required"],
+    },
     oral: {
       type: Boolean,
       default: false,

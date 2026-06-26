@@ -1804,12 +1804,14 @@ const getMessageList = async (user, page = 1, limit = 15, userId = null) => {
 };
 
 const addQuestion = async (questionData) => {
-  const { orgId, questionId, level, type, questions, marks, oral } =
+  const { orgId, questionId, level, type, questions, marks, oral, createdBy } =
     questionData;
 
   // 1. Check if questionId already exists
   const existing = await Question.findOne({
     questionId,
+    createdBy,
+    type,
     orgId,
     isDeleted: { $ne: true },
   });
@@ -1818,6 +1820,7 @@ const addQuestion = async (questionData) => {
   // 2. Create question
   await Question.create({
     questionId,
+    createdBy,
     level,
     type,
     orgId,
