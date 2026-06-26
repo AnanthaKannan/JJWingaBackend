@@ -69,7 +69,7 @@ const login = async (username, password, deviceId, validatePassword = true) => {
 
   if (!user?.deviceIds?.some((id) => id === deviceId) && role === "student") {
     // add the deviceId to the student if it is not exist
-    await updateStudent(user._id, { deviceId });
+    await updateStudent(user._id, { deviceId }, user?.orgId);
   }
 
   // Step 5: Generate JWT
@@ -89,6 +89,7 @@ const login = async (username, password, deviceId, validatePassword = true) => {
   };
 
   const token = generateToken(payload);
+  console.log("generate token--------------", token);
   return {
     token,
     role,
@@ -1193,7 +1194,7 @@ const unassignPracticeQuestionsFromSelf = async (studentId, questionIds) => {
 };
 
 const addStudent = async (studentData) => {
-  const { name, level, createdBy, orgId } = studentData;
+  const { orgId, name, level, createdBy } = studentData;
 
   // 2. Increment idGen and get new studentLastId
 

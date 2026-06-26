@@ -605,16 +605,17 @@ const addStudentController = async (req, res) => {
   const levelErrorResponse = sendStudentLevelError(res, level);
   if (levelErrorResponse) return levelErrorResponse;
 
-  await addStudent({
+  const data = await addStudent({
+    orgId,
     name,
     level: Number(level),
-    orgId,
     createdBy,
   });
 
   return res.status(201).json({
     success: true,
     message: "Student added successfully",
+    ...data,
   });
 };
 
