@@ -89,7 +89,6 @@ const login = async (username, password, deviceId, validatePassword = true) => {
   };
 
   const token = generateToken(payload);
-  console.log("generate token--------------", token);
   return {
     token,
     role,
@@ -365,7 +364,7 @@ const getStudentsBySameDeviceId = async (orgId, deviceIds, id) => {
   if (!deviceIds || deviceIds.length === 0) {
     throw new Error("Device ID is not assigned for this student");
   }
-  console.log(deviceIds, id);
+
   const students = await Student.find({
     _id: { $ne: id },
     orgId,
