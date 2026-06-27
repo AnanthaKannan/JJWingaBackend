@@ -850,7 +850,7 @@ const assignQuestion = async (adminId, studentId, questionIds) => {
   };
 };
 
-const assignQuestionsByLevels = async (adminId, levels, questionIds) => {
+const assignQuestionsByLevels = async (orgId, adminId, levels, questionIds) => {
   const uniqueLevels = [...new Set(toArray(levels).map(Number))];
   const uniqueQuestionIds = [...new Set(toArray(questionIds).map(String))];
 
@@ -860,6 +860,7 @@ const assignQuestionsByLevels = async (adminId, levels, questionIds) => {
 
   const questions = await Question.find({
     _id: { $in: uniqueQuestionIds },
+    orgId,
     isDeleted: { $ne: true },
   });
 
@@ -872,6 +873,7 @@ const assignQuestionsByLevels = async (adminId, levels, questionIds) => {
 
   const students = await Student.find({
     createdBy: adminId,
+    orgId,
     level: { $in: uniqueLevels },
   }).select("_id studentId name level");
 
@@ -2473,6 +2475,13 @@ const addAdmin = async ({ name, orgId, roles, profilePicPath }) => {
   return { password, adminId };
 };
 
+const getOrgDetail = async (orgId) => {
+  const orgDetail = await Organization.findOne({ _id: orgId });
+  return {
+    orgDetail,
+  };
+};
+
 module.exports = {
   login,
   addAdmin,
@@ -2480,6 +2489,7 @@ module.exports = {
   loginUsingDeviceId,
   getAdminList,
   changePassword,
+  getOrgDetail,
   getStudentList,
   getMessageStudentList,
   getStudentsBySameDeviceId,

@@ -26,13 +26,39 @@ const organizationSchema = new mongoose.Schema(
       type: Number,
       default: 100,
     },
+    teacherIdGen: {
+      type: Number,
+      default: 100,
+    },
+    billMonth: {
+      from: {
+        type: Date,
+      },
+      to: {
+        type: Date,
+      },
+    },
+    totalStudent: {
+      type: Number,
+    },
     pricePerStudent: {
       type: Number,
       default: 19,
     },
-    teacherIdGen: {
+    total: {
       type: Number,
-      default: 100,
+    },
+    state: {
+      type: String,
+      enum: ["paid", "unpaid", "free"],
+      default: "free", // Optional
+    },
+    appEmailId: {
+      type: String,
+      default: "sreeananthakannan@gmail.com",
+    },
+    appUpiId: {
+      type: String,
     },
   },
   { versionKey: false },

@@ -44,6 +44,7 @@ const {
   addAdmin,
   updateAdmin,
   getAdminList,
+  getOrgDetail,
 } = require("../service");
 const {
   hasField,
@@ -1500,19 +1501,23 @@ const updateAdminController = async (req, res) => {
 };
 
 const getAdminListController = async (req, res) => {
-  try {
-    const { orgId, id } = req.user;
-    const data = await getAdminList(id, orgId);
-    return res.status(200).json({
-      success: true,
-      message: "Admins list fetched successfully",
-      ...data,
-    });
-  } catch (error) {
-    return res
-      .status(500)
-      .json({ message: "Internal server error", error: error.message });
-  }
+  const { orgId, id } = req.user;
+  const data = await getAdminList(id, orgId);
+  return res.status(200).json({
+    success: true,
+    message: "Admins list fetched successfully",
+    ...data,
+  });
+};
+
+const getOrgDetailController = async (req, res) => {
+  const { orgId } = req.user;
+  const data = await getOrgDetail(orgId);
+  return res.status(200).json({
+    success: true,
+    message: "Organization detail fetched successfully",
+    ...data,
+  });
 };
 
 module.exports = {
@@ -1563,4 +1568,5 @@ module.exports = {
   deleteFileUploadController,
   deleteProfilePicController,
   downloadFileUploadController,
+  getOrgDetailController,
 };
