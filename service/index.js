@@ -10,6 +10,13 @@ const {
   getSupabaseStorageTarget,
 } = require("../utils/supabaseStorage");
 const {
+  PERFECT_SCORE_MESSAGES,
+  EXCELLENT_SCORE_MESSAGES,
+  MEDIUM_SCORE_MESSAGE,
+  LOW_SCORE_MESSAGE,
+  SUPER_LOW_MESSAGE,
+} = require("../message/inedx");
+const {
   Student,
   HomeWork,
   Admin,
@@ -2123,6 +2130,88 @@ const sendPushNotification = async (token, title, body) => {
   }
 };
 
+const calculateAccuracy = (results = []) => {
+  if (!Array.isArray(results) || results.length === 0) {
+    return 0;
+  }
+
+  const correctCount = results.filter(Boolean).length;
+  return (correctCount / results.length) * 100;
+};
+
+const getRandomMessage = (messages) =>
+  messages[Math.floor(Math.random() * messages.length)];
+
+const getAppreciationMessage = (accuracy) => {
+  if (accuracy === 100) return getRandomMessage(PERFECT_SCORE_MESSAGES);
+  if (accuracy >= 90) return getRandomMessage(EXCELLENT_SCORE_MESSAGES);
+  if (accuracy >= 80) return getRandomMessage(MEDIUM_SCORE_MESSAGE);
+  if (accuracy >= 70) return getRandomMessage(LOW_SCORE_MESSAGE);
+
+  return getRandomMessage(SUPER_LOW_MESSAGE);
+};
+
+const sendAppreciationNotifications = async () => {
+  const homeworks = await HomeWork.find({
+    state: "COMPLETED",
+    appreciateSend: false,
+  })
+    .populate("studentId", "createdBy fcmTokens isDeleted")
+    .populate("questionId", "questionId")
+    .sort({ updatedAt: 1 });
+
+  console.log(homeworks);
+  return;
+  let sentCount = 0;
+  let skippedCount = 0;
+
+  for (const homework of homeworks) {
+    const student = homework.studentId;
+    if (!student || student.isDeleted || !student.createdBy) {
+      skippedCount += 1;
+      continue;
+    }
+
+    const accuracy = calculateAccuracy(homework.results);
+    const questionName = homework.questionId?.questionId;
+    const messageHeader = `Great Job! ${questionName}`;
+    const messageBody = getAppreciationMessage(accuracy);
+
+    const notification = await Notification.create({
+      studentId: student._id,
+      messageHeader,
+      messageBody,
+      sentBy: student.createdBy,
+      sentByModel: "Admin",
+    });
+
+    await sendPushNotification(
+      student?.fcmTokens?.[0],
+      notification.messageHeader,
+      notification.messageBody,
+    );
+
+    homework.appreciateSend = true;
+    await homework.save({ validateModifiedOnly: true });
+    sentCount += 1;
+  }
+
+  logger.info(
+    {
+      sentCount,
+      totalRequested: homeworks.length,
+      skippedCount,
+    },
+    "appreciation_notifications_created",
+  );
+
+  return {
+    sentCount,
+    totalRequested: homeworks.length,
+    skippedCount,
+  };
+};
+
 const sendBulkNotification = async (
   students,
   messageHeader,
@@ -2516,6 +2605,7 @@ module.exports = {
   deleteQuestion,
   getNotificationList,
   sendBulkNotification,
+  sendAppreciationNotifications,
   updateFcmToken,
   uploadFile,
   getFileUploadList,

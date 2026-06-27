@@ -25,6 +25,10 @@ const homeworkSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    appreciateSend: {
+      type: Boolean,
+      default: false,
+    },
     studentId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Student",

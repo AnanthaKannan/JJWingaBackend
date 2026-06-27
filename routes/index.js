@@ -4,6 +4,7 @@ const controller = require("../controllers");
 const {
   authenticate,
   authorizeAdmin,
+  apiKeyValidation,
   authorizeSuperAdminRole,
 } = require("../middleware/auth");
 const { uploadSingleFile } = require("../middleware/upload");
@@ -233,5 +234,11 @@ router.patch(
 );
 
 router.get("/admin/org", ...superAdmin, controller.getOrgDetailController);
+
+router.post(
+  "/crone/notifications/appreciations",
+  apiKeyValidation,
+  controller.sendAppreciationNotificationsController,
+);
 
 module.exports = router;

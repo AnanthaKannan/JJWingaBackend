@@ -39,6 +39,7 @@ const {
   updateQuestion,
   deleteQuestion,
   sendBulkNotification,
+  sendAppreciationNotifications,
   getNotificationList,
   getWeeklyRankings,
   addAdmin,
@@ -1175,6 +1176,16 @@ const sendNotificationController = async (req, res) => {
   });
 };
 
+const sendAppreciationNotificationsController = async (req, res) => {
+  const result = await sendAppreciationNotifications();
+
+  return res.status(201).json({
+    success: true,
+    message: `Appreciation notification sent to ${result.sentCount} of ${result.totalRequested} completed homework`,
+    data: result,
+  });
+};
+
 const addMessageController = async (req, res) => {
   try {
     const { message, receivedTo } = req.body;
@@ -1555,6 +1566,7 @@ module.exports = {
   getNotificationsController,
   getAdminNotificationsController,
   sendNotificationController,
+  sendAppreciationNotificationsController,
   addMessageController,
   getMessagesController,
   getUnreadMessageCountController,
