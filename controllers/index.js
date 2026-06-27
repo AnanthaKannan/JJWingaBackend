@@ -433,6 +433,7 @@ const getHomeworkByIdController = async (req, res) => {
 const assignQuestionController = async (req, res) => {
   try {
     const { studentId, levels, questionIds } = req.body;
+    const { orgId, id: adminId } = req.user;
     const hasStudentId = Boolean(studentId);
     const hasLevels = Array.isArray(levels) && levels.length > 0;
 
@@ -451,8 +452,8 @@ const assignQuestionController = async (req, res) => {
     }
 
     const data = hasStudentId
-      ? await assignQuestion(req.user.id, studentId, questionIds)
-      : await assignQuestionsByLevels(req.user.id, levels, questionIds);
+      ? await assignQuestion(orgId, adminId, studentId, questionIds)
+      : await assignQuestionsByLevels(orgId, adminId, levels, questionIds);
 
     return res.status(201).json({
       success: true,

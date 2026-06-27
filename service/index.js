@@ -789,10 +789,11 @@ const getAssignmentQuestionDetails = (questionIds, questionMap) =>
       type: question.type,
     }));
 
-const assignQuestion = async (adminId, studentId, questionIds) => {
+const assignQuestion = async (orgId, adminId, studentId, questionIds) => {
   const uniqueQuestionIds = [...new Set(toArray(questionIds).map(String))];
 
   const questions = await Question.find({
+    orgId,
     _id: { $in: uniqueQuestionIds },
     isDeleted: { $ne: true },
   });
