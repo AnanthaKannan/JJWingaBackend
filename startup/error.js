@@ -12,7 +12,7 @@ module.exports = function (err, req, res, _next) {
     },
     "unhandled_request_error",
   );
-
+  console.error(err);
   res.status(500).json({
     status: 500,
     success: false,

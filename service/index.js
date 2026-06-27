@@ -2160,8 +2160,6 @@ const sendAppreciationNotifications = async () => {
     .populate("questionId", "questionId")
     .sort({ updatedAt: 1 });
 
-  console.log(homeworks);
-  return;
   let sentCount = 0;
   let skippedCount = 0;
 
