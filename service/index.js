@@ -1347,14 +1347,20 @@ const updateFcmToken = async (orgId, userId, fcmToken, isStudent) => {
   }
 };
 
-const updateProfilePicPath = async (user, profilePicPath) => {
+const updateProfilePicPath = async (orgId, user, profilePicPath) => {
   if (user?.role === "student") {
-    await Student.findOneAndUpdate(user.id, { profilePicPath });
+    await Student.findOneAndUpdate(
+      { _id: user.id, orgId: orgId },
+      { profilePicPath },
+    );
     return;
   }
 
   if (user?.role === "admin") {
-    await Admin.findByIdAndUpdate(user.id, { profilePicPath });
+    await Admin.findByIdAndUpdate(
+      { _id: user.id, orgId: orgId },
+      { profilePicPath },
+    );
   }
 };
 
@@ -1508,7 +1514,7 @@ const uploadFile = async (orgId, file, user, formPath = "", name = "") => {
     .getPublicUrl(data.path);
 
   if (formPath.trim() === "profile") {
-    await updateProfilePicPath(user, data.path);
+    await updateProfilePicPath(orgId, user, data.path);
   }
 
   const fileUpload = await createFileUploadRecord(
