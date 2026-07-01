@@ -1233,6 +1233,7 @@ const addStudent = async (studentData) => {
 
   // 5. Create an empty score record for the student
   await Score.create({ studentId: student._id });
+  student.password = password;
 
   return { student };
 };
