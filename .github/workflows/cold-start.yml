@@ -1,7 +1,7 @@
 name: Keep Render Alive
 on:
   schedule:
-    - cron: '*/12 0-17 * * *'  # every 12 min, 12:00AM–5:48PM UTC = ~5:30AM–11:18PM IST
+    - cron: '*/12 0-17 * * *'
   workflow_dispatch:
 
 jobs:
