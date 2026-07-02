@@ -8,7 +8,7 @@
     "dev": "npx nodemon app.js",
     "prod": "pm2 start app.js --name jj-wings-backend && pm2 logs jj-wings-backend",
     "pm2:stop": "pm2 stop jj-wings-backend && pm2 delete jj-wings-backend",
-    "seed:admin": "node service/seedAdminScreenData.js",
+    "seed:admin": "node seed/createOrgAndAdmin.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "test": "echo \"Error: no test specified\" && exit 1"

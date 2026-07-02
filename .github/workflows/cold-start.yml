@@ -1,0 +1,12 @@
+name: Keep Render Alive
+on:
+  schedule:
+    - cron: '*/12 0-17 * * *'  # every 12 min, 12:00AM–5:48PM UTC = ~5:30AM–11:18PM IST
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping health endpoint
+        run: curl -f https://jjwingabackend-dev.onrender.com/v1/api/health || exit 0

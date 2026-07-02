@@ -5,7 +5,6 @@ const questionSchema = new mongoose.Schema(
     questionId: {
       type: String,
       required: [true, "Question ID is required"],
-      unique: true,
       trim: true,
       // e.g. "5A-01"
     },
@@ -27,6 +26,11 @@ const questionSchema = new mongoose.Schema(
       type: Array,
       default: [],
     },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Admin",
+      required: [true, "Creator (Admin) reference is required"],
+    },
     oral: {
       type: Boolean,
       default: false,
@@ -34,6 +38,11 @@ const questionSchema = new mongoose.Schema(
     isDeleted: {
       type: Boolean,
       default: false,
+    },
+    orgId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Organization",
+      required: [true, "Creator (Organization) reference is required"],
     },
   },
   {

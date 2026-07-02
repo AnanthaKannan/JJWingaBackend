@@ -8,10 +8,11 @@ module.exports = function (err, req, res, _next) {
       url: req.originalUrl,
       userId: req?.user?.id,
       role: req?.user?.role,
+      deviceId: req.headers["x-device-id"] || null,
     },
     "unhandled_request_error",
   );
-
+  console.error(err);
   res.status(500).json({
     status: 500,
     success: false,

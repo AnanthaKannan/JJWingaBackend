@@ -1,7 +1,7 @@
 require("dotenv").config();
 
 const mongoose = require("mongoose");
-const { seedAdminScreenData } = require("./index");
+const { Question } = require("../models");
 
 const run = async () => {
   if (!process.env.MONGO_URL) {
@@ -9,15 +9,16 @@ const run = async () => {
   }
 
   await mongoose.connect(process.env.MONGO_URL);
+  const adminId = "6a16d4108349e449c87c7806";
 
-  const result = await seedAdminScreenData();
-
-  console.log(
-    result.admin.created
-      ? "Admin JW001 created"
-      : "Admin JW001 already exists",
+  await Question.updateMany(
+    {},
+    {
+      $set: {
+        createdBy: adminId,
+      },
+    },
   );
-  console.log(`IdGen studentLastId: ${result.idGen.data.studentLastId}`);
 };
 
 run()
