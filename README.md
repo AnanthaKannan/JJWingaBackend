@@ -8,9 +8,11 @@
 https://jjwingabackend.onrender.com
 
 ## Deployed - https://render.com/#
+## Uptime Robot -
+https://dashboard.uptimerobot.com/monitors/803428343
 
 
-## Relook 
+## ReLook 
 1. fcmTokens should be unique for update
 
 
