@@ -9,4 +9,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Ping health endpoint
-        run: curl -f https://jjwingabackend-dev.onrender.com/v1/api/health || exit 0
+        run: curl -f https://jjwingabackend.onrender.com/v1/api/health || exit 0
