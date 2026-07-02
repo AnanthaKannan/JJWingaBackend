@@ -23,6 +23,10 @@ const adminSchema = new mongoose.Schema(
       default: [],
       // Array to support multiple devices per student
     },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
     profilePicPath: {
       type: String,
       trim: true,

@@ -78,6 +78,36 @@ Response:
     "success": true,
     "message": "Score fetched successfully",
 }
+
+### Change password for logged-in student/admin
+PATCH {{url}}/change-password
+payload:
+{
+    "oldPassword": "currentPassword",
+    "newPassword": "newPassword",
+    "confirmNewPassword": "newPassword"
+}
+
+Response:
+{
+    "success": true,
+    "message": "Password updated successfully"
+}
+
+### Reset student password by admin
+POST {{url}}/admin/students/:id/reset-password
+
+Response:
+{
+    "success": true,
+    "message": "Student password reset successfully",
+    "data": {
+        "studentId": "JJ101",
+        "name": "Sree",
+        "password": "Welcome101"
+    }
+}
+
 ## Get the score of the student by id it is use for student dashboard
 GET {{url}}/scores/6a1721e39b7d0c85483d8cfd
 Response

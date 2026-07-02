@@ -38,14 +38,17 @@ const login = async (username, password, deviceId, validatePassword = true) => {
   let role = null;
 
   // Step 1: Try Student login
-  user = await Student.findOne({ studentId: username });
+  user = await Student.findOne({
+    studentId: username,
+    isDeleted: { $ne: true },
+  });
   if (user) {
     role = "student";
   }
 
   // Step 2: Fallback to Admin login
   if (!user) {
-    user = await Admin.findOne({ adminId: username });
+    user = await Admin.findOne({ adminId: username, isDeleted: { $ne: true } });
     if (user) {
       role = "admin";
     }
@@ -62,6 +65,11 @@ const login = async (username, password, deviceId, validatePassword = true) => {
     if (!isMatch) {
       throw new Error("Invalid username or password");
     }
+  }
+
+  if (!user?.deviceIds?.some((id) => id === deviceId) && role === "student") {
+    // add the deviceId to the student if it is not exist
+    await updateStudent(user._id, { deviceId });
   }
 
   // Step 5: Generate JWT
@@ -92,7 +100,6 @@ const login = async (username, password, deviceId, validatePassword = true) => {
             studentId: user.studentId,
             level: user.level,
             vertical: user.vertical,
-            hasLoginSameDevice: user.hasLoginSameDevice,
           }
         : { adminId: user.adminId }),
     },
@@ -105,6 +112,35 @@ const buildQuestionTypeFilter = (type) => {
   }
 
   return { type };
+};
+
+const changePassword = async (userId, role, oldPassword, newPassword) => {
+  if (!oldPassword || !newPassword) {
+    throw new Error("Old password and new password are required");
+  }
+
+  if (role !== "student" && role !== "admin") {
+    throw new Error("Invalid user role");
+  }
+
+  const Model = role === "student" ? Student : Admin;
+  const user = await Model.findById(userId);
+
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  const isMatch = await bcrypt.compare(oldPassword, user.password);
+  if (!isMatch) {
+    throw new Error("Old password is incorrect");
+  }
+
+  if (oldPassword === newPassword) {
+    throw new Error("New password must be different from the current password");
+  }
+
+  user.password = newPassword;
+  await user.save();
 };
 
 const loginUsingDeviceId = async (studentId, deviceIds) => {
@@ -134,16 +170,26 @@ const getStudentList = async (
   const skip = (page - 1) * limit;
   const adminObjectId = new mongoose.Types.ObjectId(adminId);
 
-  const matchStage = [
-    { $match: { createdBy: adminObjectId } },
-    ...(search
-      ? [{ $match: { name: { $regex: search, $options: "i" } } }]
-      : []),
-    ...(level === null ? [] : [{ $match: { level } }]),
-  ];
+  const matchStage = {
+    createdBy: adminObjectId,
+    ...(search && {
+      name: { $regex: search, $options: "i" },
+    }),
+    ...(level !== null && { level }),
+  };
 
   const pipeline = [
-    ...matchStage,
+    {
+      $match: matchStage,
+    },
+
+    // Sort before pagination
+    {
+      $sort: {
+        studentId: 1,
+      },
+    },
+
     {
       $lookup: {
         from: "scores",
@@ -152,11 +198,15 @@ const getStudentList = async (
         as: "score",
       },
     },
+
     {
       $addFields: {
-        score: { $arrayElemAt: ["$score", 0] },
+        score: {
+          $arrayElemAt: ["$score", 0],
+        },
       },
     },
+
     {
       $project: {
         password: 0,
@@ -172,15 +222,30 @@ const getStudentList = async (
         "score.__v": 0,
       },
     },
-    { $sort: { createdAt: -1 } },
+
+    {
+      $skip: skip,
+    },
+
+    {
+      $limit: limit,
+    },
   ];
 
   const [students, countResult] = await Promise.all([
-    Student.aggregate([...pipeline, { $skip: skip }, { $limit: limit }]),
-    Student.aggregate([...pipeline, { $count: "total" }]),
+    Student.aggregate(pipeline),
+    Student.aggregate([
+      {
+        $match: matchStage,
+      },
+      {
+        $count: "total",
+      },
+    ]),
   ]);
 
   const total = countResult[0]?.total || 0;
+  const totalPages = Math.ceil(total / limit);
 
   return {
     students,
@@ -188,8 +253,8 @@ const getStudentList = async (
       total,
       page,
       limit,
-      totalPages: Math.ceil(total / limit),
-      hasNextPage: page < Math.ceil(total / limit),
+      totalPages,
+      hasNextPage: page < totalPages,
       hasPrevPage: page > 1,
     },
   };
@@ -280,15 +345,16 @@ const getMessageStudentList = async (
   };
 };
 
-const getStudentsBySameDeviceId = async (deviceIds) => {
+const getStudentsBySameDeviceId = async (deviceIds, id) => {
   if (!deviceIds || deviceIds.length === 0) {
     throw new Error("Device ID is not assigned for this student");
   }
-
+  console.log(deviceIds, id);
   const students = await Student.find({
+    _id: { $ne: id },
     deviceIds: { $in: deviceIds },
   })
-    .select("_id studentId name deviceIds vertical")
+    .select("_id studentId name deviceIds profilePicPath")
     .sort({ name: 1 })
     .lean();
 
@@ -1141,13 +1207,37 @@ const addStudent = async (studentData) => {
   return { student };
 };
 
+const resetStudentPassword = async (studentObjectId) => {
+  const student = await Student.findById(studentObjectId);
+  if (!student) {
+    throw new Error("Student not found");
+  }
+
+  const newPassword = `Welcome${student.studentId.replace(/\D/g, "")}`;
+  student.password = newPassword;
+  await student.save();
+
+  return {
+    studentId: student.studentId,
+    name: student.name,
+    password: newPassword,
+  };
+};
+
 const updateStudent = async (studentObjectId, updateData) => {
   // 1. Validate student exists
   const student = await Student.findById(studentObjectId);
   if (!student) throw new Error("Student not found");
 
   // 2. Whitelist allowed fields
-  const allowedFields = ["name", "password", "vertical", "deviceId", "level"];
+  const allowedFields = [
+    "name",
+    "password",
+    "vertical",
+    "deviceId",
+    "level",
+    "isDeleted",
+  ];
   const filteredData = Object.keys(updateData)
     .filter((key) => allowedFields.includes(key))
     .reduce((obj, key) => {
@@ -1157,6 +1247,12 @@ const updateStudent = async (studentObjectId, updateData) => {
 
   if (Object.keys(filteredData).length === 0) {
     throw new Error("No valid fields provided to update");
+  }
+
+  if (filteredData?.isDeleted === true) {
+    filteredData.deletedDate = new Date();
+  } else if (filteredData?.isDeleted === false) {
+    filteredData.deletedDate = null;
   }
 
   if (Object.prototype.hasOwnProperty.call(filteredData, "deviceId")) {
@@ -1899,16 +1995,15 @@ const updateHomework = async (homeworkId, updateData) => {
   await homework.save();
 
   // 5. Update score atomically
-  const score =
-    Object.keys(scoreInc).length > 0
-      ? await Score.findOneAndUpdate(
-          { studentId: homework.studentId },
-          { $inc: scoreInc },
-          { new: true, upsert: true },
-        )
-      : await Score.findOne({ studentId: homework.studentId });
+  if (Object.keys(scoreInc).length > 0) {
+    await Score.findOneAndUpdate(
+      { studentId: homework.studentId },
+      { $inc: scoreInc },
+      { new: true, upsert: true },
+    );
+  }
 
-  return { homework, score };
+  return {};
 };
 
 const getNotificationList = async (
@@ -2217,6 +2312,7 @@ const getWeeklyRankings = async (level = null, user = null) => {
         name: "$student.name",
         studentCode: "$student.studentId",
         level: "$student.level",
+        profilePicPath: "$student.profilePicPath",
         totalCorrect: 1,
         totalQuestions: 1,
         accuracy: 1,
@@ -2274,6 +2370,7 @@ const seedAdminScreenData = async () => {
 module.exports = {
   login,
   loginUsingDeviceId,
+  changePassword,
   getStudentList,
   getMessageStudentList,
   getStudentsBySameDeviceId,
@@ -2294,6 +2391,7 @@ module.exports = {
   unassignPracticeQuestionsFromSelf,
   addStudent,
   updateStudent,
+  resetStudentPassword,
   removeStudentDeviceId,
   addQuestion,
   deleteQuestion,
