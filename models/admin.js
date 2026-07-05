@@ -14,6 +14,11 @@ const adminSchema = new mongoose.Schema(
       required: [true, "Admin name is required"],
       trim: true,
     },
+    roles: {
+      type: [String],
+      enum: ["admin", "superadmin"],
+      default: ["admin"],
+    },
     password: {
       type: String,
       required: [true, "Password is required"],
@@ -27,13 +32,22 @@ const adminSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    deletedDate: {
+      type: Date,
+      default: null,
+    },
     profilePicPath: {
       type: String,
       trim: true,
       default: "",
     },
+    orgId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Organization",
+      required: [true, "Creator (Organization) reference is required"],
+    },
   },
-  { versionKey: false },
+  { versionKey: false, timestamps: true },
 );
 
 // Hash password before saving

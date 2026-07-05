@@ -62,6 +62,11 @@ const studentSchema = new mongoose.Schema(
       ref: "Admin",
       required: [true, "Creator (Admin) reference is required"],
     },
+    orgId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Organization",
+      required: [true, "Creator (Organization) reference is required"],
+    },
   },
   {
     timestamps: true, // auto adds createdAt and updatedAt

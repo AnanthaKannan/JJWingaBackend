@@ -6,3 +6,4 @@
 ## V2.2.0
 1. question all the data need to update as a homework
 2. admin/students/:id/reset-password we can change to patch
+3. list student api query need to update
