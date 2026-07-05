@@ -11,16 +11,17 @@ const run = async () => {
   await mongoose.connect(process.env.MONGO_URL);
 
   const orgReq = {
-    name: "Honey Bee",
-    studentPrefix: "HB",
-    teacherPrefix: "AHB",
+    name: "JJ Brain Wings",
+    studentPrefix: "JJ",
+    teacherPrefix: "JW",
   };
 
-  const adminReq = { roles: ["admin"] };
+  const adminName = "Sobhana";
+
+  const adminReq = { roles: ["superadmin"], name: adminName };
 
   const orgResult = await addOrganization(orgReq);
   adminReq.orgId = orgResult._id;
-  adminReq.name = orgResult.name;
   const adminResult = await addAdmin(adminReq);
 
   console.log("adminResult", adminResult);
