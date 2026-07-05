@@ -29,6 +29,7 @@ const {
   Organization,
 } = require("../models");
 const { buildAssignmentNotificationText } = require("../config/notifications");
+const { LEVELS } = require("../utils");
 
 if (!admin.apps.length) {
   admin.initializeApp({
@@ -107,7 +108,7 @@ const login = async (username, password, deviceId, validatePassword = true) => {
       ...(role === "student"
         ? {
             studentId: user.studentId,
-            level: user.level,
+            level: LEVELS[user.level] ?? user.level,
             vertical: user.vertical,
           }
         : { adminId: user.adminId, roles: user.roles }),
