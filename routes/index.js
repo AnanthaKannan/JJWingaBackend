@@ -234,6 +234,7 @@ router.patch(
 );
 
 router.get("/admin/org", ...superAdmin, controller.getOrgDetailController);
+router.post("/admin/order", ...superAdmin, controller.createOrderController);
 
 router.post(
   "/crone/notifications/appreciations",

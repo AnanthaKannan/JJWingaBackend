@@ -47,6 +47,9 @@ const {
   getAdminList,
   getOrgDetail,
 } = require("../service");
+
+const service = require("../service");
+
 const {
   hasField,
   sendOptionalStudentLevelError,
@@ -1532,8 +1535,19 @@ const getOrgDetailController = async (req, res) => {
   });
 };
 
+const createOrderController = async (req, res) => {
+  const { orgId } = req.user;
+  const data = await service.createOrder(orgId);
+  return res.status(200).json({
+    success: true,
+    message: "Payment order initiated successfully",
+    data,
+  });
+};
+
 module.exports = {
   addAdminController,
+  createOrderController,
   updateAdminController,
   getAdminListController,
   getStudentListController,

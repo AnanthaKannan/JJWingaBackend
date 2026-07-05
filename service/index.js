@@ -1,6 +1,7 @@
 const admin = require("firebase-admin");
 const bcrypt = require("bcryptjs");
 const mongoose = require("mongoose");
+const Razorpay = require("razorpay");
 
 const { generateToken } = require("../middleware/auth");
 const logger = require("../middleware/logger");
@@ -2577,6 +2578,27 @@ const getOrgDetail = async (orgId) => {
   };
 };
 
+const createOrder = async (orgId) => {
+  const instance = new Razorpay({
+    key_id: process.env.RAZER_PAY_KEY_ID,
+    key_secret: process.env.RAZER_PAY_KEY_SECRET,
+  });
+
+  const result = await instance.orders.create({
+    amount: 101,
+    currency: "INR",
+    receipt: "Monthly Payment",
+    notes: {
+      orgId, // optional, whatever we want we can write inside
+    },
+  });
+
+  // TODO: NEED TO IMPLEMENT FAILURE SCENARIO
+
+  result.keyId = process.env.RAZER_PAY_KEY_ID;
+  return result;
+};
+
 module.exports = {
   login,
   addAdmin,
@@ -2584,6 +2606,7 @@ module.exports = {
   loginUsingDeviceId,
   getAdminList,
   changePassword,
+  createOrder,
   getOrgDetail,
   getStudentList,
   getMessageStudentList,
