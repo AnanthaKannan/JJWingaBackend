@@ -2346,6 +2346,20 @@ const getWeeklyRankings = async (orgId, level = null, user = null) => {
         updatedAt: { $gte: monthStart },
       },
     },
+    {
+      $lookup: {
+        from: "questions",
+        localField: "questionId",
+        foreignField: "_id",
+        as: "question",
+      },
+    },
+    { $unwind: "$question" },
+    {
+      $match: {
+        "question.type": "homework",
+      },
+    },
 
     // Step 2: Calculate correct count and total questions per homework
     {
