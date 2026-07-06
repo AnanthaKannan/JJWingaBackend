@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 const LEVELS = [
   "Pluto", // 0
   "Mercury", // 1
@@ -13,9 +12,6 @@ const LEVELS = [
   "Galaxy", // 10
 ];
 
-module.exports = {
-  LEVELS,
-=======
 function getFormattedUptime() {
   const uptime = process.uptime(); // seconds (float)
 
@@ -36,5 +32,5 @@ function getFormattedUptime() {
 
 module.exports = {
   getFormattedUptime,
->>>>>>> 18b15873b07b1349e221114ad9be68733b64d0f4
+  LEVELS,
 };
