@@ -28,6 +28,11 @@ const fileUploadSchema = new mongoose.Schema(
       enum: ["practice", "celebration"],
       required: [true, "File upload type is required"],
     },
+    orgId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Organization",
+      required: [true, "Creator (Organization) reference is required"],
+    },
   },
   {
     timestamps: true,

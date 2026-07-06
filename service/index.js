@@ -10,18 +10,26 @@ const {
   getSupabaseStorageTarget,
 } = require("../utils/supabaseStorage");
 const {
+  PERFECT_SCORE_MESSAGES,
+  EXCELLENT_SCORE_MESSAGES,
+  MEDIUM_SCORE_MESSAGE,
+  LOW_SCORE_MESSAGE,
+  SUPER_LOW_MESSAGE,
+} = require("../message/inedx");
+const {
   Student,
   HomeWork,
   Admin,
-  IdGen,
   Question,
   Score,
   Notification,
   FileUpload,
   Message,
   Registration,
+  Organization,
 } = require("../models");
 const { buildAssignmentNotificationText } = require("../config/notifications");
+const { LEVELS } = require("../utils");
 
 if (!admin.apps.length) {
   admin.initializeApp({
@@ -38,14 +46,17 @@ const login = async (username, password, deviceId, validatePassword = true) => {
   let role = null;
 
   // Step 1: Try Student login
-  user = await Student.findOne({ studentId: username });
+  user = await Student.findOne({
+    studentId: username,
+    isDeleted: { $ne: true },
+  });
   if (user) {
     role = "student";
   }
 
   // Step 2: Fallback to Admin login
   if (!user) {
-    user = await Admin.findOne({ adminId: username });
+    user = await Admin.findOne({ adminId: username, isDeleted: { $ne: true } });
     if (user) {
       role = "admin";
     }
@@ -64,6 +75,11 @@ const login = async (username, password, deviceId, validatePassword = true) => {
     }
   }
 
+  if (!user?.deviceIds?.some((id) => id === deviceId) && role === "student") {
+    // add the deviceId to the student if it is not exist
+    await updateStudent(user._id, { deviceId }, user?.orgId);
+  }
+
   // Step 5: Generate JWT
   let deviceIds = user.deviceIds;
   if (deviceId) {
@@ -73,16 +89,18 @@ const login = async (username, password, deviceId, validatePassword = true) => {
   const payload = {
     id: user._id,
     name: user.name,
+    orgId: user.orgId,
     role,
     ...(role === "student"
       ? { studentId: user.studentId, deviceIds, createdBy: user.createdBy }
-      : { adminId: user.adminId }),
+      : { adminId: user.adminId, roles: user.roles }),
   };
 
   const token = generateToken(payload);
   return {
     token,
     role,
+    orgId: user.orgId,
     user: {
       id: user._id,
       name: user.name,
@@ -90,11 +108,10 @@ const login = async (username, password, deviceId, validatePassword = true) => {
       ...(role === "student"
         ? {
             studentId: user.studentId,
-            level: user.level,
+            level: LEVELS[user.level] ?? user.level,
             vertical: user.vertical,
-            hasLoginSameDevice: user.hasLoginSameDevice,
           }
-        : { adminId: user.adminId }),
+        : { adminId: user.adminId, roles: user.roles }),
     },
   };
 };
@@ -105,6 +122,43 @@ const buildQuestionTypeFilter = (type) => {
   }
 
   return { type };
+};
+
+const changePassword = async (
+  orgId,
+  userId,
+  role,
+  oldPassword,
+  newPassword,
+) => {
+  if (!oldPassword || !newPassword) {
+    throw new Error("Old password and new password are required");
+  }
+
+  if (role !== "student" && role !== "admin") {
+    throw new Error("Invalid user role");
+  }
+
+  const Model = role === "student" ? Student : Admin;
+  const user = await Model.findOne({
+    _id: userId,
+    orgId,
+  });
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  const isMatch = await bcrypt.compare(oldPassword, user.password);
+  if (!isMatch) {
+    throw new Error("Old password is incorrect");
+  }
+
+  if (oldPassword === newPassword) {
+    throw new Error("New password must be different from the current password");
+  }
+
+  user.password = newPassword;
+  await user.save();
 };
 
 const loginUsingDeviceId = async (studentId, deviceIds) => {
@@ -125,6 +179,7 @@ const loginUsingDeviceId = async (studentId, deviceIds) => {
 };
 
 const getStudentList = async (
+  orgId,
   adminId,
   page = 1,
   limit = 15,
@@ -133,17 +188,29 @@ const getStudentList = async (
 ) => {
   const skip = (page - 1) * limit;
   const adminObjectId = new mongoose.Types.ObjectId(adminId);
+  const orgObjectId = new mongoose.Types.ObjectId(orgId);
 
-  const matchStage = [
-    { $match: { createdBy: adminObjectId } },
-    ...(search
-      ? [{ $match: { name: { $regex: search, $options: "i" } } }]
-      : []),
-    ...(level === null ? [] : [{ $match: { level } }]),
-  ];
+  const matchStage = {
+    orgId: orgObjectId,
+    createdBy: adminObjectId,
+    ...(search && {
+      name: { $regex: search, $options: "i" },
+    }),
+    ...(level !== null && { level }),
+  };
 
   const pipeline = [
-    ...matchStage,
+    {
+      $match: matchStage,
+    },
+
+    // Sort before pagination
+    {
+      $sort: {
+        studentId: -1,
+      },
+    },
+
     {
       $lookup: {
         from: "scores",
@@ -152,11 +219,15 @@ const getStudentList = async (
         as: "score",
       },
     },
+
     {
       $addFields: {
-        score: { $arrayElemAt: ["$score", 0] },
+        score: {
+          $arrayElemAt: ["$score", 0],
+        },
       },
     },
+
     {
       $project: {
         password: 0,
@@ -172,15 +243,30 @@ const getStudentList = async (
         "score.__v": 0,
       },
     },
-    { $sort: { createdAt: -1 } },
+
+    {
+      $skip: skip,
+    },
+
+    {
+      $limit: limit,
+    },
   ];
 
   const [students, countResult] = await Promise.all([
-    Student.aggregate([...pipeline, { $skip: skip }, { $limit: limit }]),
-    Student.aggregate([...pipeline, { $count: "total" }]),
+    Student.aggregate(pipeline),
+    Student.aggregate([
+      {
+        $match: matchStage,
+      },
+      {
+        $count: "total",
+      },
+    ]),
   ]);
 
   const total = countResult[0]?.total || 0;
+  const totalPages = Math.ceil(total / limit);
 
   return {
     students,
@@ -188,14 +274,15 @@ const getStudentList = async (
       total,
       page,
       limit,
-      totalPages: Math.ceil(total / limit),
-      hasNextPage: page < Math.ceil(total / limit),
+      totalPages,
+      hasNextPage: page < totalPages,
       hasPrevPage: page > 1,
     },
   };
 };
 
 const getMessageStudentList = async (
+  orgId,
   adminId,
   page = 1,
   limit = 15,
@@ -204,9 +291,10 @@ const getMessageStudentList = async (
 ) => {
   const skip = (page - 1) * limit;
   const adminObjectId = new mongoose.Types.ObjectId(adminId);
+  const orgObjectId = new mongoose.Types.ObjectId(orgId);
 
   const matchStage = [
-    { $match: { createdBy: adminObjectId } },
+    { $match: { createdBy: adminObjectId, orgId: orgObjectId } },
     ...(search
       ? [{ $match: { name: { $regex: search, $options: "i" } } }]
       : []),
@@ -280,15 +368,17 @@ const getMessageStudentList = async (
   };
 };
 
-const getStudentsBySameDeviceId = async (deviceIds) => {
+const getStudentsBySameDeviceId = async (orgId, deviceIds, id) => {
   if (!deviceIds || deviceIds.length === 0) {
     throw new Error("Device ID is not assigned for this student");
   }
 
   const students = await Student.find({
+    _id: { $ne: id },
+    orgId,
     deviceIds: { $in: deviceIds },
   })
-    .select("_id studentId name deviceIds vertical")
+    .select("_id studentId name deviceIds profilePicPath")
     .sort({ name: 1 })
     .lean();
 
@@ -299,6 +389,7 @@ const getStudentsBySameDeviceId = async (deviceIds) => {
 };
 
 const getQuestionList = async (
+  orgId,
   page = 1,
   limit = 15,
   search = "",
@@ -308,6 +399,7 @@ const getQuestionList = async (
   const skip = (page - 1) * limit;
 
   const query = {
+    orgId,
     isDeleted: { $ne: true },
     ...(search ? { questionId: { $regex: search, $options: "i" } } : {}),
     ...(level === null ? {} : { level }),
@@ -337,6 +429,7 @@ const getQuestionList = async (
 };
 
 const getPracticeQuestionList = async (
+  orgId,
   page = 1,
   limit = 15,
   search = "",
@@ -345,6 +438,7 @@ const getPracticeQuestionList = async (
 ) => {
   if (studentId) {
     return getAvailableQuestionsForStudent(
+      orgId,
       studentId,
       page,
       limit,
@@ -406,6 +500,7 @@ const getHomeworkList = async (
 };
 
 const getAvailableQuestionsForStudent = async (
+  orgId,
   studentId,
   page = 1,
   limit = 15,
@@ -415,10 +510,11 @@ const getAvailableQuestionsForStudent = async (
 ) => {
   const skip = (page - 1) * limit;
   const studentObjectId = new mongoose.Types.ObjectId(studentId);
+  const orgObjectId = new mongoose.Types.ObjectId(orgId);
 
   const pipeline = [
     {
-      $match: { isDeleted: { $ne: true } },
+      $match: { orgId: orgObjectId, isDeleted: { $ne: true } },
     },
     ...(level === null ? [] : [{ $match: { level } }]),
     ...(type === null ? [] : [{ $match: buildQuestionTypeFilter(type) }]),
@@ -700,10 +796,11 @@ const getAssignmentQuestionDetails = (questionIds, questionMap) =>
       type: question.type,
     }));
 
-const assignQuestion = async (adminId, studentId, questionIds) => {
+const assignQuestion = async (orgId, adminId, studentId, questionIds) => {
   const uniqueQuestionIds = [...new Set(toArray(questionIds).map(String))];
 
   const questions = await Question.find({
+    orgId,
     _id: { $in: uniqueQuestionIds },
     isDeleted: { $ne: true },
   });
@@ -761,7 +858,7 @@ const assignQuestion = async (adminId, studentId, questionIds) => {
   };
 };
 
-const assignQuestionsByLevels = async (adminId, levels, questionIds) => {
+const assignQuestionsByLevels = async (orgId, adminId, levels, questionIds) => {
   const uniqueLevels = [...new Set(toArray(levels).map(Number))];
   const uniqueQuestionIds = [...new Set(toArray(questionIds).map(String))];
 
@@ -771,6 +868,7 @@ const assignQuestionsByLevels = async (adminId, levels, questionIds) => {
 
   const questions = await Question.find({
     _id: { $in: uniqueQuestionIds },
+    orgId,
     isDeleted: { $ne: true },
   });
 
@@ -783,6 +881,7 @@ const assignQuestionsByLevels = async (adminId, levels, questionIds) => {
 
   const students = await Student.find({
     createdBy: adminId,
+    orgId,
     level: { $in: uniqueLevels },
   }).select("_id studentId name level");
 
@@ -1109,26 +1208,24 @@ const unassignPracticeQuestionsFromSelf = async (studentId, questionIds) => {
 };
 
 const addStudent = async (studentData) => {
-  const { name, level, createdBy } = studentData;
-
-  // 1. Validate admin exists
-  // const admin = await Admin.findById(createdBy);
-  // if (!admin) throw new Error("Admin not found");
+  const { orgId, name, level, createdBy } = studentData;
 
   // 2. Increment idGen and get new studentLastId
-  const idGen = await IdGen.findOneAndUpdate(
-    {},
-    { $inc: { studentLastId: 1 } },
-    { new: true, upsert: true },
+
+  const org = await Organization.findByIdAndUpdate(
+    orgId,
+    { $inc: { studentIdGen: 1 } },
+    { new: false }, // get the value BEFORE increment
   );
 
   // 3. Generate studentId e.g. "JJ101"
-  const studentId = `JJ${idGen.studentLastId}`;
-  const password = `Welcome${idGen.studentLastId}`;
+  const studentId = `${org.studentPrefix}${org.studentIdGen}`;
+  const password = `Welcome${org.studentIdGen}`;
 
   // 4. Create student
   const student = await Student.create({
     studentId,
+    orgId,
     name,
     level,
     password,
@@ -1137,17 +1234,49 @@ const addStudent = async (studentData) => {
 
   // 5. Create an empty score record for the student
   await Score.create({ studentId: student._id });
+  student.password = password;
 
   return { student };
 };
 
-const updateStudent = async (studentObjectId, updateData) => {
+const resetStudentPassword = async (studentObjectId, orgId) => {
+  const student = await Student.findOne({
+    _id: studentObjectId,
+    orgId,
+  });
+
+  if (!student) {
+    throw new Error("Student not found");
+  }
+
+  const newPassword = `Welcome${student.studentId.replace(/\D/g, "")}`;
+  student.password = newPassword;
+  await student.save();
+
+  return {
+    studentId: student.studentId,
+    name: student.name,
+    password: newPassword,
+  };
+};
+
+const updateStudent = async (studentObjectId, updateData, orgId) => {
   // 1. Validate student exists
-  const student = await Student.findById(studentObjectId);
+  const student = await Student.findOne({
+    _id: studentObjectId,
+    orgId,
+  });
   if (!student) throw new Error("Student not found");
 
   // 2. Whitelist allowed fields
-  const allowedFields = ["name", "password", "vertical", "deviceId", "level"];
+  const allowedFields = [
+    "name",
+    "password",
+    "vertical",
+    "deviceId",
+    "level",
+    "isDeleted",
+  ];
   const filteredData = Object.keys(updateData)
     .filter((key) => allowedFields.includes(key))
     .reduce((obj, key) => {
@@ -1157,6 +1286,12 @@ const updateStudent = async (studentObjectId, updateData) => {
 
   if (Object.keys(filteredData).length === 0) {
     throw new Error("No valid fields provided to update");
+  }
+
+  if (filteredData?.isDeleted === true) {
+    filteredData.deletedDate = new Date();
+  } else if (filteredData?.isDeleted === false) {
+    filteredData.deletedDate = null;
   }
 
   if (Object.prototype.hasOwnProperty.call(filteredData, "deviceId")) {
@@ -1177,14 +1312,17 @@ const updateStudent = async (studentObjectId, updateData) => {
   await student.save({ validateModifiedOnly: true });
 };
 
-const removeStudentDeviceId = async (studentObjectId, deviceId) => {
+const removeStudentDeviceId = async (orgId, studentObjectId, deviceId) => {
   const deviceIdsToRemove = [deviceId];
 
   if (deviceIdsToRemove.length === 0) {
     throw new Error("deviceId is required");
   }
 
-  const student = await Student.findById(studentObjectId);
+  const student = await Student.findOne({
+    _id: studentObjectId,
+    orgId,
+  });
   if (!student) throw new Error("Student not found");
 
   const removeSet = new Set(deviceIdsToRemove);
@@ -1195,30 +1333,36 @@ const removeStudentDeviceId = async (studentObjectId, deviceId) => {
   await student.save({ validateModifiedOnly: true });
 };
 
-const updateFcmToken = async (userId, fcmToken, isStudent) => {
+const updateFcmToken = async (orgId, userId, fcmToken, isStudent) => {
   if (isStudent) {
     const studentId = userId;
-    await Student.findByIdAndUpdate(
-      studentId,
+    await Student.findOneAndUpdate(
+      { _id: studentId, orgId },
       { fcmTokens: [fcmToken] }, // replace entire array with the new single token
     );
   } else {
     const adminId = userId;
-    await Admin.findByIdAndUpdate(
-      adminId,
+    await Admin.findOneAndUpdate(
+      { _id: adminId, orgId },
       { fcmTokens: [fcmToken] }, // replace entire array with the new single token
     );
   }
 };
 
-const updateProfilePicPath = async (user, profilePicPath) => {
+const updateProfilePicPath = async (orgId, user, profilePicPath) => {
   if (user?.role === "student") {
-    await Student.findByIdAndUpdate(user.id, { profilePicPath });
+    await Student.findOneAndUpdate(
+      { _id: user.id, orgId: orgId },
+      { profilePicPath },
+    );
     return;
   }
 
   if (user?.role === "admin") {
-    await Admin.findByIdAndUpdate(user.id, { profilePicPath });
+    await Admin.findByIdAndUpdate(
+      { _id: user.id, orgId: orgId },
+      { profilePicPath },
+    );
   }
 };
 
@@ -1276,13 +1420,14 @@ const validateFileUploadRecord = (user, name, type) => {
   }
 };
 
-const createFileUploadRecord = async (name, filePath, type, file) => {
+const createFileUploadRecord = async (orgId, name, filePath, type, file) => {
   if (!["practice", "celebration"].includes(type)) {
     return null;
   }
 
   return FileUpload.create({
     name: name.trim(),
+    orgId,
     filePath,
     fileSize: file.size,
     fileFormat: file.mimetype,
@@ -1306,13 +1451,13 @@ const prepareProfilePic = (file, formPath) => {
   return file;
 };
 
-const getFileUploadList = async (type, page = 1, limit = 15) => {
+const getFileUploadList = async (orgId, type, page = 1, limit = 15) => {
   if (!isFileUploadType(type)) {
     throw new Error("type must be one of: practice, celebration");
   }
 
   const skip = (page - 1) * limit;
-  const query = { type };
+  const query = { type, orgId };
 
   const [fileUploads, total] = await Promise.all([
     FileUpload.find(query)
@@ -1337,7 +1482,7 @@ const getFileUploadList = async (type, page = 1, limit = 15) => {
   };
 };
 
-const uploadFile = async (file, user, formPath = "", name = "") => {
+const uploadFile = async (orgId, file, user, formPath = "", name = "") => {
   if (!file) {
     throw new Error("file is required");
   }
@@ -1371,10 +1516,11 @@ const uploadFile = async (file, user, formPath = "", name = "") => {
     .getPublicUrl(data.path);
 
   if (formPath.trim() === "profile") {
-    await updateProfilePicPath(user, data.path);
+    await updateProfilePicPath(orgId, user, data.path);
   }
 
   const fileUpload = await createFileUploadRecord(
+    orgId,
     name,
     data.path,
     uploadType,
@@ -1392,7 +1538,7 @@ const uploadFile = async (file, user, formPath = "", name = "") => {
   };
 };
 
-const updateFileUploadName = async (fileUploadId, name) => {
+const updateFileUploadName = async (orgId, fileUploadId, name) => {
   if (!fileUploadId) {
     throw new Error("fileUploadId is required");
   }
@@ -1401,8 +1547,11 @@ const updateFileUploadName = async (fileUploadId, name) => {
     throw new Error("name is required");
   }
 
-  const fileUpload = await FileUpload.findByIdAndUpdate(
-    fileUploadId,
+  const fileUpload = await FileUpload.findOneAndUpdate(
+    {
+      orgId: new mongoose.Types.ObjectId(orgId),
+      _id: new mongoose.Types.ObjectId(fileUploadId),
+    },
     { name: name.trim() },
     { new: true, runValidators: true },
   );
@@ -1414,12 +1563,12 @@ const updateFileUploadName = async (fileUploadId, name) => {
   return { fileUpload };
 };
 
-const deleteFileUpload = async (fileUploadId) => {
+const deleteFileUpload = async (orgId, fileUploadId) => {
   if (!fileUploadId) {
     throw new Error("fileUploadId is required");
   }
 
-  const fileUpload = await FileUpload.findById(fileUploadId);
+  const fileUpload = await FileUpload.findOne({ _id: fileUploadId, orgId });
   if (!fileUpload) {
     throw new Error("File upload not found");
   }
@@ -1448,9 +1597,12 @@ const downloadFileUpload = async (fileUploadId) => {
   };
 };
 
-const deleteProfilePic = async (user) => {
+const deleteProfilePic = async (orgId, user) => {
   const Model = user?.role === "student" ? Student : Admin;
-  const account = await Model.findById(user?.id).select("profilePicPath");
+  const account = await Model.findOne({
+    _id: user?.id,
+    orgId,
+  }).select("profilePicPath");
 
   if (!account) {
     throw new Error("User not found");
@@ -1669,25 +1821,37 @@ const getMessageList = async (user, page = 1, limit = 15, userId = null) => {
 };
 
 const addQuestion = async (questionData) => {
-  const { questionId, level, type, questions, marks, oral } = questionData;
+  const { orgId, questionId, level, type, questions, marks, oral, createdBy } =
+    questionData;
 
   // 1. Check if questionId already exists
-  const existing = await Question.findOne({ questionId });
+  const existing = await Question.findOne({
+    questionId,
+    createdBy,
+    type,
+    orgId,
+    isDeleted: { $ne: true },
+  });
   if (existing) throw new Error("Question ID already exists");
 
   // 2. Create question
   await Question.create({
     questionId,
+    createdBy,
     level,
     type,
+    orgId,
     questions: questions ?? [],
     ...(marks === undefined ? {} : { marks }),
     ...(oral === undefined ? {} : { oral }),
   });
 };
 
-const updateQuestion = async (questionObjectId, updateData) => {
-  const question = await Question.findById(questionObjectId);
+const updateQuestion = async (orgId, questionObjectId, updateData) => {
+  const question = await Question.findOne({
+    _id: questionObjectId,
+    orgId,
+  });
   if (!question) throw new Error("Question not found");
 
   const allowedFields = [
@@ -1715,8 +1879,11 @@ const updateQuestion = async (questionObjectId, updateData) => {
   return { question };
 };
 
-const deleteQuestion = async (questionObjectId) => {
-  const question = await Question.findById(questionObjectId);
+const deleteQuestion = async (orgId, questionObjectId) => {
+  const question = await Question.findOne({
+    _id: questionObjectId,
+    orgId,
+  });
   if (!question) throw new Error("Question not found");
 
   const isAssigned = await HomeWork.exists({ questionId: questionObjectId });
@@ -1725,7 +1892,7 @@ const deleteQuestion = async (questionObjectId) => {
     question.isDeleted = true;
     await question.save();
 
-    return { deleteType: "soft", question };
+    return { deleteType: "soft" };
   }
 
   await question.deleteOne();
@@ -1899,16 +2066,15 @@ const updateHomework = async (homeworkId, updateData) => {
   await homework.save();
 
   // 5. Update score atomically
-  const score =
-    Object.keys(scoreInc).length > 0
-      ? await Score.findOneAndUpdate(
-          { studentId: homework.studentId },
-          { $inc: scoreInc },
-          { new: true, upsert: true },
-        )
-      : await Score.findOne({ studentId: homework.studentId });
+  if (Object.keys(scoreInc).length > 0) {
+    await Score.findOneAndUpdate(
+      { studentId: homework.studentId },
+      { $inc: scoreInc },
+      { new: true, upsert: true },
+    );
+  }
 
-  return { homework, score };
+  return {};
 };
 
 const getNotificationList = async (
@@ -1970,6 +2136,86 @@ const sendPushNotification = async (token, title, body) => {
       "push_notification_failed",
     );
   }
+};
+
+const calculateAccuracy = (results = []) => {
+  if (!Array.isArray(results) || results.length === 0) {
+    return 0;
+  }
+
+  const correctCount = results.filter(Boolean).length;
+  return (correctCount / results.length) * 100;
+};
+
+const getRandomMessage = (messages) =>
+  messages[Math.floor(Math.random() * messages.length)];
+
+const getAppreciationMessage = (accuracy) => {
+  if (accuracy === 100) return getRandomMessage(PERFECT_SCORE_MESSAGES);
+  if (accuracy >= 90) return getRandomMessage(EXCELLENT_SCORE_MESSAGES);
+  if (accuracy >= 80) return getRandomMessage(MEDIUM_SCORE_MESSAGE);
+  if (accuracy >= 70) return getRandomMessage(LOW_SCORE_MESSAGE);
+
+  return getRandomMessage(SUPER_LOW_MESSAGE);
+};
+
+const sendAppreciationNotifications = async () => {
+  const homeworks = await HomeWork.find({
+    state: "COMPLETED",
+    appreciateSend: false,
+  })
+    .populate("studentId", "createdBy fcmTokens isDeleted")
+    .populate("questionId", "questionId")
+    .sort({ updatedAt: 1 });
+
+  let sentCount = 0;
+  let skippedCount = 0;
+
+  for (const homework of homeworks) {
+    const student = homework.studentId;
+    if (!student || student.isDeleted || !student.createdBy) {
+      skippedCount += 1;
+      continue;
+    }
+
+    const accuracy = calculateAccuracy(homework.results);
+    const questionName = homework.questionId?.questionId;
+    const messageHeader = `Great Job! ${questionName}`;
+    const messageBody = getAppreciationMessage(accuracy);
+
+    const notification = await Notification.create({
+      studentId: student._id,
+      messageHeader,
+      messageBody,
+      sentBy: student.createdBy,
+      sentByModel: "Admin",
+    });
+
+    await sendPushNotification(
+      student?.fcmTokens?.[0],
+      notification.messageHeader,
+      notification.messageBody,
+    );
+
+    homework.appreciateSend = true;
+    await homework.save({ validateModifiedOnly: true });
+    sentCount += 1;
+  }
+
+  logger.info(
+    {
+      sentCount,
+      totalRequested: homeworks.length,
+      skippedCount,
+    },
+    "appreciation_notifications_created",
+  );
+
+  return {
+    sentCount,
+    totalRequested: homeworks.length,
+    skippedCount,
+  };
 };
 
 const sendBulkNotification = async (
@@ -2066,23 +2312,21 @@ const resolveMonthlyRankingScope = async (level, user) => {
   return scope;
 };
 
-const getWeeklyRankings = async (level = null, user = null) => {
+const getWeeklyRankings = async (orgId, level = null, user = null) => {
   const { level: rankingLevel, adminId: rankingAdminId } =
     await resolveMonthlyRankingScope(level, user);
   const monthStart = new Date();
   monthStart.setDate(1);
   monthStart.setHours(0, 0, 0, 0);
 
-  const studentAdminFilter = rankingAdminId
-    ? [
-        {
-          $match: {
-            "student.createdBy": new mongoose.Types.ObjectId(rankingAdminId),
-          },
-        },
-      ]
-    : [];
-
+  const studentAdminFilter = [
+    {
+      $match: {
+        "student.createdBy": new mongoose.Types.ObjectId(rankingAdminId),
+        "student.orgId": new mongoose.Types.ObjectId(orgId),
+      },
+    },
+  ];
   const studentLevelFilter =
     rankingLevel === null
       ? []
@@ -2100,6 +2344,20 @@ const getWeeklyRankings = async (level = null, user = null) => {
       $match: {
         state: "COMPLETED",
         updatedAt: { $gte: monthStart },
+      },
+    },
+    {
+      $lookup: {
+        from: "questions",
+        localField: "questionId",
+        foreignField: "_id",
+        as: "question",
+      },
+    },
+    { $unwind: "$question" },
+    {
+      $match: {
+        "question.type": "homework",
       },
     },
 
@@ -2217,6 +2475,7 @@ const getWeeklyRankings = async (level = null, user = null) => {
         name: "$student.name",
         studentCode: "$student.studentId",
         level: "$student.level",
+        profilePicPath: "$student.profilePicPath",
         totalCorrect: 1,
         totalQuestions: 1,
         accuracy: 1,
@@ -2229,51 +2488,117 @@ const getWeeklyRankings = async (level = null, user = null) => {
   return rankings;
 };
 
-const seedAdminScreenData = async () => {
-  const adminData = {
-    _id: new mongoose.Types.ObjectId("6a16d4108349e449c87c7806"),
-    adminId: "JW001",
-    name: "Sobhana",
-    password: "$2b$10$tw.cZEpo5FjvxEMe6JDodea4LtodzAM1aV2D7sfcNCKY7hV5ghHk2",
-  };
+const addOrganization = async ({
+  name,
+  studentPrefix,
+  teacherPrefix,
+  profilePicPath,
+}) => {
+  if (!name) throw new Error("name not found");
+  if (!studentPrefix) throw new Error("studentPrefix not found");
+  if (!teacherPrefix) throw new Error("teacherPrefix not found");
 
-  const existingAdmin = await Admin.findOne({ adminId: adminData.adminId });
-  const admin =
-    existingAdmin ||
-    (await Admin.findOneAndUpdate(
-      { adminId: adminData.adminId },
-      { $setOnInsert: adminData },
-      { new: true, upsert: true },
-    ));
+  const org = new Organization({
+    name,
+    studentPrefix,
+    teacherPrefix,
+    ...(profilePicPath && { profilePicPath }),
+  });
 
-  const existingIdGen = await IdGen.findOne({});
+  return await org.save();
+};
 
-  const idGen = await IdGen.findOneAndUpdate(
-    {},
-    {
-      $setOnInsert: {
-        _id: new mongoose.Types.ObjectId("6a195c89699fb18c51477740"),
-        studentLastId: 100,
-      },
-    },
-    { new: true, upsert: true },
-  );
+const getAdminList = async (id, orgId, page = 1, limit = 15) => {
+  const skip = (page - 1) * limit;
+
+  const query = { orgId, _id: { $ne: id } };
+
+  const [admins, total] = await Promise.all([
+    Admin.find(query)
+      .select("-password -fcmTokens -orgId -roles -updatedAt") // exclude recipient id (already known)
+      .sort({ createdAt: -1 }) // newest first
+      .skip(skip)
+      .limit(limit),
+    Admin.countDocuments(query),
+  ]);
 
   return {
-    admin: {
-      data: admin,
-      created: !existingAdmin,
+    admins,
+    meta: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+      hasNextPage: page < Math.ceil(total / limit),
+      hasPrevPage: page > 1,
     },
-    idGen: {
-      data: idGen,
-      created: !existingIdGen,
-    },
+  };
+};
+
+const updateAdmin = async (adminId, orgId, updates) => {
+  const allowed = ["name", "profilePicPath", "password", "isDeleted"];
+  const filtered = Object.fromEntries(
+    Object.entries(updates).filter(([key]) => allowed.includes(key)),
+  );
+
+  if (!Object.keys(filtered).length)
+    throw new Error("No valid fields to update");
+
+  const admin = await Admin.findOne({ _id: adminId, orgId });
+  if (!admin) throw new Error("Admin not found");
+
+  if (filtered?.isDeleted === true) {
+    filtered.deletedDate = new Date();
+  } else if (filtered?.isDeleted === false) {
+    filtered.deletedDate = null;
+  }
+
+  Object.assign(admin, filtered);
+  await admin.save(); // triggers bcrypt pre-save hook if password changed
+  return {};
+};
+
+const addAdmin = async ({ name, orgId, roles, profilePicPath }) => {
+  if (!orgId) throw new Error("Organization not found");
+  if (!name) throw new Error("Name not found");
+
+  const org = await Organization.findByIdAndUpdate(
+    orgId,
+    { $inc: { teacherIdGen: 1 } },
+    { new: false }, // get the value BEFORE increment
+  );
+
+  const adminId = `${org.teacherPrefix}${org.teacherIdGen}`; // e.g. TE100
+  const password = `Teacher${org.teacherIdGen}`;
+
+  const admin = new Admin({
+    adminId,
+    name,
+    orgId,
+    password,
+    ...(profilePicPath && { profilePicPath }),
+    ...(roles && { roles }),
+  });
+
+  await admin.save();
+  return { password, adminId };
+};
+
+const getOrgDetail = async (orgId) => {
+  const orgDetail = await Organization.findOne({ _id: orgId });
+  return {
+    orgDetail,
   };
 };
 
 module.exports = {
   login,
+  addAdmin,
+  updateAdmin,
   loginUsingDeviceId,
+  getAdminList,
+  changePassword,
+  getOrgDetail,
   getStudentList,
   getMessageStudentList,
   getStudentsBySameDeviceId,
@@ -2294,11 +2619,13 @@ module.exports = {
   unassignPracticeQuestionsFromSelf,
   addStudent,
   updateStudent,
+  resetStudentPassword,
   removeStudentDeviceId,
   addQuestion,
   deleteQuestion,
   getNotificationList,
   sendBulkNotification,
+  sendAppreciationNotifications,
   updateFcmToken,
   uploadFile,
   getFileUploadList,
@@ -2311,6 +2638,6 @@ module.exports = {
   getUnreadMessageCount,
   markMessagesAsRead,
   getWeeklyRankings,
-  seedAdminScreenData,
   updateQuestion,
+  addOrganization,
 };

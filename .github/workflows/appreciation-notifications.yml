@@ -1,0 +1,21 @@
+name: Appreciation Notifications
+
+on:
+  schedule:
+    - cron: '30 3 * * *'   # 9:00 AM IST
+    - cron: '30 4 * * *'   # 10:00 AM IST
+    - cron: '30 10 * * *'  # 4:00 PM IST
+    - cron: '30 12 * * *'  # 6:00 PM IST
+    - cron: '30 13 * * *'  # 7:00 PM IST
+    - cron: '30 14 * * *'  # 8:00 PM IST
+    - cron: '30 15 * * *'  # 9:00 PM IST
+
+jobs:
+  send-appreciations:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Appreciation Notifications
+        run: |
+          curl -X POST https://your-render-url.onrender.com/v1/api/crone/notifications/appreciations \
+            -H "Content-Type: application/json" \
+            -H "x-api-key: ${{ secrets.CRON_API_KEY }}"

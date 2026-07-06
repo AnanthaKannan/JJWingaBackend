@@ -1,10 +1,16 @@
 const express = require("express");
 const router = express.Router();
 const controller = require("../controllers");
-const { authenticate, authorizeAdmin } = require("../middleware/auth");
+const {
+  authenticate,
+  authorizeAdmin,
+  apiKeyValidation,
+  authorizeSuperAdminRole,
+} = require("../middleware/auth");
 const { uploadSingleFile } = require("../middleware/upload");
 
 const admin = [authenticate, authorizeAdmin];
+const superAdmin = [authenticate, authorizeSuperAdminRole];
 
 // Auth (public)
 router.get("/health", controller.healthCheckController);
@@ -22,6 +28,11 @@ router.patch(
   "/admin/students/:id",
   ...admin,
   controller.updateStudentController,
+);
+router.post(
+  "/admin/students/:id/reset-password",
+  ...admin,
+  controller.resetStudentPasswordController,
 );
 
 router.get(
@@ -42,6 +53,11 @@ router.delete(
 
 router.get("/ranking", authenticate, controller.getRankingController);
 router.patch("/student", authenticate, controller.updateMyStudentController);
+router.patch(
+  "/change-password",
+  authenticate,
+  controller.changePasswordController,
+);
 router.delete(
   "/student/device-id",
   authenticate,
@@ -195,18 +211,34 @@ router.patch(
 
 router.patch(
   "/admin/file-uploads/:id",
-  ...admin,
+  ...superAdmin,
   controller.updateFileUploadNameController,
 );
 router.delete(
   "/admin/file-uploads/:id",
-  ...admin,
+  ...superAdmin,
   controller.deleteFileUploadController,
 );
-router.get(
-  "/file-uploads/:id/download",
-  authenticate,
-  controller.downloadFileUploadController,
+// router.get(
+//   "/file-uploads/:id/download",
+//   authenticate,
+//   controller.downloadFileUploadController,
+// );
+
+router.post("/admin/teacher", ...superAdmin, controller.addAdminController);
+router.get("/admin/teacher", ...superAdmin, controller.getAdminListController);
+router.patch(
+  "/admin/teacher/:id",
+  ...superAdmin,
+  controller.updateAdminController,
+);
+
+router.get("/admin/org", ...superAdmin, controller.getOrgDetailController);
+
+router.post(
+  "/crone/notifications/appreciations",
+  apiKeyValidation,
+  controller.sendAppreciationNotificationsController,
 );
 
 module.exports = router;

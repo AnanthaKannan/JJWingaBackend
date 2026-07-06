@@ -39,6 +39,10 @@ const studentSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
     fcmTokens: {
       type: [String],
       default: [],
@@ -49,14 +53,19 @@ const studentSchema = new mongoose.Schema(
       trim: true,
       default: "",
     },
-    hasLoginSameDevice: {
-      type: Boolean,
-      default: false,
+    deletedDate: {
+      type: Date,
+      default: null,
     },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Admin",
       required: [true, "Creator (Admin) reference is required"],
+    },
+    orgId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Organization",
+      required: [true, "Creator (Organization) reference is required"],
     },
   },
   {

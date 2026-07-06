@@ -7,6 +7,7 @@ const {
   createRegistration,
   getRegistrationList,
   deleteRegistration,
+  changePassword,
   getQuestionList,
   getPracticeQuestionList,
   getHomeworkList,
@@ -21,6 +22,7 @@ const {
   unassignPracticeQuestionsFromSelf,
   addStudent,
   updateStudent,
+  resetStudentPassword,
   removeStudentDeviceId,
   updateFcmToken,
   uploadFile,
@@ -37,8 +39,13 @@ const {
   updateQuestion,
   deleteQuestion,
   sendBulkNotification,
+  sendAppreciationNotifications,
   getNotificationList,
   getWeeklyRankings,
+  addAdmin,
+  updateAdmin,
+  getAdminList,
+  getOrgDetail,
 } = require("../service");
 const {
   hasField,
@@ -114,11 +121,13 @@ const getStudentListController = async (req, res) => {
   const limit = parseInt(req.query.limit) || 15;
   const search = req.query.search?.trim() || "";
   const { level } = req.query;
+  const { orgId } = req.user;
 
   const levelErrorResponse = sendOptionalStudentLevelError(res, level);
   if (levelErrorResponse) return levelErrorResponse;
 
   const data = await getStudentList(
+    orgId,
     req.user.id,
     page,
     limit,
@@ -145,6 +154,7 @@ const getMessageStudentListController = async (req, res) => {
   if (levelErrorResponse) return levelErrorResponse;
 
   const data = await getMessageStudentList(
+    req.user.orgId,
     req.user.id,
     page,
     limit,
@@ -163,7 +173,11 @@ const getMessageStudentListController = async (req, res) => {
 
 const getStudentsBySameDeviceIdController = async (req, res) => {
   try {
-    const data = await getStudentsBySameDeviceId(req.user.deviceIds);
+    const data = await getStudentsBySameDeviceId(
+      req.user.orgId,
+      req.user.deviceIds,
+      req.user.id,
+    );
 
     return res.status(200).json({
       success: true,
@@ -187,12 +201,13 @@ const getStudentsBySameDeviceIdController = async (req, res) => {
 
 const getRankingController = async (req, res) => {
   const { level } = req.query;
+  const { orgId } = req.user;
 
   const levelErrorResponse = sendOptionalStudentLevelError(res, level);
   if (levelErrorResponse) return levelErrorResponse;
 
   const rankingLevel = level === undefined ? null : Number(level);
-  const data = await getWeeklyRankings(rankingLevel, req.user);
+  const data = await getWeeklyRankings(orgId, rankingLevel, req.user);
 
   return res.status(200).json({
     success: true,
@@ -238,6 +253,7 @@ const getQuestionListController = async (req, res) => {
   const search = req.query.search?.trim() || "";
   const { level } = req.query;
   const type = req.query.type?.trim();
+  const { orgId } = req.user;
 
   const levelErrorResponse = sendOptionalStudentLevelError(res, level);
   if (levelErrorResponse) return levelErrorResponse;
@@ -246,6 +262,7 @@ const getQuestionListController = async (req, res) => {
   if (typeErrorResponse) return typeErrorResponse;
 
   const data = await getQuestionList(
+    orgId,
     page,
     limit,
     search,
@@ -267,11 +284,13 @@ const getPracticeQuestionListController = async (req, res) => {
   const limit = parseInt(req.query.limit) || 15;
   const search = req.query.search?.trim() || "";
   const { level } = req.query;
+  const { orgId } = req.user;
 
   const levelErrorResponse = sendOptionalStudentLevelError(res, level);
   if (levelErrorResponse) return levelErrorResponse;
 
   const data = await getPracticeQuestionList(
+    orgId,
     page,
     limit,
     search,
@@ -343,6 +362,7 @@ const getHomeworkListController = async (req, res) => {
 const getAvailableQuestionsForStudentController = async (req, res) => {
   const { studentId } = req.params;
   const { page, limit, search, level } = req.query;
+  const { orgId } = req.user;
   const type = req.query.type?.trim();
 
   if (!studentId) {
@@ -356,6 +376,7 @@ const getAvailableQuestionsForStudentController = async (req, res) => {
   if (typeErrorResponse) return typeErrorResponse;
 
   const data = await getAvailableQuestionsForStudent(
+    orgId,
     studentId,
     parseInt(page) || 1,
     parseInt(limit) || 15,
@@ -414,6 +435,7 @@ const getHomeworkByIdController = async (req, res) => {
 const assignQuestionController = async (req, res) => {
   try {
     const { studentId, levels, questionIds } = req.body;
+    const { orgId, id: adminId } = req.user;
     const hasStudentId = Boolean(studentId);
     const hasLevels = Array.isArray(levels) && levels.length > 0;
 
@@ -432,8 +454,8 @@ const assignQuestionController = async (req, res) => {
     }
 
     const data = hasStudentId
-      ? await assignQuestion(req.user.id, studentId, questionIds)
-      : await assignQuestionsByLevels(req.user.id, levels, questionIds);
+      ? await assignQuestion(orgId, adminId, studentId, questionIds)
+      : await assignQuestionsByLevels(orgId, adminId, levels, questionIds);
 
     return res.status(201).json({
       success: true,
@@ -582,6 +604,7 @@ const unassignPracticeQuestionsFromSelfController = async (req, res) => {
 
 const addStudentController = async (req, res) => {
   const { name, level } = req.body;
+  const { orgId, id: createdBy } = req.user;
 
   if (!name) {
     return sendBadRequest(res, "name is required");
@@ -590,11 +613,17 @@ const addStudentController = async (req, res) => {
   const levelErrorResponse = sendStudentLevelError(res, level);
   if (levelErrorResponse) return levelErrorResponse;
 
-  await addStudent({ name, level: Number(level), createdBy: req.user.id });
+  const data = await addStudent({
+    orgId,
+    name,
+    level: Number(level),
+    createdBy,
+  });
 
   return res.status(201).json({
     success: true,
     message: "Student added successfully",
+    ...data,
   });
 };
 
@@ -617,7 +646,7 @@ const updateStudentController = async (req, res) => {
     updateData.level = Number(updateData.level);
   }
 
-  await updateStudent(id, updateData);
+  await updateStudent(id, updateData, req.user.orgId);
 
   return res.status(200).json({
     success: true,
@@ -625,8 +654,36 @@ const updateStudentController = async (req, res) => {
   });
 };
 
+const resetStudentPasswordController = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { orgId } = req.user;
+
+    if (!id) {
+      return sendBadRequest(res, "Student ID is required");
+    }
+
+    const data = await resetStudentPassword(id, orgId);
+
+    return res.status(200).json({
+      success: true,
+      message: "Student password reset successfully",
+      data,
+    });
+  } catch (error) {
+    logControllerError("resetStudentPasswordController", error);
+
+    const isClientError = ["Student not found"].includes(error.message);
+    return res.status(isClientError ? 400 : 500).json({
+      success: false,
+      message: error.message || "Failed to reset student password",
+    });
+  }
+};
+
 const updateStudentFcmTokenController = async (req, res) => {
   const { fcmToken } = req.body;
+  const { orgId } = req.user;
 
   if (!fcmToken) {
     return res.status(400).json({
@@ -636,7 +693,7 @@ const updateStudentFcmTokenController = async (req, res) => {
   }
 
   const isStudent = req.user.role === "student";
-  await updateFcmToken(req.user.id, fcmToken, isStudent);
+  await updateFcmToken(orgId, req.user.id, fcmToken, isStudent);
 
   return res.status(200).json({
     success: true,
@@ -646,7 +703,9 @@ const updateStudentFcmTokenController = async (req, res) => {
 
 const uploadFileController = async (req, res) => {
   try {
+    const { orgId } = req.user;
     const file = await uploadFile(
+      orgId,
       req.file,
       req.user,
       req.body?.path,
@@ -683,8 +742,9 @@ const getFileUploadListController = async (req, res) => {
     const type = req.query.type?.trim();
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 15;
+    const { orgId } = req.user;
 
-    const data = await getFileUploadList(type, page, limit);
+    const data = await getFileUploadList(orgId, type, page, limit);
 
     return res.status(200).json({
       success: true,
@@ -722,8 +782,9 @@ const updateFileUploadNameController = async (req, res) => {
   try {
     const { id } = req.params;
     const { name } = req.body;
+    const { orgId } = req.user;
 
-    await updateFileUploadName(id, name);
+    await updateFileUploadName(orgId, id, name);
 
     return res.status(200).json({
       success: true,
@@ -769,8 +830,9 @@ const downloadFileUploadController = async (req, res) => {
 const deleteFileUploadController = async (req, res) => {
   try {
     const { id } = req.params;
+    const { orgId } = req.user;
 
-    await deleteFileUpload(id);
+    await deleteFileUpload(orgId, id);
 
     return res.status(200).json({
       success: true,
@@ -793,7 +855,7 @@ const deleteFileUploadController = async (req, res) => {
 
 const deleteProfilePicController = async (req, res) => {
   try {
-    await deleteProfilePic(req.user);
+    await deleteProfilePic(req.user.orgId, req.user);
 
     return res.status(200).json({
       success: true,
@@ -817,7 +879,7 @@ const deleteProfilePicController = async (req, res) => {
 const removeStudentDeviceIdController = async (req, res) => {
   try {
     const { studentId, deviceId } = req.body;
-    const { deviceIds } = req.user;
+    const { deviceIds, orgId } = req.user;
 
     if (req.user.role !== "student") {
       return res.status(403).json({
@@ -848,7 +910,7 @@ const removeStudentDeviceIdController = async (req, res) => {
       });
     }
 
-    await removeStudentDeviceId(studentId, deviceId);
+    await removeStudentDeviceId(orgId, studentId, deviceId);
 
     return res.status(200).json({
       success: true,
@@ -872,6 +934,7 @@ const removeStudentDeviceIdController = async (req, res) => {
 
 const addQuestionController = async (req, res) => {
   const { questionId, level, type, questions, marks, oral } = req.body;
+  const { orgId, id: createdBy } = req.user;
 
   if (!questionId) {
     return sendBadRequest(res, "questionId is required");
@@ -895,6 +958,8 @@ const addQuestionController = async (req, res) => {
   if (levelErrorResponse) return levelErrorResponse;
 
   await addQuestion({
+    createdBy,
+    orgId,
     questionId,
     level: Number(level),
     type,
@@ -955,7 +1020,7 @@ const updateQuestionController = async (req, res) => {
       return sendBadRequest(res, "questions must be a non-empty array");
     }
 
-    await updateQuestion(id, updateData);
+    await updateQuestion(req.user.orgId, id, updateData);
 
     return res.status(200).json({
       success: true,
@@ -979,6 +1044,7 @@ const updateQuestionController = async (req, res) => {
 const deleteQuestionController = async (req, res) => {
   try {
     const { id } = req.params;
+    const { orgId } = req.user;
 
     if (!id) {
       return res.status(400).json({
@@ -987,7 +1053,7 @@ const deleteQuestionController = async (req, res) => {
       });
     }
 
-    const data = await deleteQuestion(id);
+    const data = await deleteQuestion(orgId, id);
 
     return res.status(200).json({
       success: true,
@@ -1107,6 +1173,16 @@ const sendNotificationController = async (req, res) => {
   return res.status(201).json({
     success: true,
     message: `Notification sent to ${result.sentCount} of ${result.totalRequested} students`,
+    data: result,
+  });
+};
+
+const sendAppreciationNotificationsController = async (req, res) => {
+  const result = await sendAppreciationNotifications();
+
+  return res.status(201).json({
+    success: true,
+    message: `Appreciation notification sent to ${result.sentCount} of ${result.totalRequested} completed homework`,
     data: result,
   });
 };
@@ -1292,6 +1368,7 @@ const updateMyStudentController = async (req, res) => {
   try {
     const studentId = req.user.id; // from auth middleware
     const updateData = req.body;
+    const { orgId } = req.user;
 
     if (req.user.role !== "student") {
       return res.status(403).json({
@@ -1307,7 +1384,7 @@ const updateMyStudentController = async (req, res) => {
       });
     }
 
-    await updateStudent(studentId, updateData);
+    await updateStudent(studentId, updateData, orgId);
 
     return res.status(200).json({
       success: true,
@@ -1327,7 +1404,139 @@ const updateMyStudentController = async (req, res) => {
   }
 };
 
+const changePasswordController = async (req, res) => {
+  try {
+    const { oldPassword, newPassword, confirmNewPassword } = req.body;
+    const { orgId } = req.user;
+
+    if (!oldPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Old password and new password are required",
+      });
+    }
+
+    if (
+      confirmNewPassword !== undefined &&
+      confirmNewPassword !== newPassword
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "New password confirmation does not match",
+      });
+    }
+
+    await changePassword(
+      orgId,
+      req.user.id,
+      req.user.role,
+      oldPassword,
+      newPassword,
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Password updated successfully",
+    });
+  } catch (error) {
+    logControllerError("changePasswordController", error);
+
+    const isClientError = [
+      "Old password and new password are required",
+      "Old password is incorrect",
+      "New password must be different from the current password",
+      "User not found",
+      "Invalid user role",
+      "New password confirmation does not match",
+    ].includes(error.message);
+
+    return res.status(isClientError ? 400 : 500).json({
+      success: false,
+      message: error.message || "Failed to update password",
+    });
+  }
+};
+
+const addAdminController = async (req, res) => {
+  try {
+    const { orgId } = req.user;
+    const { name, profilePicPath } = req.body;
+
+    if (!name || !orgId) {
+      return res
+        .status(400)
+        .json({ message: "name, password and orgId are required" });
+    }
+
+    const admin = await addAdmin({ name, profilePicPath, orgId });
+    return res.status(201).json({
+      message: "Admin created successfully",
+      success: true,
+      data: admin,
+    });
+  } catch (error) {
+    logControllerError("changePasswordController", error);
+    if (error.message === "Organization not found") {
+      return res.status(404).json({ success: false, message: error.message });
+    }
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+const updateAdminController = async (req, res) => {
+  try {
+    const { id: adminId } = req.params;
+    const { orgId } = req.user;
+    const data = await updateAdmin(adminId, orgId, req.body);
+    return res.status(200).json({
+      message: "Admin updated successfully",
+      success: true,
+      ...data,
+    });
+  } catch (error) {
+    logControllerError("changePasswordController", error);
+    if (error.message === "Admin not found") {
+      return res.status(404).json({ success: false, message: error.message });
+    }
+    if (error.message === "No valid fields to update") {
+      return res.status(400).json({ success: false, message: error.message });
+    }
+    return res.status(500).json({
+      message: "Internal server error",
+      success: false,
+      error: error.message,
+    });
+  }
+};
+
+const getAdminListController = async (req, res) => {
+  const { orgId, id } = req.user;
+  const data = await getAdminList(id, orgId);
+  return res.status(200).json({
+    success: true,
+    message: "Admins list fetched successfully",
+    ...data,
+  });
+};
+
+const getOrgDetailController = async (req, res) => {
+  const { orgId } = req.user;
+  const data = await getOrgDetail(orgId);
+  return res.status(200).json({
+    success: true,
+    message: "Organization detail fetched successfully",
+    ...data,
+  });
+};
+
 module.exports = {
+  addAdminController,
+  updateAdminController,
+  getAdminListController,
   getStudentListController,
   getMessageStudentListController,
   getStudentsBySameDeviceIdController,
@@ -1336,6 +1545,7 @@ module.exports = {
   deleteRegistrationController,
   addStudentController,
   updateStudentController,
+  resetStudentPasswordController,
   removeStudentDeviceIdController,
   updateStudentFcmTokenController,
   getQuestionListController,
@@ -1357,12 +1567,14 @@ module.exports = {
   getNotificationsController,
   getAdminNotificationsController,
   sendNotificationController,
+  sendAppreciationNotificationsController,
   addMessageController,
   getMessagesController,
   getUnreadMessageCountController,
   markMessagesAsReadController,
   getRankingController,
   updateMyStudentController,
+  changePasswordController,
   loginUsingDeviceIdController,
   uploadFileController,
   getFileUploadListController,
@@ -1370,4 +1582,5 @@ module.exports = {
   deleteFileUploadController,
   deleteProfilePicController,
   downloadFileUploadController,
+  getOrgDetailController,
 };
