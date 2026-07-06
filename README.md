@@ -8,6 +8,8 @@
 https://jjwingabackend.onrender.com
 
 ## Deployed - https://render.com/#
+## Uptime Robot -
+https://dashboard.uptimerobot.com/monitors/803428343
 
 release NOTE:
 * IGEN removed, so need to update properly with organizion. like current count need to update ✔
@@ -16,7 +18,7 @@ release NOTE:
 * add created by for questions ✔
 
 
-## Relook 
+## ReLook 
 1. fcmTokens should be unique for update
 
 
