@@ -56,6 +56,7 @@ const {
   validateQuestionType,
   validateStudentLevel,
 } = require("../utils/validation");
+const { getFormattedUptime } = require("../utils");
 const logger = require("../middleware/logger");
 
 const loginController = async (req, res) => {
@@ -1108,7 +1109,7 @@ const healthCheckController = (req, res) => {
     const memUsage = process.memoryUsage();
     return res.status(200).json({
       status: "OK",
-      uptime: process.uptime(),
+      uptime: getFormattedUptime(),
       memory: {
         rss: `${Math.round(memUsage.rss / 1024 / 1024)} MB`,
         heapUsed: `${Math.round(memUsage.heapUsed / 1024 / 1024)} MB`,
@@ -1548,6 +1549,7 @@ const createOrderController = async (req, res) => {
 module.exports = {
   addAdminController,
   createOrderController,
+  addAdminController,
   updateAdminController,
   getAdminListController,
   getStudentListController,
