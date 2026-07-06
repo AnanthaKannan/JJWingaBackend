@@ -16,7 +16,7 @@ const {
   MEDIUM_SCORE_MESSAGE,
   LOW_SCORE_MESSAGE,
   SUPER_LOW_MESSAGE,
-} = require("../message/inedx");
+} = require("../message");
 const {
   Student,
   HomeWork,
@@ -28,6 +28,7 @@ const {
   Message,
   Registration,
   Organization,
+  Payment,
 } = require("../models");
 const { buildAssignmentNotificationText } = require("../config/notifications");
 const { LEVELS } = require("../utils");
@@ -2592,6 +2593,13 @@ const getOrgDetail = async (orgId) => {
   };
 };
 
+const paymentList = async (orgId) => {
+  const payments = await Payment.find({ _id: orgId });
+  return {
+    payments,
+  };
+};
+
 const createOrder = async (orgId) => {
   const instance = new Razorpay({
     key_id: process.env.RAZER_PAY_KEY_ID,
@@ -2613,11 +2621,17 @@ const createOrder = async (orgId) => {
   return result;
 };
 
+const paymentWebhook = async (data) => {
+  logger.info("payment_hook", JSON.stringify(data));
+};
+
 module.exports = {
   login,
   addAdmin,
+  paymentList,
   updateAdmin,
   loginUsingDeviceId,
+  paymentWebhook,
   getAdminList,
   changePassword,
   createOrder,

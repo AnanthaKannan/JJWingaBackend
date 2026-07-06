@@ -1546,10 +1546,35 @@ const createOrderController = async (req, res) => {
   });
 };
 
+const paymentWebhookController = async (req, res) => {
+  const body = req.body;
+  await service.paymentWebhook(body);
+  return res.status(200).json({
+    success: true,
+    message: "Webhook successfully received.",
+  });
+};
+
+const getPaymentsController = async (req, res) => {
+  const { orgId } = req.user;
+  const data = await service.paymentList(orgId);
+  return res.status(200).json({
+    success: true,
+    message: "Webhook successfully received.",
+  });
+  return res.status(200).json({
+    success: true,
+    message: "Organization detail fetched successfully",
+    ...data,
+  });
+};
+
 module.exports = {
   addAdminController,
   createOrderController,
+  getPaymentsController,
   addAdminController,
+  paymentWebhookController,
   updateAdminController,
   getAdminListController,
   getStudentListController,

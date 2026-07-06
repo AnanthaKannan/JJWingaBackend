@@ -9,6 +9,7 @@ const FileUpload = require("./fileUpload");
 const Message = require("./message");
 const Registration = require("./registration");
 const Organization = require("./organization");
+const Payment = require("./payment");
 
 module.exports = {
   Student,
@@ -22,4 +23,5 @@ module.exports = {
   Message,
   Registration,
   Organization,
+  Payment,
 };

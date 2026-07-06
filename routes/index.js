@@ -234,8 +234,21 @@ router.patch(
 );
 
 router.get("/admin/org", ...superAdmin, controller.getOrgDetailController);
-router.post("/admin/order", ...superAdmin, controller.createOrderController);
+router.get("/admin/payment", ...superAdmin, controller.getPaymentsController);
 
+// payment
+router.post(
+  "/admin/payment/order",
+  ...superAdmin,
+  controller.createOrderController,
+);
+router.post(
+  "/admin/payment/webhook",
+  // apiKeyValidation,
+  controller.paymentWebhookController,
+);
+
+// crone job
 router.post(
   "/crone/notifications/appreciations",
   apiKeyValidation,
