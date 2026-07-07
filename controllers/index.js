@@ -1560,10 +1560,6 @@ const getPaymentsController = async (req, res) => {
   const data = await service.paymentList(orgId);
   return res.status(200).json({
     success: true,
-    message: "Webhook successfully received.",
-  });
-  return res.status(200).json({
-    success: true,
     message: "Organization detail fetched successfully",
     ...data,
   });
