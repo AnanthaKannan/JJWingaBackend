@@ -49,14 +49,6 @@ const paymentSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
-    receipt: {
-      type: String,
-      default: null,
-    },
-    notes: {
-      type: mongoose.Schema.Types.Mixed,
-      default: {},
-    },
   },
   {
     timestamps: true,

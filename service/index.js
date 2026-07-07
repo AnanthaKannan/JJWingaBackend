@@ -2594,7 +2594,9 @@ const getOrgDetail = async (orgId) => {
 };
 
 const paymentList = async (orgId) => {
-  const payments = await Payment.find({ _id: orgId });
+  const payments = await Payment.find({ orgId }).select(
+    "orderId amount status createdAt",
+  );
   return {
     payments,
   };
@@ -2621,8 +2623,58 @@ const createOrder = async (orgId) => {
   return result;
 };
 
+const addPaymentDetails = async ({
+  orgId,
+  orderId,
+  paymentId,
+  amount,
+  signature,
+  status = "created",
+}) => {
+  const payment = new Payment({
+    orgId,
+    orderId,
+    paymentId,
+    amount,
+    signature,
+    status,
+  });
+  await payment.save();
+};
+
+const validateSignature = () => {};
+
 const paymentWebhook = async (data) => {
-  logger.info("payment_hook", JSON.stringify(data));
+  validateSignature();
+  const entity = data?.payload?.payment?.entity || {};
+  if (data.event === "payment.captured") {
+    await addPaymentDetails({
+      orgId: entity.notes.orgId,
+      orderId: entity.order_id,
+      paymentId: entity.id,
+      amount: entity.amount,
+      signature: null,
+      status: "created",
+    });
+  }
+};
+
+const paymentProcess = async ({
+  orgId,
+  signature,
+  orderId,
+  paymentId,
+  amount,
+}) => {
+  validateSignature();
+  await addPaymentDetails({
+    orgId,
+    orderId,
+    paymentId,
+    amount,
+    signature,
+    status: "created",
+  });
 };
 
 module.exports = {
@@ -2631,6 +2683,7 @@ module.exports = {
   paymentList,
   updateAdmin,
   loginUsingDeviceId,
+  paymentProcess,
   paymentWebhook,
   getAdminList,
   changePassword,
