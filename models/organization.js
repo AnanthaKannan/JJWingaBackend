@@ -78,9 +78,6 @@ const organizationSchema = new mongoose.Schema(
       type: String,
       default: "sreeananthakannan@gmail.com",
     },
-    appUpiId: {
-      type: String,
-    },
   },
   { versionKey: false },
 );
