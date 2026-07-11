@@ -471,7 +471,7 @@ const getHomeworkList = async (
 
   if (type) {
     const questionIds = await Question.find({
-      isDeleted: { $ne: true },
+      // isDeleted: { $ne: true }, // if it is already assigned, the assigned get increased by 1
       ...buildQuestionTypeFilter(type),
     }).distinct("_id");
     query.questionId = { $in: questionIds };
