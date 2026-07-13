@@ -47,6 +47,9 @@ const {
   getAdminList,
   getOrgDetail,
 } = require("../service");
+
+const service = require("../service");
+
 const {
   hasField,
   sendOptionalStudentLevelError,
@@ -1533,8 +1536,41 @@ const getOrgDetailController = async (req, res) => {
   });
 };
 
+const createOrderController = async (req, res) => {
+  const { orgId } = req.user;
+  const data = await service.createOrder(orgId);
+  return res.status(200).json({
+    success: true,
+    message: "Payment order initiated successfully",
+    data,
+  });
+};
+
+const paymentWebhookController = async (req, res) => {
+  const body = req.body;
+  await service.paymentWebhook(body);
+  return res.status(200).json({
+    success: true,
+    message: "Webhook successfully received.",
+  });
+};
+
+const getPaymentsController = async (req, res) => {
+  const { orgId } = req.user;
+  const data = await service.paymentList(orgId);
+  return res.status(200).json({
+    success: true,
+    message: "Organization detail fetched successfully",
+    ...data,
+  });
+};
+
 module.exports = {
   addAdminController,
+  createOrderController,
+  getPaymentsController,
+  addAdminController,
+  paymentWebhookController,
   updateAdminController,
   getAdminListController,
   getStudentListController,

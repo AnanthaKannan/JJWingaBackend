@@ -2,6 +2,11 @@ const mongoose = require("mongoose");
 
 const organizationSchema = new mongoose.Schema(
   {
+    email: {
+      type: String,
+      unique: true,
+      trim: true,
+    },
     name: {
       type: String,
       required: true,
@@ -30,35 +35,48 @@ const organizationSchema = new mongoose.Schema(
       type: Number,
       default: 100,
     },
-    billMonth: {
+    billCycle: {
       from: {
         type: Date,
+        default: new Date(), // remove
       },
       to: {
         type: Date,
+        default: new Date(), // remove
       },
     },
-    totalStudent: {
+    billGeneratedDate: {
+      type: Date,
+      default: new Date(), // remove
+    },
+    dueDate: {
+      type: Date,
+      default: new Date(), // remove
+    },
+    totalStudentOnBillDate: {
       type: Number,
+      default: 10, // remove
+    },
+    paymentEnable: {
+      type: Boolean,
+      default: false,
     },
     pricePerStudent: {
       type: Number,
       default: 19,
     },
-    total: {
+    amount: {
       type: Number,
+      default: 200, //
     },
     state: {
       type: String,
       enum: ["paid", "unpaid", "free"],
-      default: "free", // Optional
+      default: "free",
     },
     appEmailId: {
       type: String,
       default: "sreeananthakannan@gmail.com",
-    },
-    appUpiId: {
-      type: String,
     },
   },
   { versionKey: false },

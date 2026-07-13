@@ -17,6 +17,12 @@ release NOTE:
 * admin should be a superadmin ✔
 * add created by for questions ✔
 
+release NOTE:
+* IGEN removed, so need to update properly with organizion. like current count need to update ✔
+* orgId need to be update in the student, fileUpload, Question and admin  
+* admin should be a superadmin ✔
+* add created by for questions ✔
+
 
 ## ReLook 
 1. fcmTokens should be unique for update

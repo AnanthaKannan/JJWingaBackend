@@ -1,6 +1,7 @@
 const admin = require("firebase-admin");
 const bcrypt = require("bcryptjs");
 const mongoose = require("mongoose");
+const Razorpay = require("razorpay");
 
 const { generateToken } = require("../middleware/auth");
 const logger = require("../middleware/logger");
@@ -15,7 +16,7 @@ const {
   MEDIUM_SCORE_MESSAGE,
   LOW_SCORE_MESSAGE,
   SUPER_LOW_MESSAGE,
-} = require("../message/inedx");
+} = require("../message");
 const {
   Student,
   HomeWork,
@@ -27,6 +28,7 @@ const {
   Message,
   Registration,
   Organization,
+  Payment,
 } = require("../models");
 const { buildAssignmentNotificationText } = require("../config/notifications");
 const { LEVELS } = require("../utils");
@@ -2591,13 +2593,101 @@ const getOrgDetail = async (orgId) => {
   };
 };
 
+const paymentList = async (orgId) => {
+  const payments = await Payment.find({ orgId }).select(
+    "orderId amount status createdAt",
+  );
+  return {
+    payments,
+  };
+};
+
+const createOrder = async (orgId) => {
+  const instance = new Razorpay({
+    key_id: process.env.RAZER_PAY_KEY_ID,
+    key_secret: process.env.RAZER_PAY_KEY_SECRET,
+  });
+
+  const result = await instance.orders.create({
+    amount: 101,
+    currency: "INR",
+    receipt: "Monthly Payment",
+    notes: {
+      orgId, // optional, whatever we want we can write inside
+    },
+  });
+
+  // TODO: NEED TO IMPLEMENT FAILURE SCENARIO
+
+  result.keyId = process.env.RAZER_PAY_KEY_ID;
+  return result;
+};
+
+const addPaymentDetails = async ({
+  orgId,
+  orderId,
+  paymentId,
+  amount,
+  signature,
+  status = "created",
+}) => {
+  const payment = new Payment({
+    orgId,
+    orderId,
+    paymentId,
+    amount,
+    signature,
+    status,
+  });
+  await payment.save();
+};
+
+const validateSignature = () => {};
+
+const paymentWebhook = async (data) => {
+  validateSignature();
+  const entity = data?.payload?.payment?.entity || {};
+  if (data.event === "payment.captured") {
+    await addPaymentDetails({
+      orgId: entity.notes.orgId,
+      orderId: entity.order_id,
+      paymentId: entity.id,
+      amount: entity.amount,
+      signature: null,
+      status: "created",
+    });
+  }
+};
+
+const paymentProcess = async ({
+  orgId,
+  signature,
+  orderId,
+  paymentId,
+  amount,
+}) => {
+  validateSignature();
+  await addPaymentDetails({
+    orgId,
+    orderId,
+    paymentId,
+    amount,
+    signature,
+    status: "created",
+  });
+};
+
 module.exports = {
   login,
   addAdmin,
+  paymentList,
   updateAdmin,
   loginUsingDeviceId,
+  paymentProcess,
+  paymentWebhook,
   getAdminList,
   changePassword,
+  createOrder,
   getOrgDetail,
   getStudentList,
   getMessageStudentList,
