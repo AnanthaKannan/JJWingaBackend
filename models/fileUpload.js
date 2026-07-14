@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
+const { Schema } = mongoose;
 
-const fileUploadSchema = new mongoose.Schema(
+const fileUploadSchema = new Schema(
   {
     name: {
       type: String,
@@ -29,10 +30,19 @@ const fileUploadSchema = new mongoose.Schema(
       required: [true, "File upload type is required"],
     },
     orgId: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: Schema.Types.ObjectId,
       ref: "Organization",
       required: [true, "Creator (Organization) reference is required"],
     },
+    commentCount: {
+      type: Number,
+      default: 0,
+    },
+    likeCount: {
+      type: Number,
+      default: 0,
+    },
+    likedBy: [{ type: Schema.Types.ObjectId, ref: "Student" }],
   },
   {
     timestamps: true,

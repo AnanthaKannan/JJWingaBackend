@@ -1451,7 +1451,7 @@ const prepareProfilePic = (file, formPath) => {
   return file;
 };
 
-const getFileUploadList = async (orgId, type, page = 1, limit = 15) => {
+const getFileUploadList = async (orgId, type, page = 1, limit = 100) => {
   if (!isFileUploadType(type)) {
     throw new Error("type must be one of: practice, celebration");
   }
@@ -1461,7 +1461,7 @@ const getFileUploadList = async (orgId, type, page = 1, limit = 15) => {
 
   const [fileUploads, total] = await Promise.all([
     FileUpload.find(query)
-      .select("-__v")
+      .select("-__v -likedBy")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
