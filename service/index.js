@@ -1915,7 +1915,12 @@ const COMPLETION_NOTIFICATION_TEXT = {
   },
 };
 
-const buildCompletionNotificationText = (studentName, question) => {
+const buildCompletionNotificationText = (
+  studentName,
+  question,
+  correct,
+  wrong,
+) => {
   const typeText =
     COMPLETION_NOTIFICATION_TEXT[question?.type] ||
     COMPLETION_NOTIFICATION_TEXT.homework;
@@ -1923,11 +1928,15 @@ const buildCompletionNotificationText = (studentName, question) => {
 
   return {
     messageHeader: typeText.messageHeader,
-    messageBody: `${studentName} has completed ${typeText.label}${questionText}.`,
+    messageBody: `${studentName} has completed ${typeText.label}${questionText} - ${correct}/${correct + wrong}`,
   };
 };
 
-const createHomeworkCompletedNotification = async (homework) => {
+const createHomeworkCompletedNotification = async (
+  homework,
+  correct,
+  wrong,
+) => {
   const student = await Student.findById(homework.studentId).select(
     "studentId name createdBy",
   );
@@ -1949,6 +1958,8 @@ const createHomeworkCompletedNotification = async (homework) => {
   const completionMessage = buildCompletionNotificationText(
     student.name,
     question,
+    correct,
+    wrong,
   );
 
   const notification = await Notification.create({
@@ -2030,6 +2041,7 @@ const updateHomework = async (homeworkId, updateData) => {
   }
 
   // 3. Keep completion details in sync when entering, leaving, or editing completed homework.
+  // use for revert process
   if (prevState === "COMPLETED") {
     const previousStats = getCompletionStats(homework.results, homework.timer);
 
@@ -2052,7 +2064,8 @@ const updateHomework = async (homeworkId, updateData) => {
   }
 
   if (prevState !== "COMPLETED" && newState === "COMPLETED") {
-    await createHomeworkCompletedNotification(homework);
+    const { correct, wrong } = getCompletionStats(nextResults, nextTimer);
+    await createHomeworkCompletedNotification(homework, correct, wrong);
   }
 
   // 4. Update homework fields
