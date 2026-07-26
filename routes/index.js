@@ -8,6 +8,7 @@ const {
   authorizeSuperAdminRole,
 } = require("../middleware/auth");
 const { uploadSingleFile } = require("../middleware/upload");
+const { sendOtp, verifyOtp } = require("../controllers/org.controller");
 
 const admin = [authenticate, authorizeAdmin];
 const superAdmin = [authenticate, authorizeSuperAdminRole];
@@ -240,5 +241,8 @@ router.post(
   apiKeyValidation,
   controller.sendAppreciationNotificationsController,
 );
+
+router.post("/send-otp", sendOtp);
+router.post("/verify-otp", verifyOtp);
 
 module.exports = router;
