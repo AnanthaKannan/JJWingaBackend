@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node dist/server.js",
+    "start": "node dist/app.js",
     "dev": "tsx watch app.js",
     "build": "tsc",
     "prod": "npm run build && npm start",

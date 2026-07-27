@@ -78,7 +78,13 @@ const verifyPrefix = async (
   const { prefix, type } = req.body;
   const isPrefixAvailable = await orgService.verifyPrefix(prefix, type);
 
-  return res.status(200).json({ success: true, isPrefixAvailable });
+  return res
+    .status(200)
+    .json({
+      success: true,
+      isPrefixAvailable,
+      message: "Successfully verified",
+    });
 };
 
 export { sendOtp, verifyOtp, verifyPrefix };
