@@ -8,7 +8,7 @@ const {
   authorizeSuperAdminRole,
 } = require("../middleware/auth");
 const { uploadSingleFile } = require("../middleware/upload");
-const { sendOtp, verifyOtp } = require("../controllers/org.controller");
+const orgController = require("../controllers/org.controller");
 
 const admin = [authenticate, authorizeAdmin];
 const superAdmin = [authenticate, authorizeSuperAdminRole];
@@ -242,7 +242,8 @@ router.post(
   controller.sendAppreciationNotificationsController,
 );
 
-router.post("/send-otp", sendOtp);
-router.post("/verify-otp", verifyOtp);
+router.post("/send-otp", orgController.sendOtp);
+router.post("/verify-otp", orgController.verifyOtp);
+router.post("/verify-prefix", orgController.verifyPrefix);
 
 module.exports = router;

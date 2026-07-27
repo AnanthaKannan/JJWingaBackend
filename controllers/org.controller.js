@@ -1,4 +1,4 @@
-const { sendOtpService, verifyOtpService } = require("../service/org.service");
+const orgService = require("../service/org.service");
 
 // Maps domain-level error codes (from the service layer) to HTTP status
 // codes. This is the only place that knows about HTTP — the service layer
@@ -20,7 +20,7 @@ function statusFor(result) {
 async function sendOtp(req, res) {
   try {
     const { email } = req.body;
-    const result = await sendOtpService(email);
+    const result = await orgService.sendOtpService(email);
     return res
       .status(statusFor(result))
       .json({ success: result.success, message: result.message });
@@ -35,7 +35,7 @@ async function sendOtp(req, res) {
 async function verifyOtp(req, res) {
   try {
     const { email, otp } = req.body;
-    const result = await verifyOtpService(email, otp);
+    const result = await orgService.verifyOtpService(email, otp);
     return res
       .status(statusFor(result))
       .json({ success: result.success, message: result.message });
@@ -47,4 +47,11 @@ async function verifyOtp(req, res) {
   }
 }
 
-module.exports = { sendOtp, verifyOtp };
+const verifyPrefix = async (req, res) => {
+  const { prefix, type } = req.body;
+  const isPrefixAvailable = await orgService.verifyPrefix(prefix, type);
+
+  return res.status(200).json({ success: true, isPrefixAvailable });
+};
+
+module.exports = { sendOtp, verifyOtp, verifyPrefix };

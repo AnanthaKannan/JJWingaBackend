@@ -1,12 +1,22 @@
-const bcrypt = require("bcryptjs");
-const OtpVerification = require("../models/otpVerification.model");
-const { sendOtpEmail } = require("../utils/mailer");
+import bcrypt from "bcryptjs";
+import { sendOtpEmail } from "../utils/mailer";
+import { Organization, OtpVerification } from "../models";
+import {
+  UserType,
+  IOtpVerification,
+  IOrganization,
+  ServiceResult,
+} from "../types";
 
-const OTP_PURPOSE = "academy-creation";
+const OTP_PURPOSE = "academy-creation" as const;
 const MAX_ATTEMPTS = 5;
 const RESEND_COOLDOWN_SECONDS = 60;
 
-function generateOtp() {
+// --- Types -----------------------------------------------------------
+
+// --- Helpers -----------------------------------------------------------
+
+function generateOtp(): string {
   return Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit code
 }
 
@@ -15,7 +25,7 @@ function generateOtp() {
  * Returns a plain domain result — { success, message, errorCode? }.
  * No HTTP concerns (status codes) live here; that's the controller's job.
  */
-async function sendOtpService(email) {
+async function sendOtpService(email: string): Promise<ServiceResult> {
   if (!email) {
     return {
       success: false,
@@ -26,10 +36,10 @@ async function sendOtpService(email) {
   const normalizedEmail = email.trim().toLowerCase();
 
   // Enforce a cooldown so the same email can't be spammed with requests
-  const existing = await OtpVerification.findOne({
+  const existing = (await OtpVerification.findOne({
     email: normalizedEmail,
     purpose: OTP_PURPOSE,
-  }).sort({ createdAt: -1 });
+  }).sort({ createdAt: -1 })) as IOtpVerification | null;
 
   if (existing) {
     const secondsSinceLast = (Date.now() - existing.createdAt.getTime()) / 1000;
@@ -67,7 +77,10 @@ async function sendOtpService(email) {
  * Returns a plain domain result — { success, message, errorCode? }.
  * No HTTP concerns (status codes) live here; that's the controller's job.
  */
-async function verifyOtpService(email, otp) {
+async function verifyOtpService(
+  email: string,
+  otp: string,
+): Promise<ServiceResult> {
   if (!email || !otp) {
     return {
       success: false,
@@ -77,10 +90,10 @@ async function verifyOtpService(email, otp) {
   }
   const normalizedEmail = email.trim().toLowerCase();
 
-  const record = await OtpVerification.findOne({
+  const record = (await OtpVerification.findOne({
     email: normalizedEmail,
     purpose: OTP_PURPOSE,
-  }).sort({ createdAt: -1 });
+  }).sort({ createdAt: -1 })) as IOtpVerification | null;
 
   if (!record) {
     return {
@@ -116,4 +129,27 @@ async function verifyOtpService(email, otp) {
   return { success: true, message: "Email verified successfully" };
 }
 
-module.exports = { sendOtpService, verifyOtpService };
+const verifyPrefix = async (
+  prefix: string,
+  type: UserType,
+): Promise<boolean> => {
+  type IsExisting = IOrganization | null;
+
+  if (type === "student") {
+    const isExist: IsExisting = await Organization.findOne({
+      studentPrefix: prefix,
+    });
+
+    if (isExist) return false;
+  } else {
+    const isExist: IsExisting = await Organization.findOne({
+      teacherPrefix: prefix,
+    });
+
+    if (isExist) return false;
+  }
+
+  return true;
+};
+
+export { sendOtpService, verifyOtpService, verifyPrefix };

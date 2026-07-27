@@ -9,6 +9,7 @@ const Message = require("./message");
 const Registration = require("./registration");
 const Organization = require("./organization");
 const Comment = require("./comment");
+const OtpVerification = require("./OtpVerification");
 
 module.exports = {
   Student,
@@ -22,4 +23,5 @@ module.exports = {
   Registration,
   Organization,
   Comment,
+  OtpVerification,
 };
