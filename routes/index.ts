@@ -1,16 +1,16 @@
-const express = require("express");
+import express from "express";
 const router = express.Router();
-const controller = require("../controllers");
-const {
+import controller from "../controllers";
+import {
   authenticate,
   authorizeAdmin,
   apiKeyValidation,
   authorizeSuperAdminRole,
-} = require("../middleware/auth");
-const { uploadSingleFile } = require("../middleware/upload");
-const orgController = require("../controllers/org.controller");
+} from "../middleware/auth";
+import { uploadSingleFile } from "../middleware/upload";
+import * as orgController from "../controllers/org.controller";
 import { validate } from "../middleware/validate";
-import { verifyPrefixSchema } from "../validates";
+import * as schema from "../validates";
 
 const admin = [authenticate, authorizeAdmin];
 const superAdmin = [authenticate, authorizeSuperAdminRole];
@@ -244,11 +244,11 @@ router.post(
   controller.sendAppreciationNotificationsController,
 );
 
-router.post("/send-otp", orgController.sendOtp);
-router.post("/verify-otp", orgController.verifyOtp);
+router.post("/send-otp", validate(schema.sendOtp), orgController.sendOtp);
+router.post("/verify-otp", validate(schema.verifyOtp), orgController.verifyOtp);
 router.post(
   "/verify-prefix",
-  validate(verifyPrefixSchema),
+  validate(schema.verifyPrefix),
   orgController.verifyPrefix,
 );
 
