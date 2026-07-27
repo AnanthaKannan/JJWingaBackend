@@ -15,6 +15,7 @@ export interface ServiceResult {
   success: boolean;
   message: string;
   errorCode?: string;
+  otp?: string; // TODO: Remove OTP from the response
 }
 
 export type OrganizationState = "paid" | "unpaid" | "free";

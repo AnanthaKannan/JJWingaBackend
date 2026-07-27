@@ -33,9 +33,11 @@ async function sendOtp(req: Request<{}, {}, SendOtpBody>, res: Response) {
   try {
     const { email } = req.body;
     const result = await orgService.sendOtpService(email);
-    return res
-      .status(statusFor(result))
-      .json({ success: result.success, message: result.message });
+    return res.status(statusFor(result)).json({
+      success: result.success,
+      otp: result.otp, // TODO Remove OTP from the response
+      message: result.message,
+    });
   } catch (error) {
     console.error("sendOtp error:", error);
     return res

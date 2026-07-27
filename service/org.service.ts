@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import { sendOtpEmail } from "../utils/mailer";
+import { generateOtp } from "../utils";
 import { Organization, OtpVerification } from "../models";
 import {
   UserType,
@@ -11,14 +12,6 @@ import {
 const OTP_PURPOSE = "academy-creation" as const;
 const MAX_ATTEMPTS = 5;
 const RESEND_COOLDOWN_SECONDS = 60;
-
-// --- Types -----------------------------------------------------------
-
-// --- Helpers -----------------------------------------------------------
-
-function generateOtp(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit code
-}
 
 /**
  * Generates, stores (hashed), and emails a new OTP for the given email.
@@ -69,7 +62,11 @@ async function sendOtpService(email: string): Promise<ServiceResult> {
 
   // await sendOtpEmail(normalizedEmail, otp);
 
-  return { success: true, message: "OTP sent successfully" };
+  return {
+    success: true,
+    otp, // TODO: Remove OTP from the response
+    message: "OTP sent successfully",
+  };
 }
 
 /**
