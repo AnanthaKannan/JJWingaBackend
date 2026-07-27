@@ -9,6 +9,8 @@ const {
 } = require("../middleware/auth");
 const { uploadSingleFile } = require("../middleware/upload");
 const orgController = require("../controllers/org.controller");
+import { validate } from "../middleware/validate";
+import { verifyPrefixSchema } from "../validates";
 
 const admin = [authenticate, authorizeAdmin];
 const superAdmin = [authenticate, authorizeSuperAdminRole];
@@ -244,6 +246,10 @@ router.post(
 
 router.post("/send-otp", orgController.sendOtp);
 router.post("/verify-otp", orgController.verifyOtp);
-router.post("/verify-prefix", orgController.verifyPrefix);
+router.post(
+  "/verify-prefix",
+  validate(verifyPrefixSchema),
+  orgController.verifyPrefix,
+);
 
 module.exports = router;
