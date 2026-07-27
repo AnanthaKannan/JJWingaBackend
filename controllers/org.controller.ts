@@ -1,9 +1,11 @@
-const orgService = require("../service/org.service");
+import { Request, Response } from "express";
+import * as orgService from "../service/org.service"; // adjust path
+import { UserType } from "../types";
 
 // Maps domain-level error codes (from the service layer) to HTTP status
 // codes. This is the only place that knows about HTTP — the service layer
 // stays framework-agnostic and just describes what went wrong.
-const ERROR_STATUS_MAP = {
+const ERROR_STATUS_MAP: Record<string, number> = {
   MISSING_EMAIL: 400,
   MISSING_FIELDS: 400,
   COOLDOWN_ACTIVE: 429,
@@ -12,12 +14,22 @@ const ERROR_STATUS_MAP = {
   INCORRECT_OTP: 400,
 };
 
-function statusFor(result) {
-  if (result.success) return 200;
-  return ERROR_STATUS_MAP[result.errorCode] || 400;
+interface ServiceResult {
+  success: boolean;
+  message: string;
+  errorCode?: string;
 }
 
-async function sendOtp(req, res) {
+function statusFor(result: ServiceResult): number {
+  if (result.success) return 200;
+  return ERROR_STATUS_MAP[result.errorCode ?? ""] || 400;
+}
+
+interface SendOtpBody {
+  email: string;
+}
+
+async function sendOtp(req: Request<{}, {}, SendOtpBody>, res: Response) {
   try {
     const { email } = req.body;
     const result = await orgService.sendOtpService(email);
@@ -32,7 +44,12 @@ async function sendOtp(req, res) {
   }
 }
 
-async function verifyOtp(req, res) {
+interface VerifyOtpBody {
+  email: string;
+  otp: string;
+}
+
+async function verifyOtp(req: Request<{}, {}, VerifyOtpBody>, res: Response) {
   try {
     const { email, otp } = req.body;
     const result = await orgService.verifyOtpService(email, otp);
@@ -47,11 +64,19 @@ async function verifyOtp(req, res) {
   }
 }
 
-const verifyPrefix = async (req, res) => {
+interface VerifyPrefixBody {
+  prefix: string;
+  type: UserType;
+}
+
+const verifyPrefix = async (
+  req: Request<{}, {}, VerifyPrefixBody>,
+  res: Response,
+) => {
   const { prefix, type } = req.body;
   const isPrefixAvailable = await orgService.verifyPrefix(prefix, type);
 
   return res.status(200).json({ success: true, isPrefixAvailable });
 };
 
-module.exports = { sendOtp, verifyOtp, verifyPrefix };
+export { sendOtp, verifyOtp, verifyPrefix };
