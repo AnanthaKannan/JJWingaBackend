@@ -2,7 +2,8 @@ import { Request, Response } from "express";
 import * as orgService from "../service/org.service"; // adjust path
 import { AddOrgParam, UserType } from "../types";
 import { addAdmin } from "../service";
-import { success } from "zod";
+import { sendWelcomeEmail } from "../utils/mailer";
+import logger from "../middleware/logger";
 
 // Maps domain-level error codes (from the service layer) to HTTP status
 // codes. This is the only place that knows about HTTP — the service layer
@@ -15,6 +16,7 @@ const ERROR_STATUS_MAP: Record<string, number> = {
   OTP_NOT_FOUND: 400,
   TOO_MANY_ATTEMPTS: 429,
   INCORRECT_OTP: 400,
+  EMAIL_SEND_FAILED: 400,
 };
 
 interface ServiceResult {
@@ -32,6 +34,10 @@ interface SendOtpBody {
   email: string;
 }
 
+const logControllerError = (context: string, error: unknown) => {
+  logger.error({ err: error, context }, "controller_error");
+};
+
 async function sendOtp(req: Request<{}, {}, SendOtpBody>, res: Response) {
   try {
     const { email } = req.body;
@@ -43,6 +49,7 @@ async function sendOtp(req: Request<{}, {}, SendOtpBody>, res: Response) {
     });
   } catch (error) {
     console.error("sendOtp error:", error);
+    logControllerError("sendOtpController", error);
     return res
       .status(500)
       .json({ success: false, message: "Failed to send OTP" });
@@ -63,6 +70,7 @@ async function verifyOtp(req: Request<{}, {}, VerifyOtpBody>, res: Response) {
       .json({ success: result.success, message: result.message });
   } catch (error) {
     console.error("verifyOtp error:", error);
+    logControllerError("verifyOtpController", error);
     return res
       .status(500)
       .json({ success: false, message: "Failed to verify OTP" });
@@ -103,11 +111,13 @@ const addOrganization = async (
     roles,
     profilePicPath,
   });
+  const { email, name } = body;
+  await sendWelcomeEmail(email, name, result.adminId, result.password);
 
   return res.status(200).json({
     success: true,
     message: "Successfully Org and admin created",
-    ...result,
+    result,
   });
 };
 

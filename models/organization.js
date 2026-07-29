@@ -58,13 +58,6 @@ const organizationSchema = new mongoose.Schema(
       enum: ["paid", "unpaid", "free"],
       default: "free", // Optional
     },
-    appEmailId: {
-      type: String,
-      default: "sreeananthakannan@gmail.com",
-    },
-    appUpiId: {
-      type: String,
-    },
   },
   { versionKey: false },
 );

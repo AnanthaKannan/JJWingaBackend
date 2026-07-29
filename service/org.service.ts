@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import { sendOtpEmail } from "../utils/mailer";
 import { generateOtp } from "../utils";
 import { Organization, OtpVerification } from "../models";
+import logger from "../middleware/logger";
 import {
   UserType,
   IOtpVerification,
@@ -27,6 +28,7 @@ async function sendOtpService(email: string): Promise<ServiceResult> {
     email,
   })) as IOrganization | null;
   if (isEmailExist) {
+    logger.info({ email }, "send_otp_service_email_already_exist");
     return {
       success: false,
       errorCode: "DUPLICATE",
@@ -45,6 +47,10 @@ async function sendOtpService(email: string): Promise<ServiceResult> {
     const secondsSinceLast = (Date.now() - existing.createdAt.getTime()) / 1000;
     if (secondsSinceLast < RESEND_COOLDOWN_SECONDS) {
       const waitSeconds = Math.ceil(RESEND_COOLDOWN_SECONDS - secondsSinceLast);
+      logger.info(
+        { email: normalizedEmail, waitSeconds },
+        "send_otp_service_cooldown_active",
+      );
       return {
         success: false,
         errorCode: "COOLDOWN_ACTIVE",
@@ -56,6 +62,10 @@ async function sendOtpService(email: string): Promise<ServiceResult> {
       email: normalizedEmail,
       purpose: OTP_PURPOSE,
     });
+    logger.info(
+      { email: normalizedEmail },
+      "send_otp_service_previous_otp_invalidated",
+    );
   }
 
   const otp = generateOtp();
@@ -67,7 +77,20 @@ async function sendOtpService(email: string): Promise<ServiceResult> {
     purpose: OTP_PURPOSE,
   });
 
-  // await sendOtpEmail(normalizedEmail, otp);
+  try {
+    await sendOtpEmail(normalizedEmail, otp);
+    logger.info({ email: normalizedEmail }, "send_otp_service_email_sent");
+  } catch (err) {
+    logger.error(
+      { email: normalizedEmail, err },
+      "send_otp_service_email_send_failed",
+    );
+    return {
+      success: false,
+      errorCode: "EMAIL_SEND_FAILED",
+      message: "Failed to send OTP email. Please try again.",
+    };
+  }
 
   return {
     success: true,
@@ -86,6 +109,7 @@ async function verifyOtpService(
   otp: string,
 ): Promise<ServiceResult> {
   if (!email || !otp) {
+    logger.warn({ email }, "verify_otp_service_missing_fields");
     return {
       success: false,
       errorCode: "MISSING_FIELDS",
@@ -100,6 +124,7 @@ async function verifyOtpService(
   }).sort({ createdAt: -1 })) as IOtpVerification | null;
 
   if (!record) {
+    logger.info({ email: normalizedEmail }, "verify_otp_service_otp_not_found");
     return {
       success: false,
       errorCode: "OTP_NOT_FOUND",
@@ -109,6 +134,10 @@ async function verifyOtpService(
 
   if (record.attempts >= MAX_ATTEMPTS) {
     await OtpVerification.deleteOne({ _id: record._id });
+    logger.warn(
+      { email: normalizedEmail },
+      "verify_otp_service_too_many_attempts",
+    );
     return {
       success: false,
       errorCode: "TOO_MANY_ATTEMPTS",
@@ -120,6 +149,10 @@ async function verifyOtpService(
   if (!isMatch) {
     record.attempts += 1;
     await record.save();
+    logger.info(
+      { email: normalizedEmail, attempts: record.attempts },
+      "verify_otp_service_incorrect_otp",
+    );
     return {
       success: false,
       errorCode: "INCORRECT_OTP",
@@ -129,6 +162,7 @@ async function verifyOtpService(
 
   record.verified = true;
   await record.save();
+  logger.info({ email: normalizedEmail }, "verify_otp_service_verified");
 
   return { success: true, message: "Email verified successfully" };
 }
@@ -144,13 +178,19 @@ const verifyPrefix = async (
       studentPrefix: prefix,
     });
 
-    if (isExist) return false;
+    if (isExist) {
+      logger.info({ prefix, type }, "verify_prefix_already_taken");
+      return false;
+    }
   } else {
     const isExist: IsExisting = await Organization.findOne({
       teacherPrefix: prefix,
     });
 
-    if (isExist) return false;
+    if (isExist) {
+      logger.info({ prefix, type }, "verify_prefix_already_taken");
+      return false;
+    }
   }
 
   return true;
@@ -172,6 +212,10 @@ const addOrganization = async ({
   });
 
   const result = (await org.save()) as IOrganization;
+  logger.info(
+    { orgId: result._id.toString(), email },
+    "add_organization_created",
+  );
   return result._id.toString();
 };
 

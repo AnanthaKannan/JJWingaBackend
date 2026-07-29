@@ -37,8 +37,6 @@ export interface IOrganization extends Document {
   pricePerStudent: number;
   total?: number;
   state: OrganizationState;
-  appEmailId: string;
-  appUpiId?: string;
 }
 
 export type AddOrgParam = {
