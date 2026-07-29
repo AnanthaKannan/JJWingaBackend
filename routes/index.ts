@@ -245,6 +245,11 @@ router.post(
 
 router.post("/send-otp", validate(schema.sendOtp), orgController.sendOtp);
 router.post("/verify-otp", validate(schema.verifyOtp), orgController.verifyOtp);
+router.post(
+  "/verify-prefix",
+  validate(schema.verifyPrefix),
+  orgController.verifyPrefix,
+);
 router.post("/org", validate(schema.addOrg), orgController.addOrganization);
 
 module.exports = router;
