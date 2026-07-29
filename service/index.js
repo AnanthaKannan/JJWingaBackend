@@ -2488,26 +2488,6 @@ const getWeeklyRankings = async (orgId, level = null, user = null) => {
   return rankings;
 };
 
-const addOrganization = async ({
-  name,
-  studentPrefix,
-  teacherPrefix,
-  profilePicPath,
-}) => {
-  if (!name) throw new Error("name not found");
-  if (!studentPrefix) throw new Error("studentPrefix not found");
-  if (!teacherPrefix) throw new Error("teacherPrefix not found");
-
-  const org = new Organization({
-    name,
-    studentPrefix,
-    teacherPrefix,
-    ...(profilePicPath && { profilePicPath }),
-  });
-
-  return await org.save();
-};
-
 const getAdminList = async (id, orgId, page = 1, limit = 15) => {
   const skip = (page - 1) * limit;
 
@@ -2639,5 +2619,4 @@ module.exports = {
   markMessagesAsRead,
   getWeeklyRankings,
   updateQuestion,
-  addOrganization,
 };

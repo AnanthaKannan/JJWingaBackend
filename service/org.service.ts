@@ -7,6 +7,7 @@ import {
   IOtpVerification,
   IOrganization,
   ServiceResult,
+  AddOrgParam,
 } from "../types";
 
 const OTP_PURPOSE = "academy-creation" as const;
@@ -19,14 +20,20 @@ const RESEND_COOLDOWN_SECONDS = 60;
  * No HTTP concerns (status codes) live here; that's the controller's job.
  */
 async function sendOtpService(email: string): Promise<ServiceResult> {
-  if (!email) {
+  const normalizedEmail = email.trim().toLowerCase();
+
+  // check the email exist or not
+  const isEmailExist = (await Organization.findOne({
+    email,
+  })) as IOrganization | null;
+  if (isEmailExist) {
     return {
       success: false,
-      errorCode: "MISSING_EMAIL",
-      message: "Email is required",
+      errorCode: "DUPLICATE",
+      message:
+        "This email ID is already in use. Please try a different email ID.",
     };
   }
-  const normalizedEmail = email.trim().toLowerCase();
 
   // Enforce a cooldown so the same email can't be spammed with requests
   const existing = (await OtpVerification.findOne({
@@ -149,4 +156,23 @@ const verifyPrefix = async (
   return true;
 };
 
-export { sendOtpService, verifyOtpService, verifyPrefix };
+const addOrganization = async ({
+  name,
+  studentPrefix,
+  teacherPrefix,
+  profilePicPath,
+  email,
+}: AddOrgParam): Promise<string> => {
+  const org = new Organization({
+    name,
+    studentPrefix,
+    teacherPrefix,
+    email,
+    ...(profilePicPath && { profilePicPath }),
+  });
+
+  const result = (await org.save()) as IOrganization;
+  return result._id.toString();
+};
+
+export { sendOtpService, verifyOtpService, verifyPrefix, addOrganization };

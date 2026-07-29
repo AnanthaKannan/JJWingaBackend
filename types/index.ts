@@ -40,3 +40,12 @@ export interface IOrganization extends Document {
   appEmailId: string;
   appUpiId?: string;
 }
+
+export type AddOrgParam = {
+  name: string;
+  studentPrefix: string;
+  teacherPrefix: string;
+  profilePicPath: string;
+  email: string;
+  adminName: string;
+};

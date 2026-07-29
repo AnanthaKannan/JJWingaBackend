@@ -1,6 +1,8 @@
 import { Request, Response } from "express";
 import * as orgService from "../service/org.service"; // adjust path
-import { UserType } from "../types";
+import { AddOrgParam, UserType } from "../types";
+import { addAdmin } from "../service";
+import { success } from "zod";
 
 // Maps domain-level error codes (from the service layer) to HTTP status
 // codes. This is the only place that knows about HTTP — the service layer
@@ -8,6 +10,7 @@ import { UserType } from "../types";
 const ERROR_STATUS_MAP: Record<string, number> = {
   MISSING_EMAIL: 400,
   MISSING_FIELDS: 400,
+  DUPLICATE: 400,
   COOLDOWN_ACTIVE: 429,
   OTP_NOT_FOUND: 400,
   TOO_MANY_ATTEMPTS: 429,
@@ -78,13 +81,34 @@ const verifyPrefix = async (
   const { prefix, type } = req.body;
   const isPrefixAvailable = await orgService.verifyPrefix(prefix, type);
 
-  return res
-    .status(200)
-    .json({
-      success: true,
-      isPrefixAvailable,
-      message: "Successfully verified",
-    });
+  return res.status(200).json({
+    success: true,
+    isPrefixAvailable,
+    message: "Successfully verified",
+  });
 };
 
-export { sendOtp, verifyOtp, verifyPrefix };
+const addOrganization = async (
+  req: Request<{}, {}, AddOrgParam>,
+  res: Response,
+) => {
+  const body = req.body;
+  const orgId = await orgService.addOrganization(body);
+
+  const roles = ["superadmin"];
+  const profilePicPath = "";
+  const result = await addAdmin({
+    name: body.adminName,
+    orgId,
+    roles,
+    profilePicPath,
+  });
+
+  return res.status(200).json({
+    success: true,
+    message: "Successfully Org and admin created",
+    ...result,
+  });
+};
+
+export { sendOtp, verifyOtp, verifyPrefix, addOrganization };
