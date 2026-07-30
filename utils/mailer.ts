@@ -5,13 +5,16 @@ const nodemailer = require("nodemailer");
 // Set these in your .env:
 //   GMAIL_USER=youracademyapp@gmail.com
 //   GMAIL_APP_PASSWORD=xxxxxxxxxxxxxxxx
+
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp.gmail.com",
+  port: 587,
+  secure: false, // must be false for 587 — it starts unencrypted then upgrades via STARTTLS
   auth: {
     user: process.env.GMAIL_USER,
     pass: process.env.GMAIL_APP_PASSWORD,
   },
-  family: 4, // force IPv4, avoids ENETUNREACH on hosts without IPv6 egres
+  family: 4,
 });
 
 export async function sendOtpEmail(toEmail: string, otp: string) {
