@@ -112,7 +112,7 @@ const addOrganization = async (
     profilePicPath,
   });
   const { email, name } = body;
-  // await sendWelcomeEmail(email, name, result.adminId, result.password);
+  await sendWelcomeEmail(email, name, result.adminId, result.password);
 
   return res.status(200).json({
     success: true,

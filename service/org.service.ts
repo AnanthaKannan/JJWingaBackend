@@ -78,7 +78,7 @@ async function sendOtpService(email: string): Promise<ServiceResult> {
   });
 
   try {
-    // await sendOtpEmail(normalizedEmail, otp);
+    await sendOtpEmail(normalizedEmail, otp);
     logger.info({ email: normalizedEmail }, "send_otp_service_email_sent");
   } catch (err) {
     logger.error(
