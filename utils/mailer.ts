@@ -11,6 +11,7 @@ const transporter = nodemailer.createTransport({
     user: process.env.GMAIL_USER,
     pass: process.env.GMAIL_APP_PASSWORD,
   },
+  family: 4, // force IPv4, avoids ENETUNREACH on hosts without IPv6 egres
 });
 
 export async function sendOtpEmail(toEmail: string, otp: string) {
