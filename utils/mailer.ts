@@ -17,7 +17,11 @@ const transporter = nodemailer.createTransport({
   family: 4,
 });
 
-export async function sendOtpEmail(toEmail: string, otp: string) {
+export async function sendOtpEmail(
+  toEmail: string,
+  otp: string,
+): Promise<void> {
+  return;
   const mailOptions = {
     from: `"JJWings" <${process.env.GMAIL_USER}>`,
     to: toEmail,
@@ -47,7 +51,8 @@ export async function sendWelcomeEmail(
   academyName: string,
   adminId: string,
   password: string,
-) {
+): Promise<void> {
+  return;
   const mailOptions = {
     from: `"JJWings" <${process.env.GMAIL_USER}>`,
     to: toEmail,
