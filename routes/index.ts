@@ -1,13 +1,16 @@
-const express = require("express");
+import express from "express";
 const router = express.Router();
-const controller = require("../controllers");
-const {
+import controller from "../controllers";
+import {
   authenticate,
   authorizeAdmin,
   apiKeyValidation,
   authorizeSuperAdminRole,
-} = require("../middleware/auth");
-const { uploadSingleFile } = require("../middleware/upload");
+} from "../middleware/auth";
+import { uploadSingleFile } from "../middleware/upload";
+import * as orgController from "../controllers/org.controller";
+import { validate } from "../middleware/validate";
+import * as schema from "../validates";
 
 const admin = [authenticate, authorizeAdmin];
 const superAdmin = [authenticate, authorizeSuperAdminRole];
@@ -234,11 +237,19 @@ router.patch(
 );
 
 router.get("/admin/org", ...superAdmin, controller.getOrgDetailController);
-
 router.post(
   "/crone/notifications/appreciations",
   apiKeyValidation,
   controller.sendAppreciationNotificationsController,
 );
+
+router.post("/send-otp", validate(schema.sendOtp), orgController.sendOtp);
+router.post("/verify-otp", validate(schema.verifyOtp), orgController.verifyOtp);
+router.post(
+  "/verify-prefix",
+  validate(schema.verifyPrefix),
+  orgController.verifyPrefix,
+);
+router.post("/org", validate(schema.addOrg), orgController.addOrganization);
 
 module.exports = router;

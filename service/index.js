@@ -1451,7 +1451,7 @@ const prepareProfilePic = (file, formPath) => {
   return file;
 };
 
-const getFileUploadList = async (orgId, type, page = 1, limit = 15) => {
+const getFileUploadList = async (orgId, type, page = 1, limit = 100) => {
   if (!isFileUploadType(type)) {
     throw new Error("type must be one of: practice, celebration");
   }
@@ -1461,7 +1461,7 @@ const getFileUploadList = async (orgId, type, page = 1, limit = 15) => {
 
   const [fileUploads, total] = await Promise.all([
     FileUpload.find(query)
-      .select("-__v")
+      .select("-__v -likedBy")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
@@ -2501,26 +2501,6 @@ const getWeeklyRankings = async (orgId, level = null, user = null) => {
   return rankings;
 };
 
-const addOrganization = async ({
-  name,
-  studentPrefix,
-  teacherPrefix,
-  profilePicPath,
-}) => {
-  if (!name) throw new Error("name not found");
-  if (!studentPrefix) throw new Error("studentPrefix not found");
-  if (!teacherPrefix) throw new Error("teacherPrefix not found");
-
-  const org = new Organization({
-    name,
-    studentPrefix,
-    teacherPrefix,
-    ...(profilePicPath && { profilePicPath }),
-  });
-
-  return await org.save();
-};
-
 const getAdminList = async (id, orgId, page = 1, limit = 15) => {
   const skip = (page - 1) * limit;
 
@@ -2652,5 +2632,4 @@ module.exports = {
   markMessagesAsRead,
   getWeeklyRankings,
   updateQuestion,
-  addOrganization,
 };

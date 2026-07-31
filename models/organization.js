@@ -17,6 +17,11 @@ const organizationSchema = new mongoose.Schema(
       required: true,
       unique: true,
     },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+    },
     teacherPrefix: {
       type: String,
       required: true,
@@ -52,13 +57,6 @@ const organizationSchema = new mongoose.Schema(
       type: String,
       enum: ["paid", "unpaid", "free"],
       default: "free", // Optional
-    },
-    appEmailId: {
-      type: String,
-      default: "sreeananthakannan@gmail.com",
-    },
-    appUpiId: {
-      type: String,
     },
   },
   { versionKey: false },

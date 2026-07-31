@@ -12,10 +12,7 @@ https://jjwingabackend.onrender.com
 https://dashboard.uptimerobot.com/monitors/803428343
 
 release NOTE:
-* IGEN removed, so need to update properly with organizion. like current count need to update ✔
-* orgId need to be update in the student, fileUpload, Question and admin  
-* admin should be a superadmin ✔
-* add created by for questions ✔
+* GMAIL_USER and GMAIL_APP_PASSWORD needs to add in env
 
 
 ## ReLook 

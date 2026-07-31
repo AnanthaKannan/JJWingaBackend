@@ -1,4 +1,4 @@
-const LEVELS = [
+export const LEVELS = [
   "Pluto", // 0
   "Mercury", // 1
   "Venus", // 2
@@ -12,7 +12,7 @@ const LEVELS = [
   "Galaxy", // 10
 ];
 
-function getFormattedUptime() {
+export function getFormattedUptime() {
   const uptime = process.uptime(); // seconds (float)
 
   const totalMilliseconds = Math.floor(uptime * 1000);
@@ -30,7 +30,12 @@ function getFormattedUptime() {
   );
 }
 
-module.exports = {
+export function generateOtp(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit code
+}
+
+export default {
   getFormattedUptime,
+  generateOtp,
   LEVELS,
 };
