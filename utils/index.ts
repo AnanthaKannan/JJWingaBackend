@@ -34,8 +34,22 @@ export function generateOtp(): string {
   return Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit code
 }
 
+export const getTokenSuffix = (token: string) =>
+  typeof token === "string" && token.length > 6 ? token.slice(-6) : null;
+
+export const chunk = <T>(arr: T[], size: number): T[][] =>
+  Array.from({ length: Math.ceil(arr.length / size) }, (_, i) =>
+    arr.slice(i * size, i * size + size),
+  );
+
+export const getRandomMessage = <T>(messages: T[]) =>
+  messages[Math.floor(Math.random() * messages.length)];
+
 export default {
   getFormattedUptime,
   generateOtp,
   LEVELS,
+  getTokenSuffix,
+  getRandomMessage,
+  chunk,
 };

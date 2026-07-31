@@ -168,10 +168,94 @@ const SUPER_LOW_MESSAGE = [
   "🚀 Don't stop now. Your progress will come.",
 ];
 
+const HOMEWORK_COMPLETION_REMINDER = [
+  {
+    header: "Homework Reminder",
+    body: "You still have pending homework. Please complete it today and continue your learning.",
+  },
+  {
+    header: "Don’t Forget Your Homework",
+    body: "A quick reminder to complete your assigned homework. Every practice session helps you improve.",
+  },
+  {
+    header: "Keep Up the Good Work!",
+    body: "Your homework is waiting. Complete it today and stay on track with your progress.",
+  },
+  {
+    header: "Complete Your Homework Today",
+    body: "Your homework has not been completed yet. Finish it today to avoid falling behind.",
+  },
+  {
+    header: "Small Effort, Big Progress",
+    body: "Spend a few minutes completing your homework. Consistent practice leads to success.",
+  },
+  {
+    header: "Time to Study",
+    body: "Develop a strong study habit by completing your homework today. You can do it!",
+  },
+  {
+    header: "Stay Ahead in Your Learning",
+    body: "Your homework is still pending. Complete it now and keep moving forward with confidence.",
+  },
+  {
+    header: "Homework Pending",
+    body: "Your teacher has assigned homework that is still incomplete. Please complete it as soon as possible.",
+  },
+  {
+    header: "Finish Today’s Homework",
+    body: "Completing today’s homework will help you understand the lesson better. Start now!",
+  },
+  {
+    header: "Homework Is Waiting",
+    body: "Your assigned homework is still pending. Please complete it and submit it on time.",
+  },
+  {
+    header: "Keep Learning Every Day",
+    body: "Regular practice makes learning easier. Complete your pending homework today.",
+  },
+  {
+    header: "One Step Closer to Success",
+    body: "Complete your homework and take one more step toward your learning goals.",
+  },
+  {
+    header: "Homework Reminder",
+    body: "Dear student, your homework has not been completed yet. Please finish it today with focus.",
+  },
+  {
+    header: "A Gentle Homework Reminder",
+    body: "Your homework is still incomplete. Please take some time today to finish it.",
+  },
+  {
+    header: "Don’t Delay Your Homework",
+    body: "Completing your homework on time helps build confidence and improve your skills.",
+  },
+  {
+    header: "Practice Makes Perfect",
+    body: "Your homework is an important part of learning. Complete it today and keep improving.",
+  },
+  {
+    header: "Pending Homework Alert",
+    body: "You have incomplete homework. Please complete it as soon as possible.",
+  },
+  {
+    header: "We Believe in You",
+    body: "You’re capable of doing great work. Complete your pending homework today and keep learning.",
+  },
+  {
+    header: "Reach Your Learning Goals",
+    body: "Finish your homework today and stay consistent with your studies. Every lesson counts.",
+  },
+  {
+    header: "Homework Submission Reminder",
+    body: "Your homework is still pending. Please complete and submit it today to stay on track with your class.",
+  },
+];
+
 module.exports = {
   PERFECT_SCORE_MESSAGES,
   EXCELLENT_SCORE_MESSAGES,
   MEDIUM_SCORE_MESSAGE,
   LOW_SCORE_MESSAGE,
   SUPER_LOW_MESSAGE,
+  HOMEWORK_COMPLETION_REMINDER,
 };
