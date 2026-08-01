@@ -12,13 +12,14 @@ export const homeworkRemainder = async (req: Request, res: Response) => {
   });
 };
 
-export const assignHomework = async (req: Request, res: Response) => {
-  const result = await service.homeWorkRemainder();
+export const assignHomeworkAutomatically = async (
+  req: Request,
+  res: Response,
+) => {
+  const result = await service.assignHomeworkAutomatically();
   return res.status(200).json({
     success: true,
     message: "Homework assigned successfully",
     result,
   });
 };
-
-export default { homeworkRemainder };

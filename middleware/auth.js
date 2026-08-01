@@ -87,7 +87,6 @@ const authorizeSuperAdminRole = (req, res, next) => {
 
 const apiKeyValidation = (req, res, next) => {
   const apiKey = req.header("x-api-key");
-  console.log(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>", apiKey);
   if (apiKey !== API_KEY) {
     logger.warn({ ...getRequestContext(req) }, "auth_invalid_api_key");
     return res.status(401).json({
