@@ -188,7 +188,7 @@ const getStudentList = async (
   page = 1,
   limit = 15,
   search = "",
-  level = null,
+  level,
 ) => {
   const skip = (page - 1) * limit;
   const adminObjectId = new mongoose.Types.ObjectId(adminId);
@@ -291,7 +291,7 @@ const getMessageStudentList = async (
   page = 1,
   limit = 15,
   search = "",
-  level = null,
+  level,
 ) => {
   const skip = (page - 1) * limit;
   const adminObjectId = new mongoose.Types.ObjectId(adminId);
@@ -397,8 +397,8 @@ const getQuestionList = async (
   page = 1,
   limit = 15,
   search = "",
-  level = null,
-  type = null,
+  level,
+  type,
 ) => {
   const skip = (page - 1) * limit;
 
@@ -406,7 +406,7 @@ const getQuestionList = async (
     orgId,
     isDeleted: { $ne: true },
     ...(search ? { questionId: { $regex: search, $options: "i" } } : {}),
-    ...(level === null ? {} : { level }),
+    ...(level === null ? {} : { level: Number(level) }),
     ...(type === null ? {} : buildQuestionTypeFilter(type)),
   };
 
@@ -437,8 +437,8 @@ const getPracticeQuestionList = async (
   page = 1,
   limit = 15,
   search = "",
-  level = null,
-  studentId = null,
+  level,
+  studentId,
 ) => {
   if (studentId) {
     return getAvailableQuestionsForStudent(
@@ -457,12 +457,12 @@ const getPracticeQuestionList = async (
 
 const getHomeworkList = async (
   studentId,
-  state = null,
+  state,
   page = 1,
   limit = 15,
   sortBy = "createdAt",
   sortOrder = "desc",
-  type = null,
+  type,
 ) => {
   const skip = (page - 1) * limit;
   const sortDirection = sortOrder === "asc" ? 1 : -1;
@@ -509,8 +509,8 @@ const getAvailableQuestionsForStudent = async (
   page = 1,
   limit = 15,
   search = "",
-  level = null,
-  type = null,
+  level,
+  type,
 ) => {
   const skip = (page - 1) * limit;
   const studentObjectId = new mongoose.Types.ObjectId(studentId);
@@ -1692,7 +1692,7 @@ const getUnreadMessageCount = async (user) => {
   return { unreadCount };
 };
 
-const getMessageList = async (user, page = 1, limit = 15, userId = null) => {
+const getMessageList = async (user, page = 1, limit = 15, userId) => {
   const userModel = getMessageUserModel(user?.role);
   if (!userModel) {
     throw new Error("Invalid user");
@@ -2231,7 +2231,7 @@ const resolveMonthlyRankingScope = async (level, user) => {
   return scope;
 };
 
-const getWeeklyRankings = async (orgId, level = null, user = null) => {
+const getWeeklyRankings = async (orgId, level, user) => {
   const { level: rankingLevel, adminId: rankingAdminId } =
     await resolveMonthlyRankingScope(level, user);
   const monthStart = new Date();
