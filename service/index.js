@@ -2570,7 +2570,9 @@ const homeWorkRemainder = async () => {
 };
 
 const assignHomeworkAutomatically = async () => {
-  const students = await Student.find({ isDeleted: false }).limit(10);
+  const students = await Student.find({ isDeleted: false }).select(
+    "orgId _id level name createdBy",
+  );
   const questionCount = 3; // how may question want to assign
 
   const promiseResult = students.map(async (s) => {
@@ -2613,40 +2615,56 @@ const assignHomeworkAutomatically = async () => {
 
       if (obj.value.success === true) {
         consolidateMap[obj.value.teacherId] = {
+          ...consolidateMap[obj.value.teacherId],
           successName: successName + ", " + obj.value.name,
         };
       } else {
         consolidateMap[obj.value.teacherId] = {
+          ...consolidateMap[obj.value.teacherId],
           failName: failName + ", " + obj.value.name,
         };
       }
     }
   });
 
-  const messageHeader = "Homework auto assigned";
+  const adminIds = Object.keys(consolidateMap);
 
-  const finalRes = Object.keys(consolidateMap).map(async (adminId) => {
+  const finalRes = adminIds.flatMap((adminId) => {
     const dataObj = consolidateMap[adminId];
+    const tasks = [];
+
     if (dataObj?.successName) {
+      const messageHeader = "Homework auto assigned";
       const message = "Assigned Homework :" + dataObj.successName;
-      const result = await sendBulkNotificationForAdmin(
-        [{ _id: adminId }],
-        messageHeader,
-        message,
+
+      tasks.push(
+        sendBulkNotificationForAdmin(
+          [{ _id: adminId }],
+          messageHeader,
+          message,
+        ),
       );
-      return result;
-    } else {
-      const message = "Assigned Homework :" + dataObj.failName;
-      const result = await sendBulkNotificationForAdmin(
-        [{ _id: adminId }],
-        messageHeader,
-        message,
-      );
-      return result;
     }
+
+    if (dataObj?.failName) {
+      const messageHeader = "Homework failed to auto assigned";
+      const message =
+        "Failed to Assigned Homework due to homework questions are unavailable :" +
+        dataObj.failName;
+
+      tasks.push(
+        sendBulkNotificationForAdmin(
+          [{ _id: adminId }],
+          messageHeader,
+          message,
+        ),
+      );
+    }
+
+    return tasks;
   });
 
-  const conRes = Promise.allSettled(finalRes);
+  const conRes = await Promise.allSettled(finalRes);
   return conRes;
 };
 
