@@ -22,3 +22,8 @@ export const addOrg = z.object({
   email: z.email(),
   adminName: z.string(),
 });
+
+export const addPoints = z.object({
+  level: z.number(),
+  points: z.number(),
+});
