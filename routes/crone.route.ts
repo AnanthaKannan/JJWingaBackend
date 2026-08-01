@@ -1,6 +1,6 @@
 import express from "express";
 const router = express.Router();
-import controller from "../controllers";
+import * as controller from "../controllers";
 import * as cronCtrl from "../controllers/crone.controller";
 import { apiKeyValidation } from "../middleware/auth";
 
