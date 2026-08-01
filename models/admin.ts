@@ -1,6 +1,23 @@
-const mongoose = require("mongoose");
+import mongoose, { Schema, Document, Model } from "mongoose";
+import bcrypt from "bcryptjs";
 
-const adminSchema = new mongoose.Schema(
+export type AdminRole = "admin" | "superadmin";
+
+export interface IAdmin extends Document {
+  adminId: string;
+  name: string;
+  roles: AdminRole[];
+  password: string;
+  fcmTokens: string[];
+  isDeleted: boolean;
+  deletedDate: Date | null;
+  profilePicPath: string;
+  orgId: mongoose.Types.ObjectId;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const adminSchema = new Schema<IAdmin>(
   {
     adminId: {
       type: String,
@@ -42,7 +59,7 @@ const adminSchema = new mongoose.Schema(
       default: "",
     },
     orgId: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: Schema.Types.ObjectId,
       ref: "Organization",
       required: [true, "Creator (Organization) reference is required"],
     },
@@ -51,12 +68,11 @@ const adminSchema = new mongoose.Schema(
 );
 
 // Hash password before saving
-adminSchema.pre("save", async function () {
+adminSchema.pre<IAdmin>("save", async function () {
   if (!this.isModified("password")) return;
-  const bcrypt = require("bcryptjs");
   this.password = await bcrypt.hash(this.password, 10);
 });
 
-const Admin = mongoose.model("Admin", adminSchema);
+const Admin: Model<IAdmin> = mongoose.model<IAdmin>("Admin", adminSchema);
 
-module.exports = Admin;
+export default Admin;

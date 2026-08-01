@@ -1,7 +1,20 @@
-const mongoose = require("mongoose");
-const { Schema } = mongoose;
+import mongoose, { Schema, Document, Model, Types } from "mongoose";
 
-const commentSchema = new Schema(
+export type CommentUserType = "Student" | "Admin";
+
+export interface IComment extends Document {
+  imageId: Types.ObjectId;
+  userId: Types.ObjectId;
+  userType: CommentUserType;
+  content: string;
+  parentId: Types.ObjectId | null; // null = top-level comment, otherwise points to the top-level comment
+  replyCount: number;
+  isBlocked: boolean; // soft delete so reply threads don't break
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const commentSchema = new Schema<IComment>(
   {
     imageId: {
       type: Schema.Types.ObjectId,
@@ -46,6 +59,9 @@ const commentSchema = new Schema(
 // compound index for the most common query: top-level comments for a image, sorted
 commentSchema.index({ imageId: 1, parentId: 1, createdAt: -1 });
 
-const Comment = mongoose.model("Comment", commentSchema);
+const Comment: Model<IComment> = mongoose.model<IComment>(
+  "Comment",
+  commentSchema,
+);
 
-module.exports = Comment;
+export default Comment;

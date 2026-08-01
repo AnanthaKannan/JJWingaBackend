@@ -1,6 +1,26 @@
-const mongoose = require("mongoose");
+import mongoose, { Schema, Document, Model } from "mongoose";
 
-const organizationSchema = new mongoose.Schema(
+export type OrganizationState = "paid" | "unpaid" | "free";
+
+export interface IOrganization extends Document {
+  name: string;
+  profilePicPath: string;
+  studentPrefix: string;
+  email: string;
+  teacherPrefix: string;
+  studentIdGen: number;
+  teacherIdGen: number;
+  billMonth: {
+    from?: Date;
+    to?: Date;
+  };
+  totalStudent?: number;
+  pricePerStudent: number;
+  total?: number;
+  state: OrganizationState;
+}
+
+const organizationSchema = new Schema<IOrganization>(
   {
     name: {
       type: String,
@@ -62,6 +82,9 @@ const organizationSchema = new mongoose.Schema(
   { versionKey: false },
 );
 
-const Organization = mongoose.model("Organization", organizationSchema);
+const Organization: Model<IOrganization> = mongoose.model<IOrganization>(
+  "Organization",
+  organizationSchema,
+);
 
-module.exports = Organization;
+export default Organization;
