@@ -1,4 +1,6 @@
-const {
+import { Request, Response } from "express";
+
+import {
   login,
   loginUsingDeviceId,
   getStudentList,
@@ -46,17 +48,100 @@ const {
   updateAdmin,
   getAdminList,
   getOrgDetail,
-} = require("../service");
-const {
+} from "../service";
+import {
   hasField,
   sendOptionalStudentLevelError,
   validateQuestionType,
   validateStudentLevel,
-} = require("../utils/validation");
-const { getFormattedUptime } = require("../utils");
-const logger = require("../middleware/logger");
+} from "../utils/validation";
+import { getFormattedUptime } from "../utils";
+import logger from "../middleware/logger";
 
-const loginController = async (req, res) => {
+// ---------------------------------------------------------------------------
+// Shared types
+// ---------------------------------------------------------------------------
+
+interface UploadedFile {
+  buffer: Buffer;
+  contentType: string;
+  fileName: string;
+  downloadName?: string;
+}
+
+export interface StudentAuthUser {
+  id: string;
+  role: "student";
+  name: string;
+  orgId: string;
+  studentId: string;
+  createdBy: string;
+  deviceIds: string[];
+}
+
+export interface AdminAuthUser {
+  id: string;
+  role: "admin";
+  name: string;
+  orgId: string;
+  adminId: string;
+  roles: string[];
+  deviceIds: string[];
+}
+
+export type AuthUser = StudentAuthUser | AdminAuthUser;
+declare global {
+  namespace Express {
+    interface Request {
+      user: AuthUser;
+    }
+  }
+}
+
+const getErrorMessage = (error: unknown): string =>
+  error instanceof Error ? error.message : "Unknown error";
+
+const logControllerError = (context: string, error: unknown) => {
+  logger.error({ err: error, context }, "controller_error");
+};
+
+const sendBadRequest = (res: Response, message: string) =>
+  res.status(400).json({
+    success: false,
+    message,
+  });
+
+const sendQuestionTypeError = (
+  res: Response,
+  type: string | undefined,
+  isRequired = true,
+) => {
+  const typeError = validateQuestionType(type, isRequired);
+  return typeError ? sendBadRequest(res, typeError) : null;
+};
+
+const sendStudentLevelError = (res: Response, level: unknown) => {
+  const levelError = validateStudentLevel(level);
+  return levelError ? sendBadRequest(res, levelError) : null;
+};
+
+const sendBooleanFieldError = (
+  res: Response,
+  field: string,
+  value: unknown,
+) => {
+  if (value === undefined || typeof value === "boolean") {
+    return null;
+  }
+
+  return sendBadRequest(res, `${field} must be a boolean`);
+};
+
+// ---------------------------------------------------------------------------
+// Auth
+// ---------------------------------------------------------------------------
+
+const loginController = async (req: Request, res: Response) => {
   try {
     const { username, password, deviceId } = req.body;
 
@@ -77,23 +162,22 @@ const loginController = async (req, res) => {
   } catch (error) {
     logControllerError("loginController", error);
 
-    const isClientError = ["Invalid username or password"].includes(
-      error.message,
-    );
+    const message = getErrorMessage(error);
+    const isClientError = ["Invalid username or password"].includes(message);
 
     return res.status(isClientError ? 401 : 500).json({
       success: false,
-      message: error.message || "Failed to login",
+      message: message || "Failed to login",
     });
   }
 };
 
-const loginUsingDeviceIdController = async (req, res) => {
+const loginUsingDeviceIdController = async (req: Request, res: Response) => {
   try {
     const { studentId } = req.params;
     const { deviceIds } = req.user;
 
-    const data = await loginUsingDeviceId(studentId, deviceIds);
+    const data = await loginUsingDeviceId(studentId, deviceIds ?? []);
 
     return res.status(200).json({
       success: true,
@@ -103,23 +187,28 @@ const loginUsingDeviceIdController = async (req, res) => {
   } catch (error) {
     logControllerError("loginUsingDeviceIdController", error);
 
+    const message = getErrorMessage(error);
     const isClientError = [
       "Device ID not found in token",
       "Student not found for this device",
       "Invalid username or password",
-    ].includes(error.message);
+    ].includes(message);
 
     return res.status(isClientError ? 401 : 500).json({
       success: false,
-      message: error.message || "Failed to login",
+      message: message || "Failed to login",
     });
   }
 };
 
-const getStudentListController = async (req, res) => {
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 15;
-  const search = req.query.search?.trim() || "";
+// ---------------------------------------------------------------------------
+// Students
+// ---------------------------------------------------------------------------
+
+const getStudentListController = async (req: Request, res: Response) => {
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = parseInt(req.query.limit as string) || 15;
+  const search = (req.query.search as string)?.trim() || "";
   const { level } = req.query;
   const { orgId } = req.user;
 
@@ -127,7 +216,7 @@ const getStudentListController = async (req, res) => {
   if (levelErrorResponse) return levelErrorResponse;
 
   const data = await getStudentList(
-    orgId,
+    orgId as string,
     req.user.id,
     page,
     limit,
@@ -144,17 +233,17 @@ const getStudentListController = async (req, res) => {
   });
 };
 
-const getMessageStudentListController = async (req, res) => {
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 15;
-  const search = req.query.search?.trim() || "";
+const getMessageStudentListController = async (req: Request, res: Response) => {
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = parseInt(req.query.limit as string) || 15;
+  const search = (req.query.search as string)?.trim() || "";
   const { level } = req.query;
 
   const levelErrorResponse = sendOptionalStudentLevelError(res, level);
   if (levelErrorResponse) return levelErrorResponse;
 
   const data = await getMessageStudentList(
-    req.user.orgId,
+    req.user.orgId as string,
     req.user.id,
     page,
     limit,
@@ -171,11 +260,14 @@ const getMessageStudentListController = async (req, res) => {
   });
 };
 
-const getStudentsBySameDeviceIdController = async (req, res) => {
+const getStudentsBySameDeviceIdController = async (
+  req: Request,
+  res: Response,
+) => {
   try {
     const data = await getStudentsBySameDeviceId(
-      req.user.orgId,
-      req.user.deviceIds,
+      req.user.orgId as string,
+      req.user.deviceIds ?? [],
       req.user.id,
     );
 
@@ -187,19 +279,20 @@ const getStudentsBySameDeviceIdController = async (req, res) => {
   } catch (error) {
     logControllerError("getStudentsBySameDeviceIdController", error);
 
+    const message = getErrorMessage(error);
     const isClientError = [
       "Student not found",
       "Device ID is not assigned for this student",
-    ].includes(error.message);
+    ].includes(message);
 
     return res.status(isClientError ? 400 : 500).json({
       success: false,
-      message: error.message || "Failed to fetch students",
+      message: message || "Failed to fetch students",
     });
   }
 };
 
-const getRankingController = async (req, res) => {
+const getRankingController = async (req: Request, res: Response) => {
   const { level } = req.query;
   const { orgId } = req.user;
 
@@ -207,7 +300,7 @@ const getRankingController = async (req, res) => {
   if (levelErrorResponse) return levelErrorResponse;
 
   const rankingLevel = level === undefined ? null : Number(level);
-  const data = await getWeeklyRankings(orgId, rankingLevel, req.user);
+  const data = await getWeeklyRankings(orgId as string, rankingLevel, req.user);
 
   return res.status(200).json({
     success: true,
@@ -219,40 +312,16 @@ const getRankingController = async (req, res) => {
   });
 };
 
-const logControllerError = (context, error) => {
-  logger.error({ err: error, context }, "controller_error");
-};
+// ---------------------------------------------------------------------------
+// Questions
+// ---------------------------------------------------------------------------
 
-const sendBadRequest = (res, message) =>
-  res.status(400).json({
-    success: false,
-    message,
-  });
-
-const sendQuestionTypeError = (res, type, isRequired = true) => {
-  const typeError = validateQuestionType(type, isRequired);
-  return typeError ? sendBadRequest(res, typeError) : null;
-};
-
-const sendStudentLevelError = (res, level) => {
-  const levelError = validateStudentLevel(level);
-  return levelError ? sendBadRequest(res, levelError) : null;
-};
-
-const sendBooleanFieldError = (res, field, value) => {
-  if (value === undefined || typeof value === "boolean") {
-    return null;
-  }
-
-  return sendBadRequest(res, `${field} must be a boolean`);
-};
-
-const getQuestionListController = async (req, res) => {
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 15;
-  const search = req.query.search?.trim() || "";
+const getQuestionListController = async (req: Request, res: Response) => {
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = parseInt(req.query.limit as string) || 15;
+  const search = (req.query.search as string)?.trim() || "";
   const { level } = req.query;
-  const type = req.query.type?.trim();
+  const type = (req.query.type as string)?.trim();
   const { orgId } = req.user;
 
   const levelErrorResponse = sendOptionalStudentLevelError(res, level);
@@ -262,7 +331,7 @@ const getQuestionListController = async (req, res) => {
   if (typeErrorResponse) return typeErrorResponse;
 
   const data = await getQuestionList(
-    orgId,
+    orgId as string,
     page,
     limit,
     search,
@@ -279,10 +348,13 @@ const getQuestionListController = async (req, res) => {
   });
 };
 
-const getPracticeQuestionListController = async (req, res) => {
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 15;
-  const search = req.query.search?.trim() || "";
+const getPracticeQuestionListController = async (
+  req: Request,
+  res: Response,
+) => {
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = parseInt(req.query.limit as string) || 15;
+  const search = (req.query.search as string)?.trim() || "";
   const { level } = req.query;
   const { orgId } = req.user;
 
@@ -290,7 +362,7 @@ const getPracticeQuestionListController = async (req, res) => {
   if (levelErrorResponse) return levelErrorResponse;
 
   const data = await getPracticeQuestionList(
-    orgId,
+    orgId as string,
     page,
     limit,
     search,
@@ -307,10 +379,10 @@ const getPracticeQuestionListController = async (req, res) => {
   });
 };
 
-const getHomeworkListController = async (req, res) => {
+const getHomeworkListController = async (req: Request, res: Response) => {
   const { studentId, state } = req.params;
   const { page, limit, sortBy, sortOrder } = req.query;
-  const type = req.query.type?.trim();
+  const type = (req.query.type as string)?.trim();
 
   if (!studentId) {
     return sendBadRequest(res, "Student ID is required");
@@ -344,11 +416,11 @@ const getHomeworkListController = async (req, res) => {
 
   const data = await getHomeworkList(
     studentId,
-    state || null,
-    parseInt(page) || 1,
-    parseInt(limit) || 15,
-    sortBy,
-    normalizedSortOrder,
+    state,
+    parseInt(page as string) || 1,
+    parseInt(limit as string) || 15,
+    sortBy as string,
+    (normalizedSortOrder as "asc" | "desc") || "desc",
     type || null,
   );
 
@@ -359,11 +431,14 @@ const getHomeworkListController = async (req, res) => {
   });
 };
 
-const getAvailableQuestionsForStudentController = async (req, res) => {
+const getAvailableQuestionsForStudentController = async (
+  req: Request,
+  res: Response,
+) => {
   const { studentId } = req.params;
   const { page, limit, search, level } = req.query;
   const { orgId } = req.user;
-  const type = req.query.type?.trim();
+  const type = (req.query.type as string)?.trim();
 
   if (!studentId) {
     return sendBadRequest(res, "Student ID is required");
@@ -376,10 +451,10 @@ const getAvailableQuestionsForStudentController = async (req, res) => {
   if (typeErrorResponse) return typeErrorResponse;
 
   const data = await getAvailableQuestionsForStudent(
-    orgId,
+    orgId as string,
     studentId,
-    parseInt(page) || 1,
-    parseInt(limit) || 15,
+    parseInt(page as string) || 1,
+    parseInt(limit as string) || 15,
     search?.trim() || "",
     level === undefined ? null : Number(level),
     type || null,
@@ -394,7 +469,7 @@ const getAvailableQuestionsForStudentController = async (req, res) => {
   });
 };
 
-const getScoreByStudentIdController = async (req, res) => {
+const getScoreByStudentIdController = async (req: Request, res: Response) => {
   const { studentId } = req.params;
 
   if (!studentId) {
@@ -413,7 +488,7 @@ const getScoreByStudentIdController = async (req, res) => {
   });
 };
 
-const getHomeworkByIdController = async (req, res) => {
+const getHomeworkByIdController = async (req: Request, res: Response) => {
   const { id } = req.params;
 
   if (!id) {
@@ -432,7 +507,7 @@ const getHomeworkByIdController = async (req, res) => {
   });
 };
 
-const assignQuestionController = async (req, res) => {
+const assignQuestionController = async (req: Request, res: Response) => {
   try {
     const { studentId, levels, questionIds } = req.body;
     const { orgId, id: adminId } = req.user;
@@ -454,8 +529,13 @@ const assignQuestionController = async (req, res) => {
     }
 
     const data = hasStudentId
-      ? await assignQuestion(orgId, adminId, studentId, questionIds)
-      : await assignQuestionsByLevels(orgId, adminId, levels, questionIds);
+      ? await assignQuestion(orgId as string, adminId, studentId, questionIds)
+      : await assignQuestionsByLevels(
+          orgId as string,
+          adminId,
+          levels,
+          questionIds,
+        );
 
     return res.status(201).json({
       success: true,
@@ -465,20 +545,21 @@ const assignQuestionController = async (req, res) => {
   } catch (error) {
     logControllerError("assignQuestionController", error);
 
+    const message = getErrorMessage(error);
     const isClientError = [
       "One or more questions not found",
       "levels must be a non-empty array of numbers",
       "No students found for levels",
-    ].includes(error.message);
+    ].includes(message);
 
     return res.status(isClientError ? 400 : 500).json({
       success: false,
-      message: error.message || "Internal server error",
+      message: message || "Internal server error",
     });
   }
 };
 
-const unassignQuestionController = async (req, res) => {
+const unassignQuestionController = async (req: Request, res: Response) => {
   try {
     const { studentId, questionIds } = req.body;
 
@@ -500,21 +581,22 @@ const unassignQuestionController = async (req, res) => {
   } catch (error) {
     logControllerError("unassignQuestionController", error);
 
+    const message = getErrorMessage(error);
     const isClientError = [
       "studentId is required",
       "questionIds are required",
       "Invalid studentId or questionIds",
       "One or more questions are not assigned",
-    ].includes(error.message);
+    ].includes(message);
 
     return res.status(isClientError ? 400 : 500).json({
       success: false,
-      message: error.message || "Internal server error",
+      message: message || "Internal server error",
     });
   }
 };
 
-const normalizeQuestionIds = (body) => {
+const normalizeQuestionIds = (body: Record<string, any>): string[] => {
   if (Array.isArray(body.questionIds)) {
     return body.questionIds;
   }
@@ -522,7 +604,10 @@ const normalizeQuestionIds = (body) => {
   return body.questionId ? [body.questionId] : [];
 };
 
-const assignPracticeQuestionsToSelfController = async (req, res) => {
+const assignPracticeQuestionsToSelfController = async (
+  req: Request,
+  res: Response,
+) => {
   try {
     if (req.user.role !== "student") {
       return res.status(403).json({
@@ -547,20 +632,24 @@ const assignPracticeQuestionsToSelfController = async (req, res) => {
   } catch (error) {
     logControllerError("assignPracticeQuestionsToSelfController", error);
 
+    const message = getErrorMessage(error);
     const isClientError = [
       "questionIds are required",
       "Invalid questionIds",
       "One or more practice questions not found",
-    ].includes(error.message);
+    ].includes(message);
 
     return res.status(isClientError ? 400 : 500).json({
       success: false,
-      message: error.message || "Internal server error",
+      message: message || "Internal server error",
     });
   }
 };
 
-const unassignPracticeQuestionsFromSelfController = async (req, res) => {
+const unassignPracticeQuestionsFromSelfController = async (
+  req: Request,
+  res: Response,
+) => {
   try {
     if (req.user.role !== "student") {
       return res.status(403).json({
@@ -587,22 +676,27 @@ const unassignPracticeQuestionsFromSelfController = async (req, res) => {
   } catch (error) {
     logControllerError("unassignPracticeQuestionsFromSelfController", error);
 
+    const message = getErrorMessage(error);
     const isClientError = [
       "questionIds are required",
       "Invalid questionIds",
       "One or more practice questions not found",
       "One or more practice questions are not assigned",
       "Practice questions can only be unassigned while assigned",
-    ].includes(error.message);
+    ].includes(message);
 
     return res.status(isClientError ? 400 : 500).json({
       success: false,
-      message: error.message || "Internal server error",
+      message: message || "Internal server error",
     });
   }
 };
 
-const addStudentController = async (req, res) => {
+// ---------------------------------------------------------------------------
+// Student mutations
+// ---------------------------------------------------------------------------
+
+const addStudentController = async (req: Request, res: Response) => {
   const { name, level } = req.body;
   const { orgId, id: createdBy } = req.user;
 
@@ -614,7 +708,7 @@ const addStudentController = async (req, res) => {
   if (levelErrorResponse) return levelErrorResponse;
 
   const data = await addStudent({
-    orgId,
+    orgId: orgId as string,
     name,
     level: Number(level),
     createdBy,
@@ -627,7 +721,7 @@ const addStudentController = async (req, res) => {
   });
 };
 
-const updateStudentController = async (req, res) => {
+const updateStudentController = async (req: Request, res: Response) => {
   const { id } = req.params;
   const updateData = req.body;
 
@@ -646,7 +740,7 @@ const updateStudentController = async (req, res) => {
     updateData.level = Number(updateData.level);
   }
 
-  await updateStudent(id, updateData, req.user.orgId);
+  await updateStudent(id, updateData, req.user.orgId as string);
 
   return res.status(200).json({
     success: true,
@@ -654,7 +748,7 @@ const updateStudentController = async (req, res) => {
   });
 };
 
-const resetStudentPasswordController = async (req, res) => {
+const resetStudentPasswordController = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { orgId } = req.user;
@@ -663,7 +757,7 @@ const resetStudentPasswordController = async (req, res) => {
       return sendBadRequest(res, "Student ID is required");
     }
 
-    const data = await resetStudentPassword(id, orgId);
+    const data = await resetStudentPassword(id, orgId as string);
 
     return res.status(200).json({
       success: true,
@@ -673,15 +767,16 @@ const resetStudentPasswordController = async (req, res) => {
   } catch (error) {
     logControllerError("resetStudentPasswordController", error);
 
-    const isClientError = ["Student not found"].includes(error.message);
+    const message = getErrorMessage(error);
+    const isClientError = ["Student not found"].includes(message);
     return res.status(isClientError ? 400 : 500).json({
       success: false,
-      message: error.message || "Failed to reset student password",
+      message: message || "Failed to reset student password",
     });
   }
 };
 
-const updateStudentFcmTokenController = async (req, res) => {
+const updateStudentFcmTokenController = async (req: Request, res: Response) => {
   const { fcmToken } = req.body;
   const { orgId } = req.user;
 
@@ -693,7 +788,7 @@ const updateStudentFcmTokenController = async (req, res) => {
   }
 
   const isStudent = req.user.role === "student";
-  await updateFcmToken(orgId, req.user.id, fcmToken, isStudent);
+  await updateFcmToken(orgId as string, req.user.id, fcmToken, isStudent);
 
   return res.status(200).json({
     success: true,
@@ -701,12 +796,16 @@ const updateStudentFcmTokenController = async (req, res) => {
   });
 };
 
-const uploadFileController = async (req, res) => {
+// ---------------------------------------------------------------------------
+// File uploads
+// ---------------------------------------------------------------------------
+
+const uploadFileController = async (req: Request, res: Response) => {
   try {
     const { orgId } = req.user;
     const file = await uploadFile(
-      orgId,
-      req.file,
+      orgId as string,
+      req.file as any,
       req.user,
       req.body?.path,
       req.body?.name,
@@ -720,31 +819,32 @@ const uploadFileController = async (req, res) => {
   } catch (error) {
     logControllerError("uploadFileController", error);
 
+    const message = getErrorMessage(error);
     const isClientError = [
       "file is required",
       "path is required",
       "name is required",
       "profile picture must be an image",
-    ].includes(error.message);
+    ].includes(message);
     const isForbiddenError = [
       "Only admin can upload practice or celebration files",
-    ].includes(error.message);
+    ].includes(message);
 
     return res.status(isForbiddenError ? 403 : isClientError ? 400 : 500).json({
       success: false,
-      message: error.message || "Failed to upload file",
+      message: message || "Failed to upload file",
     });
   }
 };
 
-const getFileUploadListController = async (req, res) => {
+const getFileUploadListController = async (req: Request, res: Response) => {
   try {
-    const type = req.query.type?.trim();
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 15;
+    const type = (req.query.type as string)?.trim();
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 15;
     const { orgId } = req.user;
 
-    const data = await getFileUploadList(orgId, type, page, limit);
+    const data = await getFileUploadList(orgId as string, type, page, limit);
 
     return res.status(200).json({
       success: true,
@@ -754,18 +854,19 @@ const getFileUploadListController = async (req, res) => {
   } catch (error) {
     logControllerError("getFileUploadListController", error);
 
+    const message = getErrorMessage(error);
     const isClientError = [
       "type must be one of: practice, celebration",
-    ].includes(error.message);
+    ].includes(message);
 
     return res.status(isClientError ? 400 : 500).json({
       success: false,
-      message: error.message || "Failed to fetch file uploads",
+      message: message || "Failed to fetch file uploads",
     });
   }
 };
 
-const sendDownloadResponse = (res, file) => {
+const sendDownloadResponse = (res: Response, file: UploadedFile) => {
   const downloadName = String(file.downloadName || file.fileName || "download")
     .replace(/[\r\n"]/g, "")
     .trim();
@@ -778,13 +879,13 @@ const sendDownloadResponse = (res, file) => {
   return res.status(200).send(file.buffer);
 };
 
-const updateFileUploadNameController = async (req, res) => {
+const updateFileUploadNameController = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { name } = req.body;
     const { orgId } = req.user;
 
-    await updateFileUploadName(orgId, id, name);
+    await updateFileUploadName(orgId as string, id, name);
 
     return res.status(200).json({
       success: true,
@@ -793,20 +894,21 @@ const updateFileUploadNameController = async (req, res) => {
   } catch (error) {
     logControllerError("updateFileUploadNameController", error);
 
+    const message = getErrorMessage(error);
     const isClientError = [
       "fileUploadId is required",
       "name is required",
       "File upload not found",
-    ].includes(error.message);
+    ].includes(message);
 
     return res.status(isClientError ? 400 : 500).json({
       success: false,
-      message: error.message || "Failed to update file upload",
+      message: message || "Failed to update file upload",
     });
   }
 };
 
-const downloadFileUploadController = async (req, res) => {
+const downloadFileUploadController = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const file = await downloadFileUpload(id);
@@ -815,24 +917,25 @@ const downloadFileUploadController = async (req, res) => {
   } catch (error) {
     logControllerError("downloadFileUploadController", error);
 
+    const message = getErrorMessage(error);
     const isClientError = [
       "fileUploadId is required",
       "File upload not found",
-    ].includes(error.message);
+    ].includes(message);
 
     return res.status(isClientError ? 400 : 500).json({
       success: false,
-      message: error.message || "Failed to download file upload",
+      message: message || "Failed to download file upload",
     });
   }
 };
 
-const deleteFileUploadController = async (req, res) => {
+const deleteFileUploadController = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { orgId } = req.user;
 
-    await deleteFileUpload(orgId, id);
+    await deleteFileUpload(orgId as string, id);
 
     return res.status(200).json({
       success: true,
@@ -841,21 +944,22 @@ const deleteFileUploadController = async (req, res) => {
   } catch (error) {
     logControllerError("deleteFileUploadController", error);
 
+    const message = getErrorMessage(error);
     const isClientError = [
       "fileUploadId is required",
       "File upload not found",
-    ].includes(error.message);
+    ].includes(message);
 
     return res.status(isClientError ? 400 : 500).json({
       success: false,
-      message: error.message || "Failed to delete file upload",
+      message: message || "Failed to delete file upload",
     });
   }
 };
 
-const deleteProfilePicController = async (req, res) => {
+const deleteProfilePicController = async (req: Request, res: Response) => {
   try {
-    await deleteProfilePic(req.user.orgId, req.user);
+    await deleteProfilePic(req.user.orgId as string, req.user);
 
     return res.status(200).json({
       success: true,
@@ -864,19 +968,20 @@ const deleteProfilePicController = async (req, res) => {
   } catch (error) {
     logControllerError("deleteProfilePicController", error);
 
+    const message = getErrorMessage(error);
     const isClientError = [
       "User not found",
       "Profile picture not found",
-    ].includes(error.message);
+    ].includes(message);
 
     return res.status(isClientError ? 400 : 500).json({
       success: false,
-      message: error.message || "Failed to delete profile picture",
+      message: message || "Failed to delete profile picture",
     });
   }
 };
 
-const removeStudentDeviceIdController = async (req, res) => {
+const removeStudentDeviceIdController = async (req: Request, res: Response) => {
   try {
     const { studentId, deviceId } = req.body;
     const { deviceIds, orgId } = req.user;
@@ -902,7 +1007,7 @@ const removeStudentDeviceIdController = async (req, res) => {
       });
     }
 
-    if (!deviceIds.some((id) => id === deviceId)) {
+    if (!deviceIds?.some((id) => id === deviceId)) {
       return res.status(403).json({
         success: false,
         message:
@@ -910,7 +1015,7 @@ const removeStudentDeviceIdController = async (req, res) => {
       });
     }
 
-    await removeStudentDeviceId(orgId, studentId, deviceId);
+    await removeStudentDeviceId(orgId as string, studentId, deviceId);
 
     return res.status(200).json({
       success: true,
@@ -919,20 +1024,25 @@ const removeStudentDeviceIdController = async (req, res) => {
   } catch (error) {
     logControllerError("removeStudentDeviceIdController", error);
 
+    const message = getErrorMessage(error);
     const isClientError = [
       "Student not found",
       "deviceId is required",
       "Device ID not found in token",
-    ].includes(error.message);
+    ].includes(message);
 
     return res.status(isClientError ? 400 : 500).json({
       success: false,
-      message: error.message || "Internal server error",
+      message: message || "Internal server error",
     });
   }
 };
 
-const addQuestionController = async (req, res) => {
+// ---------------------------------------------------------------------------
+// Question mutations
+// ---------------------------------------------------------------------------
+
+const addQuestionController = async (req: Request, res: Response) => {
   const { questionId, level, type, questions, marks, oral } = req.body;
   const { orgId, id: createdBy } = req.user;
 
@@ -959,7 +1069,7 @@ const addQuestionController = async (req, res) => {
 
   await addQuestion({
     createdBy,
-    orgId,
+    orgId: orgId as string,
     questionId,
     level: Number(level),
     type,
@@ -974,7 +1084,7 @@ const addQuestionController = async (req, res) => {
   });
 };
 
-const updateQuestionController = async (req, res) => {
+const updateQuestionController = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const updateData = req.body;
@@ -1020,7 +1130,7 @@ const updateQuestionController = async (req, res) => {
       return sendBadRequest(res, "questions must be a non-empty array");
     }
 
-    await updateQuestion(req.user.orgId, id, updateData);
+    await updateQuestion(req.user.orgId as string, id, updateData);
 
     return res.status(200).json({
       success: true,
@@ -1029,19 +1139,20 @@ const updateQuestionController = async (req, res) => {
   } catch (error) {
     logControllerError("updateQuestionController", error);
 
+    const message = getErrorMessage(error);
     const isClientError = [
       "Question not found",
       "No valid fields provided to update",
-    ].includes(error.message);
+    ].includes(message);
 
     return res.status(isClientError ? 400 : 500).json({
       success: false,
-      message: error.message || "Internal server error",
+      message: message || "Internal server error",
     });
   }
 };
 
-const deleteQuestionController = async (req, res) => {
+const deleteQuestionController = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { orgId } = req.user;
@@ -1053,7 +1164,7 @@ const deleteQuestionController = async (req, res) => {
       });
     }
 
-    const data = await deleteQuestion(orgId, id);
+    const data = await deleteQuestion(orgId as string, id);
 
     return res.status(200).json({
       success: true,
@@ -1065,16 +1176,17 @@ const deleteQuestionController = async (req, res) => {
   } catch (error) {
     logControllerError("deleteQuestionController", error);
 
-    const isClientError = ["Question not found"].includes(error.message);
+    const message = getErrorMessage(error);
+    const isClientError = ["Question not found"].includes(message);
 
     return res.status(isClientError ? 400 : 500).json({
       success: false,
-      message: error.message || "Internal server error",
+      message: message || "Internal server error",
     });
   }
 };
 
-const updateHomeworkController = async (req, res) => {
+const updateHomeworkController = async (req: Request, res: Response) => {
   const { id } = req.params;
   const updateData = req.body;
 
@@ -1101,7 +1213,11 @@ const updateHomeworkController = async (req, res) => {
   });
 };
 
-const healthCheckController = (req, res) => {
+// ---------------------------------------------------------------------------
+// Misc
+// ---------------------------------------------------------------------------
+
+const healthCheckController = (req: Request, res: Response) => {
   if (req.query.status) {
     const memUsage = process.memoryUsage();
     return res.status(200).json({
@@ -1123,7 +1239,11 @@ const healthCheckController = (req, res) => {
   });
 };
 
-const getNotificationsController = async (req, res) => {
+// ---------------------------------------------------------------------------
+// Notifications
+// ---------------------------------------------------------------------------
+
+const getNotificationsController = async (req: Request, res: Response) => {
   const { studentId } = req.params;
   const page = Number(req.query.page) || 1;
   const limit = Number(req.query.limit) || 15;
@@ -1137,7 +1257,7 @@ const getNotificationsController = async (req, res) => {
   });
 };
 
-const getAdminNotificationsController = async (req, res) => {
+const getAdminNotificationsController = async (req: Request, res: Response) => {
   const adminId = req.user.id;
   const page = Number(req.query.page) || 1;
   const limit = Number(req.query.limit) || 15;
@@ -1151,7 +1271,7 @@ const getAdminNotificationsController = async (req, res) => {
   });
 };
 
-const sendNotificationController = async (req, res) => {
+const sendNotificationController = async (req: Request, res: Response) => {
   const { studentIds, messageHeader, messageBody } = req.body;
   const sentBy = req.user.id; // from auth middleware
 
@@ -1164,7 +1284,7 @@ const sendNotificationController = async (req, res) => {
   }
 
   const result = await sendBulkNotification(
-    studentIds,
+    studentIds.map((id: string) => ({ id })),
     messageHeader,
     messageBody,
     sentBy,
@@ -1177,7 +1297,10 @@ const sendNotificationController = async (req, res) => {
   });
 };
 
-const sendAppreciationNotificationsController = async (req, res) => {
+const sendAppreciationNotificationsController = async (
+  req: Request,
+  res: Response,
+) => {
   const result = await sendAppreciationNotifications();
 
   return res.status(201).json({
@@ -1187,7 +1310,11 @@ const sendAppreciationNotificationsController = async (req, res) => {
   });
 };
 
-const addMessageController = async (req, res) => {
+// ---------------------------------------------------------------------------
+// Messages
+// ---------------------------------------------------------------------------
+
+const addMessageController = async (req: Request, res: Response) => {
   try {
     const { message, receivedTo } = req.body;
 
@@ -1201,6 +1328,7 @@ const addMessageController = async (req, res) => {
   } catch (error) {
     logControllerError("addMessageController", error);
 
+    const message = getErrorMessage(error);
     const isClientError = [
       "message is required",
       "receivedTo is required",
@@ -1208,20 +1336,21 @@ const addMessageController = async (req, res) => {
       "Invalid sender",
       "Student not found",
       "Admin not found",
-    ].includes(error.message);
+    ].includes(message);
 
     return res.status(isClientError ? 400 : 500).json({
       success: false,
-      message: error.message || "Failed to send message",
+      message: message || "Failed to send message",
     });
   }
 };
 
-const getMessagesController = async (req, res) => {
+const getMessagesController = async (req: Request, res: Response) => {
   try {
     const page = Number(req.query.page) || 1;
     const limit = Number(req.query.limit) || 15;
-    const userId = req.query.userId || req.query.studentId || null;
+    const userId =
+      (req.query.userId as string) || (req.query.studentId as string) || null;
 
     const result = await getMessageList(req.user, page, limit, userId);
 
@@ -1233,87 +1362,22 @@ const getMessagesController = async (req, res) => {
   } catch (error) {
     logControllerError("getMessagesController", error);
 
+    const message = getErrorMessage(error);
     const isClientError = [
       "Invalid user",
       "Invalid userId",
       "Student not found",
       "Admin not found",
-    ].includes(error.message);
+    ].includes(message);
 
     return res.status(isClientError ? 400 : 500).json({
       success: false,
-      message: error.message || "Failed to fetch messages",
+      message: message || "Failed to fetch messages",
     });
   }
 };
 
-const createRegistrationController = async (req, res) => {
-  try {
-    const data = await createRegistration(req.body, req.user.id);
-
-    return res.status(201).json({
-      success: true,
-      message: "Registration created successfully",
-      ...data,
-    });
-  } catch (error) {
-    logControllerError("createRegistrationController", error);
-
-    const isClientError = ["studentName is required"].includes(error.message);
-
-    return res.status(isClientError ? 400 : 500).json({
-      success: false,
-      message: error.message || "Failed to create registration",
-    });
-  }
-};
-
-const getRegistrationListController = async (req, res) => {
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 15;
-  const search = req.query.search?.trim() || "";
-
-  const data = await getRegistrationList(req.user.id, page, limit, search);
-
-  return res.status(200).json({
-    success: true,
-    message: search
-      ? `Registration search results for "${search}"`
-      : "Registration list fetched successfully",
-    ...data,
-  });
-};
-
-const deleteRegistrationController = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    if (!id) {
-      return sendBadRequest(res, "Registration ID is required");
-    }
-
-    await deleteRegistration(id, req.user.id);
-
-    return res.status(200).json({
-      success: true,
-      message: "Registration deleted successfully",
-    });
-  } catch (error) {
-    logControllerError("deleteRegistrationController", error);
-
-    const isClientError = [
-      "Invalid registrationId",
-      "Registration not found",
-    ].includes(error.message);
-
-    return res.status(isClientError ? 400 : 500).json({
-      success: false,
-      message: error.message || "Failed to delete registration",
-    });
-  }
-};
-
-const getUnreadMessageCountController = async (req, res) => {
+const getUnreadMessageCountController = async (req: Request, res: Response) => {
   try {
     const result = await getUnreadMessageCount(req.user);
 
@@ -1325,16 +1389,17 @@ const getUnreadMessageCountController = async (req, res) => {
   } catch (error) {
     logControllerError("getUnreadMessageCountController", error);
 
-    const isClientError = ["Invalid user"].includes(error.message);
+    const message = getErrorMessage(error);
+    const isClientError = ["Invalid user"].includes(message);
 
     return res.status(isClientError ? 400 : 500).json({
       success: false,
-      message: error.message || "Failed to fetch unread message count",
+      message: message || "Failed to fetch unread message count",
     });
   }
 };
 
-const markMessagesAsReadController = async (req, res) => {
+const markMessagesAsReadController = async (req: Request, res: Response) => {
   try {
     const body = req.body || {};
     const userId = body.userId || body.studentId || null;
@@ -1350,21 +1415,22 @@ const markMessagesAsReadController = async (req, res) => {
   } catch (error) {
     logControllerError("markMessagesAsReadController", error);
 
+    const message = getErrorMessage(error);
     const isClientError = [
       "Invalid user",
       "Invalid userId",
       "messageIds must be an array",
       "Invalid messageIds",
-    ].includes(error.message);
+    ].includes(message);
 
     return res.status(isClientError ? 400 : 500).json({
       success: false,
-      message: error.message || "Failed to update messages",
+      message: message || "Failed to update messages",
     });
   }
 };
 
-const updateMyStudentController = async (req, res) => {
+const updateMyStudentController = async (req: Request, res: Response) => {
   try {
     const studentId = req.user.id; // from auth middleware
     const updateData = req.body;
@@ -1384,7 +1450,7 @@ const updateMyStudentController = async (req, res) => {
       });
     }
 
-    await updateStudent(studentId, updateData, orgId);
+    await updateStudent(studentId, updateData, orgId as string);
 
     return res.status(200).json({
       success: true,
@@ -1393,18 +1459,19 @@ const updateMyStudentController = async (req, res) => {
   } catch (error) {
     logControllerError("updateMyStudentController", error);
 
+    const message = getErrorMessage(error);
     const isClientError = [
       "Student not found",
       "No valid fields provided to update",
-    ].includes(error.message);
+    ].includes(message);
     return res.status(isClientError ? 400 : 500).json({
       success: false,
-      message: error.message || "Internal server error",
+      message: message || "Internal server error",
     });
   }
 };
 
-const changePasswordController = async (req, res) => {
+const changePasswordController = async (req: Request, res: Response) => {
   try {
     const { oldPassword, newPassword, confirmNewPassword } = req.body;
     const { orgId } = req.user;
@@ -1427,7 +1494,7 @@ const changePasswordController = async (req, res) => {
     }
 
     await changePassword(
-      orgId,
+      orgId as string,
       req.user.id,
       req.user.role,
       oldPassword,
@@ -1441,6 +1508,7 @@ const changePasswordController = async (req, res) => {
   } catch (error) {
     logControllerError("changePasswordController", error);
 
+    const message = getErrorMessage(error);
     const isClientError = [
       "Old password and new password are required",
       "Old password is incorrect",
@@ -1448,16 +1516,20 @@ const changePasswordController = async (req, res) => {
       "User not found",
       "Invalid user role",
       "New password confirmation does not match",
-    ].includes(error.message);
+    ].includes(message);
 
     return res.status(isClientError ? 400 : 500).json({
       success: false,
-      message: error.message || "Failed to update password",
+      message: message || "Failed to update password",
     });
   }
 };
 
-const addAdminController = async (req, res) => {
+// ---------------------------------------------------------------------------
+// Admin
+// ---------------------------------------------------------------------------
+
+const addAdminController = async (req: Request, res: Response) => {
   try {
     const { orgId } = req.user;
     const { name, profilePicPath } = req.body;
@@ -1468,7 +1540,11 @@ const addAdminController = async (req, res) => {
         .json({ message: "name, password and orgId are required" });
     }
 
-    const admin = await addAdmin({ name, profilePicPath, orgId });
+    const admin = await addAdmin({
+      name,
+      profilePicPath,
+      orgId: orgId as string,
+    });
     return res.status(201).json({
       message: "Admin created successfully",
       success: true,
@@ -1476,22 +1552,23 @@ const addAdminController = async (req, res) => {
     });
   } catch (error) {
     logControllerError("changePasswordController", error);
-    if (error.message === "Organization not found") {
-      return res.status(404).json({ success: false, message: error.message });
+    const message = getErrorMessage(error);
+    if (message === "Organization not found") {
+      return res.status(404).json({ success: false, message });
     }
     return res.status(500).json({
       success: false,
       message: "Internal server error",
-      error: error.message,
+      error: message,
     });
   }
 };
 
-const updateAdminController = async (req, res) => {
+const updateAdminController = async (req: Request, res: Response) => {
   try {
     const { id: adminId } = req.params;
     const { orgId } = req.user;
-    const data = await updateAdmin(adminId, orgId, req.body);
+    const data = await updateAdmin(adminId, orgId as string, req.body);
     return res.status(200).json({
       message: "Admin updated successfully",
       success: true,
@@ -1499,23 +1576,24 @@ const updateAdminController = async (req, res) => {
     });
   } catch (error) {
     logControllerError("changePasswordController", error);
-    if (error.message === "Admin not found") {
-      return res.status(404).json({ success: false, message: error.message });
+    const message = getErrorMessage(error);
+    if (message === "Admin not found") {
+      return res.status(404).json({ success: false, message });
     }
-    if (error.message === "No valid fields to update") {
-      return res.status(400).json({ success: false, message: error.message });
+    if (message === "No valid fields to update") {
+      return res.status(400).json({ success: false, message });
     }
     return res.status(500).json({
       message: "Internal server error",
       success: false,
-      error: error.message,
+      error: message,
     });
   }
 };
 
-const getAdminListController = async (req, res) => {
+const getAdminListController = async (req: Request, res: Response) => {
   const { orgId, id } = req.user;
-  const data = await getAdminList(id, orgId);
+  const data = await getAdminList(id, orgId as string);
   return res.status(200).json({
     success: true,
     message: "Admins list fetched successfully",
@@ -1523,9 +1601,9 @@ const getAdminListController = async (req, res) => {
   });
 };
 
-const getOrgDetailController = async (req, res) => {
+const getOrgDetailController = async (req: Request, res: Response) => {
   const { orgId } = req.user;
-  const data = await getOrgDetail(orgId);
+  const data = await getOrgDetail(orgId as string);
   return res.status(200).json({
     success: true,
     message: "Organization detail fetched successfully",
@@ -1533,7 +1611,7 @@ const getOrgDetailController = async (req, res) => {
   });
 };
 
-module.exports = {
+export {
   addAdminController,
   updateAdminController,
   getAdminListController,

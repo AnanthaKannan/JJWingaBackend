@@ -45,11 +45,21 @@ export const chunk = <T>(arr: T[], size: number): T[][] =>
 export const getRandomMessage = <T>(messages: T[]) =>
   messages[Math.floor(Math.random() * messages.length)];
 
+export const uniqueStringArray = (values: unknown): string[] => [
+  ...new Set(
+    (Array.isArray(values) ? values : [values])
+      .filter((value): value is string => typeof value === "string")
+      .map((value) => value.trim())
+      .filter(Boolean),
+  ),
+];
+
 export default {
   getFormattedUptime,
   generateOtp,
   LEVELS,
   getTokenSuffix,
   getRandomMessage,
+  uniqueStringArray,
   chunk,
 };

@@ -1,8 +1,17 @@
-const mongoose = require("mongoose");
+import mongoose, { Schema, Document, Model } from "mongoose";
 
 const OTP_TTL_SECONDS = 10 * 60; // 10 minutes
 
-const otpVerificationSchema = new mongoose.Schema({
+export interface IOtpVerification extends Document {
+  email: string;
+  otpHash: string;
+  purpose: string;
+  attempts: number;
+  verified: boolean;
+  createdAt: Date;
+}
+
+const otpVerificationSchema = new Schema<IOtpVerification>({
   email: {
     type: String,
     required: true,
@@ -38,4 +47,7 @@ const otpVerificationSchema = new mongoose.Schema({
 // Speeds up "find latest OTP for this email + purpose" lookups
 otpVerificationSchema.index({ email: 1, purpose: 1, createdAt: -1 });
 
-module.exports = mongoose.model("OtpVerification", otpVerificationSchema);
+const OtpVerification: Model<IOtpVerification> =
+  mongoose.model<IOtpVerification>("OtpVerification", otpVerificationSchema);
+
+export default OtpVerification;

@@ -1,6 +1,6 @@
 import express from "express";
 const router = express.Router();
-import controller from "../controllers";
+import * as controller from "../controllers";
 import {
   authenticate,
   authorizeAdmin,
@@ -35,22 +35,6 @@ router.post(
   "/admin/students/:id/reset-password",
   ...admin,
   controller.resetStudentPasswordController,
-);
-
-router.get(
-  "/admin/registrations",
-  ...admin,
-  controller.getRegistrationListController,
-);
-router.post(
-  "/admin/registrations",
-  ...admin,
-  controller.createRegistrationController,
-);
-router.delete(
-  "/admin/registrations/:id",
-  ...admin,
-  controller.deleteRegistrationController,
 );
 
 router.get("/ranking", authenticate, controller.getRankingController);

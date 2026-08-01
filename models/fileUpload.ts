@@ -1,7 +1,22 @@
-const mongoose = require("mongoose");
-const { Schema } = mongoose;
+import mongoose, { Schema, Document, Model, Types } from "mongoose";
 
-const fileUploadSchema = new Schema(
+export type FileUploadType = "practice" | "celebration";
+
+export interface IFileUpload extends Document {
+  name: string;
+  filePath: string;
+  fileSize: number;
+  fileFormat: string;
+  type: FileUploadType;
+  orgId: Types.ObjectId;
+  commentCount: number;
+  likeCount: number;
+  likedBy: Types.ObjectId[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const fileUploadSchema = new Schema<IFileUpload>(
   {
     name: {
       type: String,
@@ -50,6 +65,9 @@ const fileUploadSchema = new Schema(
   },
 );
 
-const FileUpload = mongoose.model("FileUpload", fileUploadSchema);
+const FileUpload: Model<IFileUpload> = mongoose.model<IFileUpload>(
+  "FileUpload",
+  fileUploadSchema,
+);
 
-module.exports = FileUpload;
+export default FileUpload;

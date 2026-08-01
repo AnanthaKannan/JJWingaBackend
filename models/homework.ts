@@ -1,9 +1,23 @@
-const mongoose = require("mongoose");
+import mongoose, { Schema, Document, Model, Types } from "mongoose";
 
-const homeworkSchema = new mongoose.Schema(
+export type HomeworkState = "NEW" | "COMPLETED" | "PROGRESS";
+
+export interface IHomeWork extends Document {
+  questionId: Types.ObjectId;
+  results: boolean[];
+  answers: number[]; // can be positive or negative
+  state: HomeworkState;
+  timer: number;
+  appreciateSend: boolean;
+  studentId: Types.ObjectId;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const homeworkSchema = new Schema<IHomeWork>(
   {
     questionId: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: Schema.Types.ObjectId,
       ref: "Question",
       required: [true, "Question reference is required"],
     },
@@ -30,7 +44,7 @@ const homeworkSchema = new mongoose.Schema(
       default: false,
     },
     studentId: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: Schema.Types.ObjectId,
       ref: "Student",
       required: [true, "Student reference is required"],
     },
@@ -43,6 +57,9 @@ const homeworkSchema = new mongoose.Schema(
 
 homeworkSchema.index({ studentId: 1, questionId: 1 });
 
-const HomeWork = mongoose.model("HomeWork", homeworkSchema);
+const HomeWork: Model<IHomeWork> = mongoose.model<IHomeWork>(
+  "HomeWork",
+  homeworkSchema,
+);
 
-module.exports = HomeWork;
+export default HomeWork;

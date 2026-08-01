@@ -1,15 +1,26 @@
-const mongoose = require("mongoose");
+import mongoose, { Schema, Document, Model, Types } from "mongoose";
+import bcrypt from "bcryptjs";
 
-const uniqueStringArray = (values) => [
-  ...new Set(
-    (Array.isArray(values) ? values : [values])
-      .filter((value) => typeof value === "string")
-      .map((value) => value.trim())
-      .filter(Boolean),
-  ),
-];
+import { uniqueStringArray } from "../utils";
 
-const studentSchema = new mongoose.Schema(
+export interface IStudent extends Document {
+  studentId: string;
+  deviceIds: string[];
+  name: string;
+  password: string;
+  level: number;
+  vertical: boolean;
+  isDeleted: boolean;
+  fcmTokens: string[];
+  profilePicPath: string;
+  deletedDate: Date | null;
+  createdBy: Types.ObjectId;
+  orgId: Types.ObjectId;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const studentSchema = new Schema<IStudent>(
   {
     studentId: {
       type: String,
@@ -58,12 +69,12 @@ const studentSchema = new mongoose.Schema(
       default: null,
     },
     createdBy: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: Schema.Types.ObjectId,
       ref: "Admin",
       required: [true, "Creator (Admin) reference is required"],
     },
     orgId: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: Schema.Types.ObjectId,
       ref: "Organization",
       required: [true, "Creator (Organization) reference is required"],
     },
@@ -75,12 +86,14 @@ const studentSchema = new mongoose.Schema(
 );
 
 // Hash password before saving
-studentSchema.pre("save", async function () {
+studentSchema.pre("save", async function (this: IStudent) {
   if (!this.isModified("password")) return;
-  const bcrypt = require("bcryptjs");
   this.password = await bcrypt.hash(this.password, 10);
 });
 
-const Student = mongoose.model("Student", studentSchema);
+const Student: Model<IStudent> = mongoose.model<IStudent>(
+  "Student",
+  studentSchema,
+);
 
-module.exports = Student;
+export default Student;

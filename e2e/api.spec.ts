@@ -384,31 +384,7 @@ test.describe("question, ranking, score, and homework APIs", () => {
   });
 });
 
-test.describe("registration, notification, message, file, and comment APIs", () => {
-  test("registration APIs create, list, and delete registrations", async () => {
-    const create = await admin.post("/v1/api/admin/registrations", {
-      data: {
-        studentName: `Registration ${runId}`,
-        age: 8,
-        parentEmail: faker.internet.email(),
-      },
-    });
-    await expectStatus(create, 201);
-    registrationId = (await json(create)).registration._id;
-
-    await expectStatus(
-      await admin.get("/v1/api/admin/registrations", {
-        params: { search: runId, limit: 10, page: 1 },
-      }),
-      200,
-    );
-
-    await expectStatus(
-      await admin.delete(`/v1/api/admin/registrations/${registrationId}`),
-      200,
-    );
-  });
-
+test.describe("notification, message, file, and comment APIs", () => {
   test("FCM token endpoints validate payloads", async () => {
     await expectStatus(
       await admin.patch("/v1/api/student/fcm-token", { data: {} }),

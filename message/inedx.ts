@@ -1,5 +1,5 @@
 // 100%
-const PERFECT_SCORE_MESSAGES = [
+export const PERFECT_SCORE_MESSAGES = [
   "👑 Perfect score! Outstanding performance today.",
   "🏆 Every answer is correct. Brilliant work!",
   "🥇 Full marks achieved! Congratulations.",
@@ -33,7 +33,7 @@ const PERFECT_SCORE_MESSAGES = [
 ];
 
 // 90%–99%)
-const EXCELLENT_SCORE_MESSAGES = [
+export const EXCELLENT_SCORE_MESSAGES = [
   "🏆 Excellent work! You're very close to a perfect score.",
   "🌟 Amazing performance today. Keep it up!",
   "🚀 Great effort! You're moving towards perfection.",
@@ -67,7 +67,7 @@ const EXCELLENT_SCORE_MESSAGES = [
 ];
 
 // 80%–89%)
-const MEDIUM_SCORE_MESSAGE = [
+export const MEDIUM_SCORE_MESSAGE = [
   "✨ Very good work! Keep up the great effort.",
   "📚 Nice performance today. Keep moving forward.",
   "🌟 You're making strong progress. Well done!",
@@ -101,7 +101,7 @@ const MEDIUM_SCORE_MESSAGE = [
 ];
 
 // 70%–79%
-const LOW_SCORE_MESSAGE = [
+export const LOW_SCORE_MESSAGE = [
   "👍 Good job! Keep practicing and you'll improve even more.",
   "📚 Nice effort today. Keep moving forward.",
   "🌱 Every practice helps you grow stronger.",
@@ -135,7 +135,7 @@ const LOW_SCORE_MESSAGE = [
 ];
 
 // below 70%
-const SUPER_LOW_MESSAGE = [
+export const SUPER_LOW_MESSAGE = [
   "🚀 Keep going! Every effort brings improvement.",
   "🌱 Don't worry, you're still learning and growing.",
   "💡 Mistakes help you learn better next time.",
@@ -168,7 +168,7 @@ const SUPER_LOW_MESSAGE = [
   "🚀 Don't stop now. Your progress will come.",
 ];
 
-const HOMEWORK_COMPLETION_REMINDER = [
+export const HOMEWORK_COMPLETION_REMINDER = [
   {
     header: "Homework Reminder",
     body: "You still have pending homework. Please complete it today and continue your learning.",
@@ -251,7 +251,7 @@ const HOMEWORK_COMPLETION_REMINDER = [
   },
 ];
 
-module.exports = {
+export default {
   PERFECT_SCORE_MESSAGES,
   EXCELLENT_SCORE_MESSAGES,
   MEDIUM_SCORE_MESSAGE,

@@ -1,6 +1,22 @@
-const mongoose = require("mongoose");
+import mongoose, { Schema, Document, Model, Types } from "mongoose";
 
-const questionSchema = new mongoose.Schema(
+export type QuestionType = "homework" | "exam" | "practice";
+
+export interface IQuestion extends Document {
+  questionId: string; // e.g. "5A-01"
+  level: number;
+  type: QuestionType;
+  questions: string[];
+  marks: string[];
+  createdBy: Types.ObjectId;
+  oral: boolean;
+  isDeleted: boolean;
+  orgId: Types.ObjectId;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const questionSchema = new Schema<IQuestion>(
   {
     questionId: {
       type: String,
@@ -19,15 +35,15 @@ const questionSchema = new mongoose.Schema(
       default: "homework",
     },
     questions: {
-      type: Array,
+      type: [Schema.Types.String],
       default: [],
     },
     marks: {
-      type: Array,
+      type: [Schema.Types.String],
       default: [],
     },
     createdBy: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: Schema.Types.ObjectId,
       ref: "Admin",
       required: [true, "Creator (Admin) reference is required"],
     },
@@ -40,7 +56,7 @@ const questionSchema = new mongoose.Schema(
       default: false,
     },
     orgId: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: Schema.Types.ObjectId,
       ref: "Organization",
       required: [true, "Creator (Organization) reference is required"],
     },
@@ -51,6 +67,9 @@ const questionSchema = new mongoose.Schema(
   },
 );
 
-const Question = mongoose.model("Question", questionSchema);
+const Question: Model<IQuestion> = mongoose.model<IQuestion>(
+  "Question",
+  questionSchema,
+);
 
-module.exports = Question;
+export default Question;

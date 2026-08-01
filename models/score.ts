@@ -1,9 +1,27 @@
-const mongoose = require("mongoose");
+import mongoose, { Schema, Document, Model, Types } from "mongoose";
 
-const scoreSchema = new mongoose.Schema(
+export interface IScore extends Document {
+  studentId: Types.ObjectId;
+  assigned: number; // homeworkAssigned
+  new: number; // homeworkNew
+  progress: number; // homeworkProgress
+  completed: number; // homeworkCompleted
+  correct: number; // homeworkCorrect
+  wrong: number; // homeworkWrong
+  timeTaken: number; // homeworkTimeTaken
+  practiceAssigned: number;
+  practiceNew: number;
+  practiceProgress: number;
+  practiceCompleted: number;
+  practiceCorrect: number;
+  practiceWrong: number;
+  practiceTimeTaken: number;
+}
+
+const scoreSchema = new Schema<IScore>(
   {
     studentId: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: Schema.Types.ObjectId,
       ref: "Student",
       required: [true, "Student reference is required"],
     },
@@ -74,6 +92,6 @@ const scoreSchema = new mongoose.Schema(
   { versionKey: false },
 );
 
-const Score = mongoose.model("Score", scoreSchema);
+const Score: Model<IScore> = mongoose.model<IScore>("Score", scoreSchema);
 
-module.exports = Score;
+export default Score;

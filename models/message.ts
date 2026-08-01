@@ -1,6 +1,19 @@
-const mongoose = require("mongoose");
+import mongoose, { Schema, Document, Model, Types } from "mongoose";
 
-const messageSchema = new mongoose.Schema(
+export type MessageParticipantModel = "Admin" | "Student";
+
+export interface IMessage extends Document {
+  message: string;
+  sendBy: Types.ObjectId;
+  sendByModel: MessageParticipantModel;
+  receivedTo: Types.ObjectId;
+  receivedToModel: MessageParticipantModel;
+  hasRead: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const messageSchema = new Schema<IMessage>(
   {
     message: {
       type: String,
@@ -8,7 +21,7 @@ const messageSchema = new mongoose.Schema(
       trim: true,
     },
     sendBy: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: Schema.Types.ObjectId,
       refPath: "sendByModel",
       required: [true, "Sender reference is required"],
     },
@@ -18,7 +31,7 @@ const messageSchema = new mongoose.Schema(
       required: true,
     },
     receivedTo: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: Schema.Types.ObjectId,
       refPath: "receivedToModel",
       required: [true, "Receiver reference is required"],
     },
@@ -38,6 +51,9 @@ const messageSchema = new mongoose.Schema(
   },
 );
 
-const Message = mongoose.model("Message", messageSchema);
+const Message: Model<IMessage> = mongoose.model<IMessage>(
+  "Message",
+  messageSchema,
+);
 
-module.exports = Message;
+export default Message;
