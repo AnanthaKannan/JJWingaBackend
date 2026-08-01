@@ -6,9 +6,6 @@ import {
   getStudentList,
   getMessageStudentList,
   getStudentsBySameDeviceId,
-  createRegistration,
-  getRegistrationList,
-  deleteRegistration,
   changePassword,
   getQuestionList,
   getPracticeQuestionList,
@@ -94,6 +91,7 @@ declare global {
   namespace Express {
     interface Request {
       user: AuthUser;
+      file: any;
     }
   }
 }
@@ -380,8 +378,15 @@ const getPracticeQuestionListController = async (
 };
 
 const getHomeworkListController = async (req: Request, res: Response) => {
-  const { studentId, state } = req.params;
-  const { page, limit, sortBy, sortOrder } = req.query;
+  const { studentId } = req.params;
+  const state = req.params.state as string;
+  const { page, limit, sortBy, sortOrder } = req.query as {
+    page?: string;
+    limit?: string;
+    sortBy?: string;
+    sortOrder?: string;
+  };
+
   const type = (req.query.type as string)?.trim();
 
   if (!studentId) {
@@ -436,7 +441,8 @@ const getAvailableQuestionsForStudentController = async (
   res: Response,
 ) => {
   const { studentId } = req.params;
-  const { page, limit, search, level } = req.query;
+  const { page, limit, level } = req.query;
+  const search = req.query.search as string;
   const { orgId } = req.user;
   const type = (req.query.type as string)?.trim();
 
@@ -805,7 +811,7 @@ const uploadFileController = async (req: Request, res: Response) => {
     const { orgId } = req.user;
     const file = await uploadFile(
       orgId as string,
-      req.file as any,
+      req.file,
       req.user,
       req.body?.path,
       req.body?.name,
@@ -1544,6 +1550,7 @@ const addAdminController = async (req: Request, res: Response) => {
       name,
       profilePicPath,
       orgId: orgId as string,
+      roles: null,
     });
     return res.status(201).json({
       message: "Admin created successfully",
@@ -1618,9 +1625,6 @@ export {
   getStudentListController,
   getMessageStudentListController,
   getStudentsBySameDeviceIdController,
-  createRegistrationController,
-  getRegistrationListController,
-  deleteRegistrationController,
   addStudentController,
   updateStudentController,
   resetStudentPasswordController,
