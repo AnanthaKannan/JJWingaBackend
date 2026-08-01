@@ -10,7 +10,12 @@ const {
   getSupabaseStorageTarget,
 } = require("../utils/supabaseStorage");
 const {
+  sendPushNotificationSingle,
+  sendPushNotificationBulk,
+} = require("./notificaion.service");
+const {
   PERFECT_SCORE_MESSAGES,
+  HOMEWORK_COMPLETION_REMINDER,
   EXCELLENT_SCORE_MESSAGES,
   MEDIUM_SCORE_MESSAGE,
   LOW_SCORE_MESSAGE,
@@ -29,7 +34,7 @@ const {
   Organization,
 } = require("../models");
 const { buildAssignmentNotificationText } = require("../config/notifications");
-const { LEVELS } = require("../utils");
+const { LEVELS, getRandomMessage } = require("../utils");
 
 if (!admin.apps.length) {
   admin.initializeApp({
@@ -734,7 +739,7 @@ const sendAssignmentNotifications = async (
 
   await Promise.allSettled(
     notifications.map((notification) =>
-      sendPushNotification(
+      sendPushNotificationSingle(
         tokenMap[notification.studentId.toString()],
         notification.messageHeader,
         notification.messageBody,
@@ -1688,7 +1693,7 @@ const getMessageReceiver = async (createdMessage) => {
 const sendMessageNotification = async (createdMessage) => {
   const receiver = await getMessageReceiver(createdMessage);
 
-  await sendPushNotification(
+  await sendPushNotificationSingle(
     receiver?.fcmTokens?.[0],
     "New message",
     createdMessage.message,
@@ -1969,7 +1974,7 @@ const createHomeworkCompletedNotification = async (
     ...completionMessage,
   });
 
-  await sendPushNotification(
+  await sendPushNotificationSingle(
     adminDetail?.fcmTokens?.[0],
     notification.messageHeader,
     notification.messageBody,
@@ -2124,33 +2129,6 @@ const getNotificationList = async (
   };
 };
 
-const getTokenSuffix = (token) =>
-  typeof token === "string" && token.length > 6 ? token.slice(-6) : null;
-
-const sendPushNotification = async (token, title, body) => {
-  try {
-    if (!token) {
-      logger.warn({ title }, "push_notification_skipped_missing_token");
-      return;
-    }
-
-    await admin.messaging().send({
-      token,
-      notification: { title, body },
-    });
-  } catch (error) {
-    // Log but don't throw — DB entry already saved, push failure is non-critical
-    logger.error(
-      {
-        err: error,
-        title,
-        tokenSuffix: getTokenSuffix(token),
-      },
-      "push_notification_failed",
-    );
-  }
-};
-
 const calculateAccuracy = (results = []) => {
   if (!Array.isArray(results) || results.length === 0) {
     return 0;
@@ -2159,9 +2137,6 @@ const calculateAccuracy = (results = []) => {
   const correctCount = results.filter(Boolean).length;
   return (correctCount / results.length) * 100;
 };
-
-const getRandomMessage = (messages) =>
-  messages[Math.floor(Math.random() * messages.length)];
 
 const getAppreciationMessage = (accuracy) => {
   if (accuracy === 100) return getRandomMessage(PERFECT_SCORE_MESSAGES);
@@ -2204,7 +2179,7 @@ const sendAppreciationNotifications = async () => {
       sentByModel: "Admin",
     });
 
-    await sendPushNotification(
+    await sendPushNotificationSingle(
       student?.fcmTokens?.[0],
       notification.messageHeader,
       notification.messageBody,
@@ -2237,17 +2212,23 @@ const sendBulkNotification = async (
   messageBody,
   sentBy,
 ) => {
-  const studentIds = students.map(({ id }) => id);
+  const studentIds = students.map(({ id, _id }) => id ?? _id);
 
   // Step 1: Fetch FCM tokens from DB for all students in one query
   const studentDocs = await Student.find(
     { _id: { $in: studentIds } },
-    { fcmTokens: 1 }, // only fetch fcmTokens field
+    { fcmTokens: 1, createdBy: 1 }, // only fetch fcmTokens field and createdBy
   );
 
   // Step 2: Build a map of studentId -> fcmToken for quick lookup
+  const tokens = [];
   const tokenMap = studentDocs.reduce((acc, student) => {
-    acc[student._id.toString()] = student.fcmTokens?.[0] || null;
+    acc[student._id.toString()] = student.createdBy;
+
+    const fcmTokens = student.fcmTokens?.[0];
+    if (fcmTokens) {
+      tokens.push(fcmTokens);
+    }
     return acc;
   }, {});
 
@@ -2256,21 +2237,20 @@ const sendBulkNotification = async (
     studentId,
     messageHeader,
     messageBody,
-    sentBy,
+    sentBy: sentBy ?? tokenMap[studentId],
   }));
 
   // Step 4: Bulk insert — single DB round trip
-  const result = await Notification.insertMany(notifications, {
+  await Notification.insertMany(notifications, {
     ordered: false,
   });
 
   // Step 5: Send FCM push notifications to all students in parallel
-  await Promise.allSettled(
-    studentIds.map((id) =>
-      sendPushNotification(tokenMap[id], messageHeader, messageBody),
-    ),
+  const result = await sendPushNotificationBulk(
+    tokens,
+    messageHeader,
+    messageBody,
   );
-  // Promise.allSettled — ensures all push attempts run even if some fail
 
   logger.info(
     {
@@ -2281,7 +2261,8 @@ const sendBulkNotification = async (
   );
 
   return {
-    sentCount: result.length,
+    sentCount: result.successCount,
+    failureCount: result.failureCount,
     totalRequested: students.length,
   };
 };
@@ -2573,8 +2554,8 @@ const addAdmin = async ({ name, orgId, roles, profilePicPath }) => {
     ...(roles && { roles }),
   });
 
-  await admin.save();
-  return { password, adminId };
+  const result = await admin.save();
+  return { password, adminId, _id: result._id };
 };
 
 const getOrgDetail = async (orgId) => {
@@ -2584,11 +2565,29 @@ const getOrgDetail = async (orgId) => {
   };
 };
 
+const homeWorkRemainder = async () => {
+  const studentList = await HomeWork.aggregate([
+    {
+      $match: {
+        state: {
+          $ne: "COMPLETED",
+        },
+      },
+    },
+    { $group: { _id: "$studentId" } },
+  ]);
+
+  const { header, body } = getRandomMessage(HOMEWORK_COMPLETION_REMINDER);
+  const result = await sendBulkNotification(studentList, header, body);
+  return result;
+};
+
 module.exports = {
   login,
   addAdmin,
   updateAdmin,
   loginUsingDeviceId,
+  homeWorkRemainder,
   getAdminList,
   changePassword,
   getOrgDetail,

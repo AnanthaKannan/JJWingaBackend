@@ -1,7 +1,8 @@
-const cors = require("cors");
+import cors, { CorsOptions } from "cors";
+import { Application } from "express";
 
-module.exports = function (app) {
-  const corsOptions = {
+export default function (app: Application): void {
+  const corsOptions: CorsOptions = {
     origin: "*",
     methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
     preflightContinue: false,
@@ -9,4 +10,4 @@ module.exports = function (app) {
     optionsSuccessStatus: 204,
   };
   app.use(cors(corsOptions));
-};
+}

@@ -4,7 +4,6 @@ import controller from "../controllers";
 import {
   authenticate,
   authorizeAdmin,
-  apiKeyValidation,
   authorizeSuperAdminRole,
 } from "../middleware/auth";
 import { uploadSingleFile } from "../middleware/upload";
@@ -237,11 +236,6 @@ router.patch(
 );
 
 router.get("/admin/org", ...superAdmin, controller.getOrgDetailController);
-router.post(
-  "/crone/notifications/appreciations",
-  apiKeyValidation,
-  controller.sendAppreciationNotificationsController,
-);
 
 router.post("/send-otp", validate(schema.sendOtp), orgController.sendOtp);
 router.post("/verify-otp", validate(schema.verifyOtp), orgController.verifyOtp);
@@ -251,5 +245,6 @@ router.post(
   orgController.verifyPrefix,
 );
 router.post("/org", validate(schema.addOrg), orgController.addOrganization);
+router.post("/org", validate(schema.addOrg), orgController.addOrganization);
 
-module.exports = router;
+export default router;
