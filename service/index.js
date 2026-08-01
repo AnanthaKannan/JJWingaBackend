@@ -2192,6 +2192,68 @@ const sendBulkNotification = async (
   };
 };
 
+const sendBulkNotificationForAdmin = async (
+  admins,
+  messageHeader,
+  messageBody,
+  sentBy,
+) => {
+  const adminIds = admins.map(({ id, _id }) => id ?? _id);
+
+  // Step 1: Fetch FCM tokens from DB for all students in one query
+  const adminDocs = await Admin.find(
+    { _id: { $in: adminIds } },
+    { fcmTokens: 1 }, // only fetch fcmTokens field and createdBy
+  );
+
+  // Step 2: Build a map of studentId -> fcmToken for quick lookup
+  const tokens = [];
+  const tokenMap = adminDocs.reduce((acc, admin) => {
+    acc[admin._id.toString()] = admin._id;
+
+    const fcmTokens = admin.fcmTokens?.[0];
+    if (fcmTokens) {
+      tokens.push(fcmTokens);
+    }
+    return acc;
+  }, {});
+
+  // Step 3: Build notification documents for DB
+  const notifications = adminIds.map((adminId) => ({
+    adminId,
+    messageHeader,
+    messageBody,
+    sentBy: sentBy ?? tokenMap[adminId], // TODO: make it robo in feature
+  }));
+
+  // Step 4: Bulk insert — single DB round trip
+  await Notification.insertMany(notifications, {
+    ordered: false,
+  });
+
+  // Step 5: Send FCM push notifications to all students in parallel
+  const result = await sendPushNotificationBulk(
+    tokens,
+    messageHeader,
+    messageBody,
+  );
+
+  logger.info(
+    {
+      sentCount: result.successCount,
+      failureCount: result.failureCount,
+      totalRequested: admins.length,
+    },
+    "bulk_notifications_created_for_admin",
+  );
+
+  return {
+    sentCount: result.successCount,
+    failureCount: result.failureCount,
+    totalRequested: admins.length,
+  };
+};
+
 const resolveStudentRankingLevel = (student) => {
   if (
     Object.prototype.hasOwnProperty.call(student || {}, "level") &&
@@ -2507,6 +2569,87 @@ const homeWorkRemainder = async () => {
   return result;
 };
 
+const assignHomeworkAutomatically = async () => {
+  const students = await Student.find({ isDeleted: false }).limit(10);
+  const questionCount = 3; // how may question want to assign
+
+  const promiseResult = students.map(async (s) => {
+    const homeworkList = await getAvailableQuestionsForStudent(
+      s.orgId.toString(),
+      s._id.toString(),
+      1, // page
+      questionCount,
+      "",
+      s.level,
+      "homework",
+    );
+
+    const questionIds = homeworkList.questions.map((question) => question._id);
+    if (questionIds.length < questionCount) {
+      return {
+        question: false, // not enough questions
+        success: false,
+        name: s.name,
+        teacherId: s.createdBy,
+      };
+    }
+
+    assignQuestion(s.orgId, s.createdBy, s._id, questionIds);
+    return {
+      success: true,
+      name: s.name,
+      teacherId: s.createdBy,
+    };
+  });
+
+  const result = await Promise.allSettled(promiseResult);
+
+  const consolidateMap = {};
+  result.forEach((obj) => {
+    if (obj.status === "fulfilled") {
+      const failName = consolidateMap[obj.value.teacherId]?.failName || "";
+      const successName =
+        consolidateMap[obj.value.teacherId]?.successName || "";
+
+      if (obj.value.success === true) {
+        consolidateMap[obj.value.teacherId] = {
+          successName: successName + ", " + obj.value.name,
+        };
+      } else {
+        consolidateMap[obj.value.teacherId] = {
+          failName: failName + ", " + obj.value.name,
+        };
+      }
+    }
+  });
+
+  const messageHeader = "Homework auto assigned";
+
+  const finalRes = Object.keys(consolidateMap).map(async (adminId) => {
+    const dataObj = consolidateMap[adminId];
+    if (dataObj?.successName) {
+      const message = "Assigned Homework :" + dataObj.successName;
+      const result = await sendBulkNotificationForAdmin(
+        [{ _id: adminId }],
+        messageHeader,
+        message,
+      );
+      return result;
+    } else {
+      const message = "Assigned Homework :" + dataObj.failName;
+      const result = await sendBulkNotificationForAdmin(
+        [{ _id: adminId }],
+        messageHeader,
+        message,
+      );
+      return result;
+    }
+  });
+
+  const conRes = Promise.allSettled(finalRes);
+  return conRes;
+};
+
 module.exports = {
   login,
   addAdmin,
@@ -2519,6 +2662,7 @@ module.exports = {
   getStudentList,
   getMessageStudentList,
   getStudentsBySameDeviceId,
+  assignHomeworkAutomatically,
   getQuestionList,
   getPracticeQuestionList,
   getHomeworkList,

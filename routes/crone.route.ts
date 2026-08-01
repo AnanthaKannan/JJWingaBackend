@@ -16,6 +16,10 @@ router.post(
   cronCtrl.homeworkRemainder,
 );
 
-router.post("/assign-homework", apiKeyValidation, cronCtrl.assignHomework);
+router.post(
+  "/assign-homework",
+  apiKeyValidation,
+  cronCtrl.assignHomeworkAutomatically,
+);
 
 export default router;
