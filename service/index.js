@@ -2554,8 +2554,8 @@ const addAdmin = async ({ name, orgId, roles, profilePicPath }) => {
     ...(roles && { roles }),
   });
 
-  await admin.save();
-  return { password, adminId };
+  const result = await admin.save();
+  return { password, adminId, _id: result._id };
 };
 
 const getOrgDetail = async (orgId) => {
