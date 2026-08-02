@@ -38,6 +38,7 @@ interface FeedList {
 export const feedList = (orgId: string): Promise<FeedList[]> => {
   return Feed.aggregate<FeedList>([
     { $match: { orgId: new Types.ObjectId(orgId) } },
+    { $sort: { createdAt: -1 } },
     {
       $lookup: {
         from: "admins",
