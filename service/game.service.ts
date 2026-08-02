@@ -23,9 +23,10 @@ interface TopStudent {
   points: number;
 }
 
-export const gameScore = async (studentId: string) => {
+export const gameScore = async (studentId: string, level: number) => {
   const scoreDetails = await GameScore.findOne({
     studentId: new Types.ObjectId(studentId),
+    level,
   });
   return scoreDetails;
 };

@@ -24,7 +24,8 @@ export const getGameTopper = async (req: Request, res: Response) => {
 };
 
 export const gameScore = async (req: Request, res: Response) => {
-  const data = await gameService.gameScore(req.user.id);
+  const level = Number(req.params.level);
+  const data = await gameService.gameScore(req.user.id, level);
   return res.status(200).json({
     success: true,
     message: "Game details fetched succeeded.",
