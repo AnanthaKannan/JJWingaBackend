@@ -9,6 +9,7 @@ import Message from "./message";
 import Organization from "./organization";
 import Comment from "./comment";
 import OtpVerification from "./otpVerification";
+import GameScore from "./gameScore";
 
 export {
   Student,
@@ -21,5 +22,6 @@ export {
   Message,
   Organization,
   Comment,
+  GameScore,
   OtpVerification,
 };
