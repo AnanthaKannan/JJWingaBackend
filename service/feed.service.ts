@@ -55,6 +55,7 @@ export const feedList = (orgId: string): Promise<FeedList[]> => {
         content: 1,
         type: 1,
         commentCount: 1,
+        filePath: 1,
         likeCount: 1,
         adminName: "$adminInfo.name",
         adminPicPath: "$adminInfo.profilePicPath",
