@@ -17,7 +17,7 @@ export const createFeed = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("file"),
     filePath: z.string().trim().min(1, "File path is required"),
-    content: z.preprocess(emptyToUndefined, z.undefined()),
+    content: z.string().trim().optional(),
   }),
   z.object({
     type: z.literal("content"),
