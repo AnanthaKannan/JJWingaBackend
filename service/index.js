@@ -9,7 +9,7 @@ const {
   getSupabaseClient,
   getSupabaseStorageTarget,
 } = require("../utils/supabaseStorage");
-const { createFeed } = require("./feed.service.ts");
+const { createFeed } = require("./feed.service");
 const {
   sendPushNotificationSingle,
   sendPushNotificationBulk,
