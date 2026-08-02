@@ -10,6 +10,22 @@ export const sendOtp = z.object({
   email: z.email(),
 });
 
+const emptyToUndefined = (val: unknown) =>
+  val === "" || val === null ? undefined : val;
+
+export const createFeed = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("file"),
+    filePath: z.string().trim().min(1, "File path is required"),
+    content: z.preprocess(emptyToUndefined, z.undefined()),
+  }),
+  z.object({
+    type: z.literal("content"),
+    content: z.string().trim().min(1, "Content is required"),
+    filePath: z.preprocess(emptyToUndefined, z.undefined()),
+  }),
+]);
+
 export const verifyOtp = z.object({
   email: z.email(),
   otp: z.string().min(6).max(6),
