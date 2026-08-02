@@ -23,11 +23,19 @@ interface TopStudent {
   points: number;
 }
 
-export const getGameTopper = (level: number): Promise<TopStudent[]> => {
+export const gameScore = async (studentId: string) => {
+  const scoreDetails = await GameScore.findOne({
+    studentId: new Types.ObjectId(studentId),
+  });
+  return scoreDetails;
+};
+
+export const getGameTopper = (
+  teacherId: string,
+  level: number,
+): Promise<TopStudent[]> => {
   return GameScore.aggregate<TopStudent>([
     { $match: { level } },
-    { $sort: { points: -1 } },
-    { $limit: 5 },
     {
       $lookup: {
         from: "students",
@@ -37,10 +45,13 @@ export const getGameTopper = (level: number): Promise<TopStudent[]> => {
       },
     },
     { $unwind: "$studentInfo" },
+    { $match: { "studentInfo.createdBy": new Types.ObjectId(teacherId) } },
+    { $sort: { points: -1 } },
+    { $limit: 5 },
     {
       $project: {
         _id: 0,
-        student: "$studentInfo._id",
+        studentId: "$studentInfo._id",
         name: "$studentInfo.name",
         profilePic: "$studentInfo.profilePicPath",
         points: 1,

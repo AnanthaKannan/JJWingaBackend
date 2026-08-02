@@ -6,6 +6,8 @@ import { authenticate } from "../middleware/auth";
 import { validate } from "../middleware/validate";
 import * as schema from "../validates";
 
+router.get("/:level", authenticate, gameCtrl.gameScore);
+
 router.get("/toppers/:level", authenticate, gameCtrl.getGameTopper);
 
 router.post(
