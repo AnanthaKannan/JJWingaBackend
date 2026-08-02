@@ -2,7 +2,6 @@ import { Feed, IFeed, TFeedType } from "../models";
 import { Types } from "mongoose";
 
 interface CreateFeedParams {
-  name: string;
   orgId: string;
   type: TFeedType;
   filePath: string;

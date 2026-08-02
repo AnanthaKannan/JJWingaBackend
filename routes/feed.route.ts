@@ -11,7 +11,7 @@ const feedAdmin = [authenticate, authorizeAdmin];
 router.get("/", authenticate, feedCtrl.feedList);
 
 router.post(
-  "/admin",
+  "/admin/content",
   ...feedAdmin,
   validate(schema.createFeed),
   feedCtrl.createFeed,

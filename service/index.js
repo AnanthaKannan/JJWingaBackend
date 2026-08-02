@@ -9,6 +9,7 @@ const {
   getSupabaseClient,
   getSupabaseStorageTarget,
 } = require("../utils/supabaseStorage");
+const { createFeed } = require("./feed.service.ts");
 const {
   sendPushNotificationSingle,
   sendPushNotificationBulk,
@@ -1412,7 +1413,16 @@ const getFileUploadList = async (orgId, type, page = 1, limit = 100) => {
   };
 };
 
-const uploadFile = async (orgId, file, user, formPath = "", name = "") => {
+const uploadFile = async (
+  orgId,
+  file,
+  user,
+  formPath = "",
+  name = "",
+  createdBy,
+  content,
+  type,
+) => {
   if (!file) {
     throw new Error("file is required");
   }
@@ -1448,14 +1458,9 @@ const uploadFile = async (orgId, file, user, formPath = "", name = "") => {
   if (formPath.trim() === "profile") {
     await updateProfilePicPath(orgId, user, data.path);
   }
-
-  const fileUpload = await createFileUploadRecord(
-    orgId,
-    name,
-    data.path,
-    uploadType,
-    preparedFile,
-  );
+  if (formPath.trim() === "feed") {
+    await createFeed({ orgId, filePath: data.path, type, content, createdBy });
+  }
 
   return {
     bucket,
@@ -1464,7 +1469,6 @@ const uploadFile = async (orgId, file, user, formPath = "", name = "") => {
     originalName: preparedFile.originalname,
     mimeType: preparedFile.mimetype,
     size: preparedFile.size,
-    ...(fileUpload ? { fileUpload } : {}),
   };
 };
 
