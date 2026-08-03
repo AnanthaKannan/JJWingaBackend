@@ -4,7 +4,8 @@ import logger from "../middleware/logger";
 import * as feedService from "../service/feed.service";
 
 export const feedList = async (req: Request, res: Response) => {
-  const data = await feedService.feedList(req.user.orgId);
+  const { orgId, id } = req.user;
+  const data = await feedService.feedList(orgId, id);
   return res.status(200).json({
     success: true,
     message: "Feed list fetched succeeded.",

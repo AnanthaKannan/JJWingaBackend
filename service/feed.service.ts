@@ -35,7 +35,10 @@ interface FeedList {
   adminPicPath: string;
 }
 
-export const feedList = (orgId: string): Promise<FeedList[]> => {
+export const feedList = (
+  orgId: string,
+  userId: string,
+): Promise<FeedList[]> => {
   return Feed.aggregate<FeedList>([
     { $match: { orgId: new Types.ObjectId(orgId) } },
     { $sort: { createdAt: -1 } },
@@ -48,7 +51,14 @@ export const feedList = (orgId: string): Promise<FeedList[]> => {
       },
     },
     { $unwind: "$adminInfo" },
-
+    {
+      $lookup: {
+        from: "likes",
+        localField: "_id",
+        foreignField: "feedId",
+        as: "likeInfo",
+      },
+    },
     {
       $project: {
         _id: 1,
@@ -60,6 +70,13 @@ export const feedList = (orgId: string): Promise<FeedList[]> => {
         likeCount: 1,
         adminName: "$adminInfo.name",
         adminPicPath: "$adminInfo.profilePicPath",
+        hehe: { $arrayElemAt: ["$likeInfo.userId", 0] },
+        isLikedByMe: {
+          $eq: [
+            { $arrayElemAt: ["$likeInfo.userId", 0] },
+            new Types.ObjectId(userId),
+          ],
+        },
       },
     },
   ]);
