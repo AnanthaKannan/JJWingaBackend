@@ -1,5 +1,10 @@
 // schemas/student.schema.ts
 import { z } from "zod";
+import { Types } from "mongoose";
+
+const objectIdSchema = z.string().refine((val) => Types.ObjectId.isValid(val), {
+  message: "Invalid ObjectId",
+});
 
 export const verifyPrefix = z.object({
   prefix: z.string().min(1),
@@ -25,6 +30,15 @@ export const createFeed = z.discriminatedUnion("type", [
     filePath: z.preprocess(emptyToUndefined, z.undefined()),
   }),
 ]);
+
+export const addComment = z.object({
+  feedId: objectIdSchema,
+  content: z.string().trim().min(1, "Content is required"),
+});
+
+export const toggleLike = z.object({
+  feedId: objectIdSchema,
+});
 
 export const verifyOtp = z.object({
   email: z.email(),

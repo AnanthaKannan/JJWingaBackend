@@ -2,6 +2,8 @@ import { Document } from "mongoose";
 
 export type UserType = "student" | "teacher";
 
+export type UserTypeSch = "Student" | "Admin";
+
 export interface IOtpVerification extends Document {
   email: string;
   otpHash: string;

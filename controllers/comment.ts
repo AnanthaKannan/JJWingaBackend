@@ -1,0 +1,59 @@
+import { Request, Response } from "express";
+import * as command from "../service/comment";
+import { UserType } from "../types";
+
+export const addComment = async (req: Request, res: Response) => {
+  const { feedId, content, parentId } = req.body; // if parentId exist then it is consider as child command
+  const { id: userId, role } = req.user as { id: string; role: UserType };
+
+  const data = await command.addComment(
+    userId,
+    feedId,
+    content,
+    role,
+    parentId,
+  );
+
+  return res.status(201).json({
+    success: true,
+    message: "comment added successfully.",
+    data,
+  });
+};
+
+export const getParentComment = async (req: Request, res: Response) => {
+  const feedId = req.params.feedId as string;
+
+  const data = await command.getParentComment(feedId);
+
+  return res.status(200).json({
+    success: true,
+    message: "comment fetched successfully.",
+    data,
+  });
+};
+
+export const getChildComment = async (req: Request, res: Response) => {
+  const parentId = req.params.parentId as string;
+
+  const data = await command.getChildComment(parentId);
+
+  return res.status(200).json({
+    success: true,
+    message: "comment fetched successfully.",
+    data,
+  });
+};
+
+export const toggleLike = async (req: Request, res: Response) => {
+  const { feedId } = req.body;
+  const { id: userId, role } = req.user as { role: UserType; id: string };
+
+  const data = await command.toggleLike(userId, feedId, role);
+
+  return res.status(201).json({
+    success: true,
+    message: "messages added successfully.",
+    ...data,
+  });
+};

@@ -60,7 +60,6 @@ const feedSchema = new Schema<IFeed>(
       type: Number,
       default: 0,
     },
-    likedBy: [{ type: Schema.Types.ObjectId, ref: "Student" }],
   },
   {
     timestamps: true,
