@@ -63,7 +63,7 @@ export const getChildComment = async (
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(limit)
-    .populate("userId", "name profilePicPath");
+    .populate("userDetail", "name profilePicPath");
   return data;
 };
 

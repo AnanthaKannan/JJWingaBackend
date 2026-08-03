@@ -34,6 +34,7 @@ export const createFeed = z.discriminatedUnion("type", [
 export const addComment = z.object({
   feedId: objectIdSchema,
   content: z.string().trim().min(1, "Content is required"),
+  parentId: objectIdSchema.optional(),
 });
 
 export const toggleLike = z.object({
