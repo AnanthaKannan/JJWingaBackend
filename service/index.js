@@ -414,7 +414,7 @@ const getQuestionList = async (
   const [questions, total] = await Promise.all([
     Question.find(query)
       .select("-__v")
-      .sort({ createdAt: -1 })
+      .sort({ questionId: -1 }) // TODO: user can select sort by questionId, or createdAt
       .skip(skip)
       .limit(limit),
     Question.countDocuments(query),
@@ -555,7 +555,7 @@ const getAvailableQuestionsForStudent = async (
         __v: 0,
       },
     },
-    { $sort: { createdAt: -1 } },
+    { $sort: { createdAt: 1 } },
   ];
 
   const [questions, countResult] = await Promise.all([
