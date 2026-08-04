@@ -808,13 +808,34 @@ const updateStudentFcmTokenController = async (req: Request, res: Response) => {
 
 const uploadFileController = async (req: Request, res: Response) => {
   try {
-    const { orgId } = req.user;
+    const { orgId, id } = req.user;
+
+    if (req.body?.path === "feed") {
+      if (req.body?.type === "file") {
+      } else if (req.body?.type === "content") {
+        if (!req.body?.content) {
+          return res.status(400).json({
+            success: false,
+            message: '"Content" should be valid content',
+          });
+        }
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: 'Type should be "file" or "content',
+        });
+      }
+    }
+
     const file = await uploadFile(
       orgId as string,
       req.file,
       req.user,
       req.body?.path,
       req.body?.name,
+      id,
+      req.body?.content,
+      req.body?.type,
     );
 
     return res.status(201).json({

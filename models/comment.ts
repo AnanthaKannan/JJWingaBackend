@@ -3,7 +3,7 @@ import mongoose, { Schema, Document, Model, Types } from "mongoose";
 export type CommentUserType = "Student" | "Admin";
 
 export interface IComment extends Document {
-  imageId: Types.ObjectId;
+  feedId: Types.ObjectId;
   userId: Types.ObjectId;
   userType: CommentUserType;
   content: string;
@@ -16,9 +16,9 @@ export interface IComment extends Document {
 
 const commentSchema = new Schema<IComment>(
   {
-    imageId: {
+    feedId: {
       type: Schema.Types.ObjectId,
-      ref: "FileUpload",
+      ref: "Feed",
       required: true,
       index: true,
     },
@@ -57,7 +57,7 @@ const commentSchema = new Schema<IComment>(
 );
 
 // compound index for the most common query: top-level comments for a image, sorted
-commentSchema.index({ imageId: 1, parentId: 1, createdAt: -1 });
+commentSchema.index({ feedId: 1, parentId: 1, createdAt: -1 });
 
 const Comment: Model<IComment> = mongoose.model<IComment>(
   "Comment",

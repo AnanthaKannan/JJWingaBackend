@@ -9,6 +9,7 @@ const {
   getSupabaseClient,
   getSupabaseStorageTarget,
 } = require("../utils/supabaseStorage");
+const { createFeed } = require("./feed.service");
 const {
   sendPushNotificationSingle,
   sendPushNotificationBulk,
@@ -413,7 +414,7 @@ const getQuestionList = async (
   const [questions, total] = await Promise.all([
     Question.find(query)
       .select("-__v")
-      .sort({ createdAt: -1 })
+      .sort({ questionId: -1 }) // TODO: user can select sort by questionId, or createdAt
       .skip(skip)
       .limit(limit),
     Question.countDocuments(query),
@@ -554,7 +555,7 @@ const getAvailableQuestionsForStudent = async (
         __v: 0,
       },
     },
-    { $sort: { createdAt: -1 } },
+    { $sort: { createdAt: 1 } },
   ];
 
   const [questions, countResult] = await Promise.all([
@@ -1412,7 +1413,16 @@ const getFileUploadList = async (orgId, type, page = 1, limit = 100) => {
   };
 };
 
-const uploadFile = async (orgId, file, user, formPath = "", name = "") => {
+const uploadFile = async (
+  orgId,
+  file,
+  user,
+  formPath = "",
+  name = "",
+  createdBy,
+  content,
+  type,
+) => {
   if (!file) {
     throw new Error("file is required");
   }
@@ -1448,14 +1458,9 @@ const uploadFile = async (orgId, file, user, formPath = "", name = "") => {
   if (formPath.trim() === "profile") {
     await updateProfilePicPath(orgId, user, data.path);
   }
-
-  const fileUpload = await createFileUploadRecord(
-    orgId,
-    name,
-    data.path,
-    uploadType,
-    preparedFile,
-  );
+  if (formPath.trim() === "feed") {
+    await createFeed({ orgId, filePath: data.path, type, content, createdBy });
+  }
 
   return {
     bucket,
@@ -1464,7 +1469,6 @@ const uploadFile = async (orgId, file, user, formPath = "", name = "") => {
     originalName: preparedFile.originalname,
     mimeType: preparedFile.mimetype,
     size: preparedFile.size,
-    ...(fileUpload ? { fileUpload } : {}),
   };
 };
 

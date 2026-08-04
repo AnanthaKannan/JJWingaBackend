@@ -1,3 +1,5 @@
+import { UserType, UserTypeSch } from "../types";
+
 export const LEVELS = [
   "Pluto", // 0
   "Mercury", // 1
@@ -54,12 +56,16 @@ export const uniqueStringArray = (values: unknown): string[] => [
   ),
 ];
 
+export const getUserType = (role: UserType): UserTypeSch =>
+  role === "student" ? "Student" : "Admin";
+
 export default {
   getFormattedUptime,
   generateOtp,
   LEVELS,
   getTokenSuffix,
   getRandomMessage,
+  getUserType,
   uniqueStringArray,
   chunk,
 };

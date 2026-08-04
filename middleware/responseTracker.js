@@ -5,6 +5,11 @@ const responseTracker = (req, res, next) => {
     return next();
   }
 
+  // on local don't need to log everything
+  if (process.env.NODE_ENV === "LOCAL") {
+    return next();
+  }
+
   const startTime = process.hrtime.bigint();
   const startCpu = process.cpuUsage();
 
