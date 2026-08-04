@@ -45,8 +45,15 @@ export const getParentComment = async (
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(limit)
-    .populate("userId", "name profilePicPath");
-  return data;
+    .populate("userId", "name profilePicPath")
+    .lean();
+
+  const result = data.map(({ userId, ...rest }) => ({
+    ...rest,
+    userDetail: userId,
+  }));
+
+  return result;
 };
 
 export const getChildComment = async (
