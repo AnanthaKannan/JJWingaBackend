@@ -2573,7 +2573,7 @@ const assignHomeworkAutomatically = async () => {
   const students = await Student.find({ isDeleted: false }).select(
     "orgId _id level name createdBy",
   );
-  const questionCount = 3; // how may question want to assign
+  const questionCount = 1; // how may question want to assign
 
   const promiseResult = students.map(async (s) => {
     const homeworkList = await getAvailableQuestionsForStudent(
