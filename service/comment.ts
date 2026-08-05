@@ -75,7 +75,7 @@ export const getParentComment = async (
   return result;
 };
 
-export const nonApproveComment = async (
+export const nonApproveCommentList = async (
   orgId: string,
   adminId: string,
   page: number = 1,
@@ -83,12 +83,24 @@ export const nonApproveComment = async (
 ) => {
   const skip = (page - 1) * limit;
 
-  Comment.find({ orgId, feedOwnerId: adminId, approved: false })
+  const data = await Comment.find({
+    orgId,
+    feedOwnerId: adminId,
+    approved: false,
+  })
+    .select("-parentId -replyCount -approved -feedOwnerId")
     .sort({ createdAt: -1 })
     .skip(skip)
-    .limit(limit);
+    .limit(limit)
+    .populate("userId", "name profilePicPath")
+    .lean();
 
-  return "";
+  const result = data.map(({ userId, ...rest }) => ({
+    ...rest,
+    userDetail: userId,
+  }));
+
+  return result;
 };
 
 export const getChildComment = async (

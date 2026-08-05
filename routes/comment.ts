@@ -14,9 +14,9 @@ router.put("/:commentId/approve", authenticate, cmdCtrl.approveComment);
 router.delete("/parent/:commentId", authenticate, cmdCtrl.deleteComment);
 
 router.get(
-  "admin/non-approve-comment",
+  "/admin/non-approve-comment",
   authenticate,
-  cmdCtrl.nonApproveComment,
+  cmdCtrl.nonApproveCommentList,
 );
 
 router.get("/child/:parentId", authenticate, cmdCtrl.getChildComment);

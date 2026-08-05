@@ -39,10 +39,10 @@ export const getParentComment = async (req: Request, res: Response) => {
   });
 };
 
-export const nonApproveComment = async (req: Request, res: Response) => {
+export const nonApproveCommentList = async (req: Request, res: Response) => {
   const { id: adminId, orgId } = req.user; // as { id: string; orgId: string };
 
-  const data = await command.nonApproveComment(orgId, adminId);
+  const data = await command.nonApproveCommentList(orgId, adminId);
 
   return res.status(200).json({
     success: true,
