@@ -2,6 +2,7 @@ import { Types } from "mongoose";
 import { Comment, FileUpload, Feed, Like, IFeed } from "../models";
 import { getUserType } from "../utils";
 import { userType, UserType } from "../types";
+import { IComment } from "../models/comment";
 
 interface AddCommentResult {
   id: Types.ObjectId;
@@ -11,6 +12,10 @@ interface ToggleLikeResult {
   liked: boolean;
   likeCount: number;
 }
+
+const updateCommentCount = async (feedId: string, increaseBy: number) => {
+  await Feed.updateOne({ _id: feedId }, { $inc: { commentCount: increaseBy } });
+};
 
 export const addComment = async (
   userId: string,
@@ -38,7 +43,6 @@ export const addComment = async (
     feedOwnerId: feed.createdBy,
     userType: getUserType(role),
   });
-  await Feed.updateOne({ _id: feedId }, { $inc: { commentCount: 1 } });
   return { id: data._id };
 };
 
@@ -145,15 +149,20 @@ export const toggleLike = async (
   }
 };
 
-export const approveComment = (orgId: string, commentId: string) => {
-  return Feed.findOneAndUpdate(
+export const approveComment = async (orgId: string, commentId: string) => {
+  const result = await Comment.findOneAndUpdate(
     { _id: commentId, orgId },
     {
       $set: { approved: true },
     },
   );
+  if (!result) throw new Error(`${commentId} is invalid`);
+  await updateCommentCount(result.feedId.toString(), 1);
 };
 
-export const deleteComment = (orgId: string, commentId: string) => {
-  return Feed.deleteOne({ _id: commentId, orgId });
+export const deleteComment = async (orgId: string, commentId: string) => {
+  const result = await Comment.findOneAndDelete({ _id: commentId, orgId });
+  if (!result) throw new Error(`${commentId} is invalid`);
+
+  await updateCommentCount(result.feedId.toString(), -1);
 };
