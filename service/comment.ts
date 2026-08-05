@@ -171,5 +171,5 @@ export const deleteComment = async (
   });
   if (!result) throw new Error(`${commentId} is invalid`);
 
-  await updateCommentCount(result.feedId.toString(), -1);
+  if (result.approved) await updateCommentCount(result.feedId.toString(), -1);
 };
