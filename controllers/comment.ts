@@ -84,6 +84,19 @@ export const approveComment = async (req: Request, res: Response) => {
   });
 };
 
+export const rejectComment = async (req: Request, res: Response) => {
+  const commentId = req.params.commentId as string;
+  const { orgId } = req.user;
+
+  const data = await command.rejectComment(orgId, commentId);
+
+  return res.status(200).json({
+    success: true,
+    message: "comment approved successfully.",
+    data,
+  });
+};
+
 export const deleteComment = async (req: Request, res: Response) => {
   const commentId = req.params.commentId as string;
   const { orgId, id } = req.user;

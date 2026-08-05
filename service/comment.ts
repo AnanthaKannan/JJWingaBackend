@@ -143,6 +143,16 @@ export const approveComment = async (orgId: string, commentId: string) => {
   await updateCommentCount(result.feedId.toString(), 1);
 };
 
+export const rejectComment = async (orgId: string, commentId: string) => {
+  const result = await Comment.findOneAndDelete({
+    _id: commentId,
+    orgId,
+    approved: false,
+  });
+
+  // TODO: send notification to the user, that it is deleted
+};
+
 export const deleteComment = async (
   orgId: string,
   userId: string,
