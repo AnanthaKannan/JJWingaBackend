@@ -20,6 +20,7 @@ router.get(
 );
 
 router.get("/child/:parentId", authenticate, cmdCtrl.getChildComment);
+router.get("/parent/:feedId", authenticate, cmdCtrl.getParentComment);
 
 router.put(
   "/like",

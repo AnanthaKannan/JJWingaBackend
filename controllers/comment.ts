@@ -60,9 +60,13 @@ export const getChildComment = async (req: Request, res: Response) => {
 
 export const toggleLike = async (req: Request, res: Response) => {
   const { feedId } = req.body;
-  const { id: userId, role } = req.user as { role: UserType; id: string };
+  const {
+    orgId,
+    id: userId,
+    role,
+  } = req.user as { role: UserType; id: string; orgId: string };
 
-  const data = await command.toggleLike(userId, feedId, role);
+  const data = await command.toggleLike(orgId, userId, feedId, role);
 
   return res.status(201).json({
     success: true,

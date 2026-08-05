@@ -89,9 +89,13 @@ export const updateCommentCount = (feedId: string, increaseBy: number) => {
   );
 };
 
-export const updateLikeCount = (feedId: string, increaseBy: number) => {
+export const updateLikeCount = (
+  orgId: string,
+  feedId: string,
+  increaseBy: number,
+) => {
   return Feed.findOneAndUpdate(
-    { _id: feedId },
+    { _id: feedId, orgId },
     {
       $inc: { likeCount: increaseBy },
     },

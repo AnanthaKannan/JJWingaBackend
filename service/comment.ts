@@ -106,12 +106,14 @@ export const getChildComment = async (
 };
 
 export const toggleLike = async (
+  orgId: string,
   userId: string,
   feedId: string,
   role: UserType,
 ): Promise<ToggleLikeResult> => {
   // try to remove first — if userId exists in likedBy, $pull removes it
   const queryObj = {
+    orgId,
     feedId,
     userId,
     userType: getUserType(role),
@@ -120,12 +122,12 @@ export const toggleLike = async (
 
   if (alreadyLiked) {
     // unlike
-    const updated = await updateLikeCount(feedId, -1);
+    const updated = await updateLikeCount(orgId, feedId, -1);
     await Like.deleteOne(queryObj);
     return { liked: false, likeCount: updated!.likeCount };
   } else {
     // like
-    const updated = await updateLikeCount(feedId, 1);
+    const updated = await updateLikeCount(orgId, feedId, 1);
     await Like.create(queryObj);
 
     return { liked: true, likeCount: updated!.likeCount };
