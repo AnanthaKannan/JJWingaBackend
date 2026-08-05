@@ -25,6 +25,7 @@ export const addComment = async (
 
   if (role === userType.ADMIN) {
     approved = true;
+    await updateCommentCount(feedId, 1);
   }
 
   const feed = await Feed.findById(feedId).select("createdBy").lean();
@@ -53,7 +54,6 @@ export const getParentComment = async (
 ) => {
   const skip = (page - 1) * limit;
 
-  console.log(">>>>>>>>>>>>>>>>>>>>>>>>>", userId);
   const data = await Comment.find({
     orgId,
     feedId,
