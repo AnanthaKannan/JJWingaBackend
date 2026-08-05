@@ -68,9 +68,9 @@ export const feedList = (
         createdAt: 1,
         filePath: 1,
         likeCount: 1,
+        createdBy: 1,
         adminName: "$adminInfo.name",
         adminPicPath: "$adminInfo.profilePicPath",
-        hehe: { $arrayElemAt: ["$likeInfo.userId", 0] },
         isLikedByMe: {
           $eq: [
             { $arrayElemAt: ["$likeInfo.userId", 0] },
