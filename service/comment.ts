@@ -52,11 +52,13 @@ export const getParentComment = async (
   limit: number = 100,
 ) => {
   const skip = (page - 1) * limit;
+
+  console.log(">>>>>>>>>>>>>>>>>>>>>>>>>", userId);
   const data = await Comment.find({
     orgId,
     feedId,
     parentId: null,
-    $or: [{ approve: true }, { approve: false, userId }],
+    $or: [{ approved: true }, { approved: false, userId }],
   })
     .select("-feedId -parentId")
     .sort({ createdAt: -1 })
