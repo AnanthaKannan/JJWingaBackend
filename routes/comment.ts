@@ -8,6 +8,7 @@ import * as schema from "../validates";
 const router: Router = express.Router();
 
 router.post("/", authenticate, validate(schema.addComment), cmdCtrl.addComment);
+router.put("/:commentId/approve", authenticate, cmdCtrl.approveComment);
 router.get("/parent/:feedId", authenticate, cmdCtrl.getParentComment);
 router.get(
   "admin/non-approve-comment",
@@ -18,6 +19,13 @@ router.get("/child/:parentId", authenticate, cmdCtrl.getChildComment);
 
 router.put(
   "/like",
+  authenticate,
+  validate(schema.toggleLike),
+  cmdCtrl.toggleLike,
+);
+
+router.put(
+  "/comment-approve-or-reject",
   authenticate,
   validate(schema.toggleLike),
   cmdCtrl.toggleLike,

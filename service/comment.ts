@@ -144,3 +144,16 @@ export const toggleLike = async (
     return { liked: true, likeCount: updated!.likeCount };
   }
 };
+
+export const approveComment = (orgId: string, commentId: string) => {
+  return Feed.findOneAndUpdate(
+    { _id: commentId, orgId },
+    {
+      $set: { approved: true },
+    },
+  );
+};
+
+export const deleteComment = (orgId: string, commentId: string) => {
+  return Feed.deleteOne({ _id: commentId, orgId });
+};

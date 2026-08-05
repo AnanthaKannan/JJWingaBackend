@@ -67,6 +67,8 @@ const feedSchema = new Schema<IFeed>(
   },
 );
 
+feedSchema.index({ orgId: 1 });
+
 const Feed: Model<IFeed> = mongoose.model<IFeed>("Feed", feedSchema);
 
 export default Feed;
