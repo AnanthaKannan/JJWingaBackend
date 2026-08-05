@@ -143,8 +143,16 @@ export const approveComment = async (orgId: string, commentId: string) => {
   await updateCommentCount(result.feedId.toString(), 1);
 };
 
-export const deleteComment = async (orgId: string, commentId: string) => {
-  const result = await Comment.findOneAndDelete({ _id: commentId, orgId });
+export const deleteComment = async (
+  orgId: string,
+  userId: string,
+  commentId: string,
+) => {
+  const result = await Comment.findOneAndDelete({
+    _id: commentId,
+    orgId,
+    userId,
+  });
   if (!result) throw new Error(`${commentId} is invalid`);
 
   await updateCommentCount(result.feedId.toString(), -1);

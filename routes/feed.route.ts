@@ -17,4 +17,6 @@ router.post(
   feedCtrl.createFeed,
 );
 
+router.delete("/admin/:feedId", ...feedAdmin, feedCtrl.deleteFeed);
+
 export default router;

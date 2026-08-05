@@ -1,4 +1,4 @@
-import { Feed, IFeed, TFeedType } from "../models";
+import { Feed, IFeed, TFeedType, Comment, Like } from "../models";
 import { Types } from "mongoose";
 
 interface CreateFeedParams {
@@ -97,4 +97,18 @@ export const updateLikeCount = (feedId: string, increaseBy: number) => {
     },
     { new: true },
   );
+};
+
+export const deleteFeed = async (
+  orgId: string,
+  adminId: string,
+  feedId: string,
+) => {
+  await Comment.deleteMany({ orgId, feedOwnerId: adminId, feedId });
+  await Like.deleteMany({ orgId, feedId });
+
+  const result = await Feed.findOneAndDelete({ _id: feedId, orgId });
+  if (!result) throw new Error(`${feedId} is invalid`);
+
+  // TODO: remove the image from the bucket
 };

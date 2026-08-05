@@ -5,6 +5,7 @@ import { UserTypeSch } from "../types";
 export interface ILike extends Document {
   feedId: Types.ObjectId;
   userId: Types.ObjectId;
+  orgId: Types.ObjectId;
   userType: UserTypeSch;
   createdAt: Date;
   updatedAt: Date;
@@ -22,6 +23,11 @@ const likeSchema = new Schema<ILike>(
       type: String,
       required: true,
       enum: ["Student", "Admin"] as UserTypeSch[],
+    },
+    orgId: {
+      type: Schema.Types.ObjectId,
+      ref: "Organization",
+      required: [true, "Creator (Organization) reference is required"],
     },
   },
   { timestamps: true },

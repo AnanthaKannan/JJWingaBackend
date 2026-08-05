@@ -86,9 +86,9 @@ export const approveComment = async (req: Request, res: Response) => {
 
 export const deleteComment = async (req: Request, res: Response) => {
   const commentId = req.params.commentId as string;
-  const { orgId } = req.user;
+  const { orgId, id } = req.user;
 
-  await command.deleteComment(orgId, commentId);
+  await command.deleteComment(orgId, id, commentId);
 
   return res.status(200).json({
     success: true,
