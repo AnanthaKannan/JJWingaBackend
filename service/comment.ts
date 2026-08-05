@@ -1,8 +1,8 @@
 import { Types } from "mongoose";
-import { Comment, FileUpload, Feed, Like, IFeed } from "../models";
+import { Comment, FileUpload, Feed, Like } from "../models";
 import { getUserType } from "../utils";
 import { userType, UserType } from "../types";
-import { IComment } from "../models/comment";
+import { updateCommentCount, updateLikeCount } from "./feed.service";
 
 interface AddCommentResult {
   id: Types.ObjectId;
@@ -12,10 +12,6 @@ interface ToggleLikeResult {
   liked: boolean;
   likeCount: number;
 }
-
-const updateCommentCount = async (feedId: string, increaseBy: number) => {
-  await Feed.updateOne({ _id: feedId }, { $inc: { commentCount: increaseBy } });
-};
 
 export const addComment = async (
   userId: string,
@@ -30,9 +26,9 @@ export const addComment = async (
     approved = true;
   }
 
-  const feed = (await Feed.findById(feedId)
-    .select("createdBy")
-    .lean()) as IFeed;
+  const feed = await Feed.findById(feedId).select("createdBy").lean();
+
+  if (!feed) throw new Error(`feed not available for ${feedId}`);
 
   const data = await Comment.create({
     userId,
@@ -124,25 +120,12 @@ export const toggleLike = async (
 
   if (alreadyLiked) {
     // unlike
-    const updated = await Feed.findOneAndUpdate(
-      { _id: feedId },
-      {
-        $inc: { likeCount: -1 },
-      },
-      { new: true },
-    );
+    const updated = await updateLikeCount(feedId, -1);
     await Like.deleteOne(queryObj);
     return { liked: false, likeCount: updated!.likeCount };
   } else {
     // like
-    const updated = await Feed.findOneAndUpdate(
-      { _id: feedId },
-      {
-        $addToSet: { likedBy: userId },
-        $inc: { likeCount: 1 },
-      },
-      { new: true },
-    );
+    const updated = await updateLikeCount(feedId, 1);
     await Like.create(queryObj);
 
     return { liked: true, likeCount: updated!.likeCount };

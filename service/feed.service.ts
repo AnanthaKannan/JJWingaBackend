@@ -81,3 +81,20 @@ export const feedList = (
     },
   ]);
 };
+
+export const updateCommentCount = (feedId: string, increaseBy: number) => {
+  return Feed.updateOne(
+    { _id: feedId },
+    { $inc: { commentCount: increaseBy } },
+  );
+};
+
+export const updateLikeCount = (feedId: string, increaseBy: number) => {
+  return Feed.findOneAndUpdate(
+    { _id: feedId },
+    {
+      $inc: { likeCount: increaseBy },
+    },
+    { new: true },
+  );
+};

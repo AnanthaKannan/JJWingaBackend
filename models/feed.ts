@@ -9,7 +9,6 @@ export interface IFeed extends Document {
   orgId: Types.ObjectId;
   commentCount: number;
   likeCount: number;
-  likedBy: Types.ObjectId[];
   createdBy: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
