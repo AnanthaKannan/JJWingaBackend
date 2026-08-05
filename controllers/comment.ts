@@ -23,8 +23,21 @@ export const addComment = async (req: Request, res: Response) => {
 
 export const getParentComment = async (req: Request, res: Response) => {
   const feedId = req.params.feedId as string;
+  const { orgId, id: userId } = req.user;
 
-  const data = await command.getParentComment(feedId);
+  const data = await command.getParentComment(orgId, userId, feedId);
+
+  return res.status(200).json({
+    success: true,
+    message: "comment fetched successfully.",
+    data,
+  });
+};
+
+export const nonApproveComment = async (req: Request, res: Response) => {
+  const { id: adminId, orgId } = req.user; // as { id: string; orgId: string };
+
+  const data = await command.nonApproveComment(orgId, adminId);
 
   return res.status(200).json({
     success: true,

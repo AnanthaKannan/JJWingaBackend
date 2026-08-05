@@ -9,9 +9,11 @@ export interface IComment extends Document {
   content: string;
   parentId: Types.ObjectId | null; // null = top-level comment, otherwise points to the top-level comment
   replyCount: number;
-  isBlocked: boolean; // soft delete so reply threads don't break
+  feedOwnerId: Types.ObjectId;
+  orgId: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
+  approved: boolean;
 }
 
 const commentSchema = new Schema<IComment>(
@@ -48,16 +50,34 @@ const commentSchema = new Schema<IComment>(
       type: Number,
       default: 0,
     },
-    isBlocked: {
+    approved: {
       type: Boolean,
-      default: false, // soft delete so reply threads don't break
+      default: false,
+    },
+    feedOwnerId: {
+      type: Schema.Types.ObjectId,
+      ref: "Admin",
+      required: true,
+      index: true,
+    },
+    orgId: {
+      type: Schema.Types.ObjectId,
+      ref: "Organization",
+      required: [true, "Creator (Organization) reference is required"],
     },
   },
   { timestamps: true },
 );
 
 // compound index for the most common query: top-level comments for a image, sorted
-commentSchema.index({ feedId: 1, parentId: 1, createdAt: -1 });
+commentSchema.index({
+  orgId: 1,
+  feedId: 1,
+  parentId: 1,
+  approved: 1,
+  createdAt: -1,
+});
+commentSchema.index({ orgId: 1, feedOwnerId: 1, approved: 1, createdAt: -1 });
 
 const Comment: Model<IComment> = mongoose.model<IComment>(
   "Comment",

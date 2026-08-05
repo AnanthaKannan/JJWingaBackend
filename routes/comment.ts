@@ -9,6 +9,11 @@ const router: Router = express.Router();
 
 router.post("/", authenticate, validate(schema.addComment), cmdCtrl.addComment);
 router.get("/parent/:feedId", authenticate, cmdCtrl.getParentComment);
+router.get(
+  "admin/non-approve-comment",
+  authenticate,
+  cmdCtrl.nonApproveComment,
+);
 router.get("/child/:parentId", authenticate, cmdCtrl.getChildComment);
 
 router.put(

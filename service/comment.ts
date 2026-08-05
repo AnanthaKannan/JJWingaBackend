@@ -1,7 +1,7 @@
 import { Types } from "mongoose";
-import { Comment, FileUpload, Feed, Like } from "../models";
+import { Comment, FileUpload, Feed, Like, IFeed } from "../models";
 import { getUserType } from "../utils";
-import { UserType } from "../types";
+import { userType, UserType } from "../types";
 
 interface AddCommentResult {
   id: Types.ObjectId;
@@ -19,11 +19,23 @@ export const addComment = async (
   role: UserType,
   parentId: string | null = null,
 ): Promise<AddCommentResult> => {
+  let approved = false;
+
+  if (role === userType.ADMIN) {
+    approved = true;
+  }
+
+  const feed = (await Feed.findById(feedId)
+    .select("createdBy")
+    .lean()) as IFeed;
+
   const data = await Comment.create({
     userId,
     feedId,
     content,
+    approved,
     parentId, // if the parentId present, then it is consider as a parent comment
+    feedOwnerId: feed.createdBy,
     userType: getUserType(role),
   });
   await Feed.updateOne({ _id: feedId }, { $inc: { commentCount: 1 } });
@@ -31,15 +43,18 @@ export const addComment = async (
 };
 
 export const getParentComment = async (
+  orgId: string,
+  userId: string,
   feedId: string,
   page: number = 1,
   limit: number = 100,
 ) => {
   const skip = (page - 1) * limit;
   const data = await Comment.find({
+    orgId,
     feedId,
     parentId: null,
-    isBlocked: false,
+    $or: [{ approve: true }, { approve: false, userId }],
   })
     .select("-feedId -parentId")
     .sort({ createdAt: -1 })
@@ -54,6 +69,22 @@ export const getParentComment = async (
   }));
 
   return result;
+};
+
+export const nonApproveComment = async (
+  orgId: string,
+  adminId: string,
+  page: number = 1,
+  limit: number = 100,
+) => {
+  const skip = (page - 1) * limit;
+
+  Comment.find({ orgId, feedOwnerId: adminId, approved: false })
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit);
+
+  return "";
 };
 
 export const getChildComment = async (
