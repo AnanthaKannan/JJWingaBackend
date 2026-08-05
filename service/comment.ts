@@ -14,6 +14,7 @@ interface ToggleLikeResult {
 }
 
 export const addComment = async (
+  orgId: string,
   userId: string,
   feedId: string,
   content: string,
@@ -31,6 +32,7 @@ export const addComment = async (
   if (!feed) throw new Error(`feed not available for ${feedId}`);
 
   const data = await Comment.create({
+    orgId,
     userId,
     feedId,
     content,

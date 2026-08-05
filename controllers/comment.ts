@@ -4,9 +4,14 @@ import { UserType } from "../types";
 
 export const addComment = async (req: Request, res: Response) => {
   const { feedId, content, parentId } = req.body; // if parentId exist then it is consider as child command
-  const { id: userId, role } = req.user as { id: string; role: UserType };
+  const {
+    id: userId,
+    role,
+    orgId,
+  } = req.user as { id: string; role: UserType; orgId: string };
 
   const data = await command.addComment(
+    orgId,
     userId,
     feedId,
     content,
