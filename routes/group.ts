@@ -8,6 +8,15 @@ import * as schema from "../validates";
 
 const feedAdmin = [authenticate, authorizeAdmin];
 
-router.get("/", ...feedAdmin, groupCtrl.groupList);
+router.get("/", authenticate, groupCtrl.groupList);
+
+// router.post(
+//   "/admin/content",
+//   ...feedAdmin,
+//   validate(schema.createFeed),
+//   feedCtrl.createFeed,
+// );
+
+// router.delete("/admin/:feedId", ...feedAdmin, feedCtrl.deleteFeed);
 
 export default router;
