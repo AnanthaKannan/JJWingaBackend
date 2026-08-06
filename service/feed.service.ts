@@ -1,4 +1,4 @@
-import { Feed, IFeed, TFeedType } from "../models";
+import { Feed, IFeed, TFeedType, Comment, Like } from "../models";
 import { Types } from "mongoose";
 
 interface CreateFeedParams {
@@ -68,9 +68,9 @@ export const feedList = (
         createdAt: 1,
         filePath: 1,
         likeCount: 1,
+        createdBy: 1,
         adminName: "$adminInfo.name",
         adminPicPath: "$adminInfo.profilePicPath",
-        hehe: { $arrayElemAt: ["$likeInfo.userId", 0] },
         isLikedByMe: {
           $eq: [
             { $arrayElemAt: ["$likeInfo.userId", 0] },
@@ -80,4 +80,39 @@ export const feedList = (
       },
     },
   ]);
+};
+
+export const updateCommentCount = (feedId: string, increaseBy: number) => {
+  return Feed.updateOne(
+    { _id: feedId },
+    { $inc: { commentCount: increaseBy } },
+  );
+};
+
+export const updateLikeCount = (
+  orgId: string,
+  feedId: string,
+  increaseBy: number,
+) => {
+  return Feed.findOneAndUpdate(
+    { _id: feedId, orgId },
+    {
+      $inc: { likeCount: increaseBy },
+    },
+    { new: true },
+  );
+};
+
+export const deleteFeed = async (
+  orgId: string,
+  adminId: string,
+  feedId: string,
+) => {
+  await Comment.deleteMany({ orgId, feedOwnerId: adminId, feedId });
+  await Like.deleteMany({ orgId, feedId });
+
+  const result = await Feed.findOneAndDelete({ _id: feedId, orgId });
+  if (!result) throw new Error(`${feedId} is invalid`);
+
+  // TODO: remove the image from the bucket
 };

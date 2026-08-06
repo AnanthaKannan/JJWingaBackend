@@ -25,3 +25,15 @@ export const createFeed = async (req: Request, res: Response) => {
     result,
   });
 };
+
+export const deleteFeed = async (req: Request, res: Response) => {
+  const feedId = req.params.feedId as string;
+  const { orgId, id } = req.user;
+
+  await feedService.deleteFeed(orgId, id, feedId);
+
+  return res.status(200).json({
+    success: true,
+    message: "feed deleted successfully.",
+  });
+};

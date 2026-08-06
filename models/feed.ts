@@ -9,7 +9,6 @@ export interface IFeed extends Document {
   orgId: Types.ObjectId;
   commentCount: number;
   likeCount: number;
-  likedBy: Types.ObjectId[];
   createdBy: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
@@ -66,6 +65,8 @@ const feedSchema = new Schema<IFeed>(
     versionKey: false,
   },
 );
+
+feedSchema.index({ orgId: 1 });
 
 const Feed: Model<IFeed> = mongoose.model<IFeed>("Feed", feedSchema);
 
