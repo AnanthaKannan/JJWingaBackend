@@ -179,9 +179,9 @@ export const deleteComment = async (
   const result = await Comment.findOneAndDelete({
     _id: commentId,
     orgId,
-    userId,
+    $or: [{ userId }, { feedOwnerId: userId }], // can delete by the user who is commented, or admin who is owner
   });
-  if (!result) throw new Error(`${commentId} is invalid`);
+  if (!result) throw new Error(`commentId ${commentId} is invalid`);
 
   if (result.approved) await updateCommentCount(result.feedId.toString(), -1);
 };
