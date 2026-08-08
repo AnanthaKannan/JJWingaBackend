@@ -6,24 +6,19 @@ import { authenticate, authorizeAdmin } from "../middleware/auth";
 import { validate } from "../middleware/validate";
 import * as schema from "../validates";
 
-const feedAdmin = [authenticate, authorizeAdmin];
+const admin = [authenticate, authorizeAdmin];
 
-router.get("/", authenticate, ...feedAdmin, groupCtrl.groupList);
+router.get("/", authenticate, ...admin, groupCtrl.groupList);
 
-router.post(
-  "/",
-  ...feedAdmin,
-  validate(schema.createGroup),
-  groupCtrl.createGroup,
+router.post("/", ...admin, validate(schema.createGroup), groupCtrl.createGroup);
+
+router.put(
+  "/:groupId",
+  ...admin,
+  validate(schema.updateGroup),
+  groupCtrl.updateGroup,
 );
 
-// router.post(
-//   "/admin/content",
-//   ...feedAdmin,
-//   validate(schema.createFeed),
-//   feedCtrl.createFeed,
-// );
-
-// router.delete("/admin/:feedId", ...feedAdmin, feedCtrl.deleteFeed);
+router.delete("/:groupId", ...admin, groupCtrl.deleteGroup);
 
 export default router;

@@ -39,3 +39,43 @@ export const createGroup = async (
     result,
   });
 };
+
+interface UpdateGroupBody {
+  groupName?: string;
+  userIds?: string[];
+}
+
+export const updateGroup = async (
+  req: Request<{ groupId: string }, {}, UpdateGroupBody>,
+  res: Response,
+) => {
+  const { id: adminId, orgId } = req.user;
+  const { groupName, userIds } = req.body;
+  const groupId = req.params.groupId;
+
+  const result = await groupService.updateGroup(orgId, adminId, groupId, {
+    groupName,
+    userIds,
+  });
+
+  return res.status(200).json({
+    success: true,
+    message: "Group updated successfully.",
+    result,
+  });
+};
+
+export const deleteGroup = async (
+  req: Request<{ groupId: string }, {}, any>,
+  res: Response,
+) => {
+  const { id: adminId, orgId } = req.user;
+  const { groupId } = req.params;
+
+  await groupService.deleteGroup(orgId, adminId, groupId);
+
+  return res.status(200).json({
+    success: true,
+    message: "Group deleted successfully.",
+  });
+};
