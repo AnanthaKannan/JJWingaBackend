@@ -1,6 +1,31 @@
 import { Group } from "../models";
 import { Types } from "mongoose";
 
+interface CreateGroupParams {
+  groupName: string;
+  userId: string[];
+  orgId: string;
+  createdBy: string;
+}
+
+export const createGroup = async ({
+  groupName,
+  userId,
+  orgId,
+  createdBy,
+}: CreateGroupParams) => {
+  const userIds = userId.map((id) => new Types.ObjectId(id));
+
+  const group = await Group.create({
+    groupName,
+    userId: userIds,
+    orgId,
+    createdBy,
+  });
+
+  return group;
+};
+
 // interface CreateFeedParams {
 //   orgId: string;
 //   type: TFeedType;

@@ -8,7 +8,14 @@ import * as schema from "../validates";
 
 const feedAdmin = [authenticate, authorizeAdmin];
 
-router.get("/", authenticate, groupCtrl.groupList);
+router.get("/", authenticate, ...feedAdmin, groupCtrl.groupList);
+
+router.post(
+  "/",
+  ...feedAdmin,
+  validate(schema.createGroup),
+  groupCtrl.createGroup,
+);
 
 // router.post(
 //   "/admin/content",

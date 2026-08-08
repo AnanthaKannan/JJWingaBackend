@@ -58,3 +58,8 @@ export const addPoints = z.object({
   level: z.number(),
   points: z.number(),
 });
+
+export const createGroup = z.object({
+  groupName: z.string().trim().min(1, "Group name is required"),
+  userId: z.array(objectIdSchema).min(1, "At least one user is required"),
+});

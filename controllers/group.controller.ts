@@ -14,6 +14,24 @@ export const groupList = async (req: Request, res: Response) => {
   });
 };
 
+export const createGroup = async (req: Request, res: Response) => {
+  const { id: adminId, orgId } = req.user;
+  const { groupName, userId } = req.body;
+
+  const result = await groupService.createGroup({
+    groupName,
+    userId,
+    orgId,
+    createdBy: adminId,
+  });
+
+  return res.status(201).json({
+    success: true,
+    message: "Group created successfully.",
+    result,
+  });
+};
+
 // export const gameScore = async (req: Request, res: Response) => {
 //   const level = Number(req.params.level);
 //   const data = await gameService.gameScore(req.user.id, level);
