@@ -61,5 +61,5 @@ export const addPoints = z.object({
 
 export const createGroup = z.object({
   groupName: z.string().trim().min(1, "Group name is required"),
-  userId: z.array(objectIdSchema).min(1, "At least one user is required"),
+  userIds: z.array(objectIdSchema).min(1, "At least one user is required"),
 });

@@ -2,7 +2,7 @@ import { Schema, model, Document, Types } from "mongoose";
 
 export interface IGroup extends Document {
   groupName: string;
-  userId: Types.ObjectId[];
+  userIds: Types.ObjectId[];
   orgId: Types.ObjectId;
   createdBy: Types.ObjectId;
   createdAt: Date;
@@ -16,7 +16,7 @@ const GroupSchema = new Schema<IGroup>(
       required: true,
       trim: true,
     },
-    userId: [
+    userIds: [
       {
         type: Schema.Types.ObjectId,
         ref: "Student",
