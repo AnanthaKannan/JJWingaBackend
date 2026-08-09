@@ -2554,6 +2554,16 @@ const homeWorkRemainder = async () => {
         },
       },
     },
+    {
+      $lookup: {
+        from: "questions",
+        localField: "questionId",
+        foreignField: "_id",
+        as: "questionInfo",
+      },
+    },
+    { $unwind: "$questionInfo" },
+    { $match: { "questionInfo.type": "homework" } },
     { $group: { _id: "$studentId" } },
   ]);
 
