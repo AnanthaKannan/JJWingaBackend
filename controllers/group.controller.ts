@@ -19,6 +19,21 @@ export const groupList = async (req: Request, res: Response) => {
   });
 };
 
+export const getGroupDetails = async (
+  req: Request<{ groupId: string }>,
+  res: Response,
+) => {
+  const { id: adminId, orgId } = req.user;
+  const { groupId } = req.params;
+
+  const result = await groupService.getGroupDetails(orgId, adminId, groupId);
+  return res.status(200).json({
+    success: true,
+    message: "Group list fetched successfully.",
+    result,
+  });
+};
+
 export const groupStudentList = async (
   req: Request<{ groupId: string }>,
   res: Response,
@@ -27,6 +42,27 @@ export const groupStudentList = async (
   const { groupId } = req.params;
 
   const result = await groupService.groupStudentList(orgId, adminId, groupId);
+  return res.status(200).json({
+    success: true,
+    message: "Group student list fetched successfully.",
+    result,
+  });
+};
+
+export const sendGroupMessage = async (
+  req: Request<{ groupId: string }, {}, { message: string }>,
+  res: Response,
+) => {
+  const { id: adminId, orgId } = req.user;
+  const { groupId } = req.params;
+  const { message } = req.body;
+
+  const result = await groupService.sendGroupMessage(
+    orgId,
+    adminId,
+    groupId,
+    message,
+  );
   return res.status(200).json({
     success: true,
     message: "Group student list fetched successfully.",

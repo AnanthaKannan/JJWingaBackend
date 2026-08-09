@@ -9,6 +9,7 @@ import * as schema from "../validates";
 const admin = [authenticate, authorizeAdmin];
 
 router.get("/", authenticate, ...admin, groupCtrl.groupList);
+router.get("/:groupId", authenticate, ...admin, groupCtrl.getGroupDetails);
 router.get(
   "/:groupId/student",
   authenticate,
@@ -16,6 +17,13 @@ router.get(
   groupCtrl.groupStudentList,
 );
 router.post("/", ...admin, validate(schema.createGroup), groupCtrl.createGroup);
+
+router.post(
+  "/:groupId/send-message",
+  ...admin,
+  validate(schema.sendGroupMessage),
+  groupCtrl.sendGroupMessage,
+);
 
 router.put(
   "/:groupId",

@@ -28,7 +28,17 @@ export const createGroup = async ({
 };
 
 export const groupList = (orgId: string, adminId: string) => {
-  return Group.find({ orgId, createdBy: adminId }).select("groupName");
+  return Group.find({ orgId, createdBy: adminId }).select("groupName").lean();
+};
+
+export const getGroupDetails = (
+  orgId: string,
+  adminId: string,
+  groupId: string,
+) => {
+  return Group.findOne({ _id: groupId, orgId, createdBy: adminId })
+    .select("messages")
+    .lean();
 };
 
 export const groupStudentList = async (
@@ -90,4 +100,18 @@ export const deleteGroup = async (
   });
   if (!result) throw new Error("Group not found");
   return result;
+};
+
+export const sendGroupMessage = async (
+  orgId: string,
+  adminId: string,
+  groupId: string,
+  message: string,
+) => {
+  await Group.updateOne(
+    { _id: groupId, orgId, createdBy: adminId },
+    { $push: { messages: { text: message } } },
+  );
+
+  // TODO: send the message to all the students
 };

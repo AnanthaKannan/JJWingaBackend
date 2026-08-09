@@ -64,6 +64,10 @@ export const createGroup = z.object({
   studentIds: z.array(objectIdSchema).min(1, "At least one user is required"),
 });
 
+export const sendGroupMessage = z.object({
+  message: z.string().trim().min(1, "Message name is required"),
+});
+
 export const updateGroup = z.object({
   groupName: z.string().trim().min(1, "Group name is required").optional(),
   studentIds: z
