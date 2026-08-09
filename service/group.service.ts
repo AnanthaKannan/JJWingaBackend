@@ -1,4 +1,5 @@
-import { Group } from "../models";
+import { NotFoundError } from "../errors";
+import { Group, Student } from "../models";
 import { Types } from "mongoose";
 
 interface CreateGroupParams {
@@ -35,11 +36,20 @@ export const groupStudentList = async (
   adminId: string,
   groupId: string,
 ) => {
-  const result = await Group.find({
+  const group = await Group.findOne({
     _id: groupId,
     orgId: orgId,
     createdBy: adminId,
-  }).select("studentIds");
+  })
+    .select("studentIds")
+    .lean();
+
+  if (!group) throw new NotFoundError(`Group ${groupId} not found`);
+
+  const studentList = await Student.find({
+    _id: { $in: group.studentIds },
+  }).lean();
+  return studentList;
 };
 
 export const updateGroup = async (

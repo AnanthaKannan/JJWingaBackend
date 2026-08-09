@@ -29,7 +29,7 @@ export const groupStudentList = async (
   const result = await groupService.groupStudentList(orgId, adminId, groupId);
   return res.status(200).json({
     success: true,
-    message: "Group list fetched successfully.",
+    message: "Group student list fetched successfully.",
     result,
   });
 };

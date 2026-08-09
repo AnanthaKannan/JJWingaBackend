@@ -10,7 +10,8 @@ body:
 
     \    \"groupName\": \"{{$randomFullName}}\",\r
 
-    \    \"userIds\": [\"6a22fd73834b1443cc1808fb\", \"6a22ff9864fad8ecc7ccf995\"]\r
+    \    \"userIds\": [\"6a22fd73834b1443cc1808fb\",
+    \"6a22ff9864fad8ecc7ccf995\"]\r
 
     }"
 auth:
