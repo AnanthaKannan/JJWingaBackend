@@ -1991,7 +1991,7 @@ const updateHomework = async (homeworkId, updateData) => {
         state: newState,
         answers,
         results: nextResults,
-        timer: nextResults,
+        timer: nextTimer,
       },
     },
     { new: true },
