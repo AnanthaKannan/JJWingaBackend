@@ -1,6 +1,6 @@
 $kind: http-request
 name: group's student lsit
-url: "{{url}}/group/6a782d2dc4b7748e0e3ea208/student"
+url: "{{url}}/group/6a7847eb51859e8cb9b70ce6/student"
 method: GET
 headers:
   x-access-token: "{{token}}"

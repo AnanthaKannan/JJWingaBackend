@@ -48,7 +48,9 @@ export const groupStudentList = async (
 
   const studentList = await Student.find({
     _id: { $in: group.studentIds },
-  }).lean();
+  })
+    .select("_id studentId name")
+    .lean();
   return studentList;
 };
 
