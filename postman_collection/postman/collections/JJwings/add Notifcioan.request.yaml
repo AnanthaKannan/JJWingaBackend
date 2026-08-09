@@ -1,0 +1,28 @@
+$kind: http-request
+url: "{{url}}/admin/notifications"
+method: POST
+headers:
+  x-access-token: "{{token}}"
+body:
+  type: json
+  content: "{\r
+
+    \    \"studentIds\": [\r
+
+    \        {\r
+
+    \            \"id\": \"6a18935d3697c50044ccbbbf\"\r
+
+    \        }\r
+
+    \    ],\r
+
+    \    \"messageHeader\": \"some header\",\r
+
+    \    \"messageBody\": \"body message\"\r
+
+    }"
+auth:
+  type: noauth
+settings: {}
+order: 30000

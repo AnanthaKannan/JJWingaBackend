@@ -1,0 +1,9 @@
+$kind: http-request
+url: "{{url}}/scores/6a1721e39b7d0c85483d8cfd"
+method: GET
+headers:
+  x-access-token: "{{token}}"
+auth:
+  type: noauth
+settings: {}
+order: 37000

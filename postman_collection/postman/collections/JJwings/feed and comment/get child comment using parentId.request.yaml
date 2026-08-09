@@ -1,0 +1,9 @@
+$kind: http-request
+url: "{{url}}/comment/child/6a561b9c136a94e6958bc5fd"
+method: GET
+headers:
+  x-access-token: "{{token}}"
+auth:
+  type: noauth
+settings: {}
+order: 7000

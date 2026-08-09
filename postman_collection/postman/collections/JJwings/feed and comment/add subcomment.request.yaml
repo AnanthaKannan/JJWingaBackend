@@ -1,0 +1,20 @@
+$kind: http-request
+url: "{{url}}/comment/child"
+method: POST
+headers:
+  x-access-token: "{{token}}"
+body:
+  type: json
+  content: "{\r
+
+    \    \"imageId\": \"6a40dec1a8b0c127f659aed9\",\r
+
+    \    \"content\": \"{{$randomFullName}}\"\r
+
+    \r
+
+    }"
+auth:
+  type: noauth
+settings: {}
+order: 8000

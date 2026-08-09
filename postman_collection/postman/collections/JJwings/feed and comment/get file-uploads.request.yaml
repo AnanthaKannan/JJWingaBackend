@@ -1,0 +1,11 @@
+$kind: http-request
+url: "{{url}}/file-uploads?type=celebration"
+method: GET
+headers:
+  x-access-token: "{{token}}"
+queryParams:
+  type: celebration
+auth:
+  type: noauth
+settings: {}
+order: 1000

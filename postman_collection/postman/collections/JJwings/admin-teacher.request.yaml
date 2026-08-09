@@ -1,0 +1,10 @@
+$kind: http-request
+name: admin/teacher
+url: "{{url}}/admin/teacher"
+method: GET
+headers:
+  x-access-token: "{{token}}"
+auth:
+  type: noauth
+settings: {}
+order: 23000

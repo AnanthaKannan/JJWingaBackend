@@ -1,0 +1,12 @@
+$kind: http-request
+url: "{{url}}/student/same-device"
+method: GET
+headers:
+  x-access-token: "{{token}}"
+body:
+  type: json
+  content: "{\r\n    \"vertical\": true\r\n}"
+auth:
+  type: noauth
+settings: {}
+order: 22000

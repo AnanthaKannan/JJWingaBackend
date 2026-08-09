@@ -1,0 +1,12 @@
+$kind: http-request
+url: "{{url}}/questions/practice?limit=10&page=1"
+method: GET
+headers:
+  x-access-token: "{{token}}"
+queryParams:
+  limit: "10"
+  page: "1"
+auth:
+  type: noauth
+settings: {}
+order: 36000

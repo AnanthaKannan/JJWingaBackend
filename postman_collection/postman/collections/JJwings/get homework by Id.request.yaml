@@ -1,0 +1,9 @@
+$kind: http-request
+url: "{{url}}/homework/6a1730ba96ec599380ac7074"
+method: GET
+headers:
+  x-access-token: "{{token}}"
+auth:
+  type: noauth
+settings: {}
+order: 39000

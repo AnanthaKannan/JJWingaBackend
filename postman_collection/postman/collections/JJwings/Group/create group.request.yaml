@@ -1,0 +1,19 @@
+$kind: http-request
+name: create group
+url: "{{url}}/group"
+method: POST
+headers:
+  x-access-token: "{{token}}"
+body:
+  type: json
+  content: "{\r
+
+    \    \"level\": 1,\r
+
+    \    \"points\": 10\r
+
+    }"
+auth:
+  type: noauth
+settings: {}
+order: 1000

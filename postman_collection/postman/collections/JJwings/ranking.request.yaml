@@ -1,0 +1,9 @@
+$kind: http-request
+url: "{{url}}/ranking"
+method: GET
+headers:
+  x-access-token: "{{token}}"
+auth:
+  type: noauth
+settings: {}
+order: 33000

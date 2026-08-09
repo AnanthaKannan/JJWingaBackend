@@ -1,0 +1,18 @@
+$kind: http-request
+url: "{{url}}/student/device-id"
+method: DELETE
+headers:
+  x-access-token: "{{token}}"
+body:
+  type: json
+  content: "{\r
+
+    \    \"studentId\": \"6a22fd73834b1443cc1808fb\",\r
+
+    \    \"deviceId\": \"12345678\"\r
+
+    }"
+auth:
+  type: noauth
+settings: {}
+order: 25000

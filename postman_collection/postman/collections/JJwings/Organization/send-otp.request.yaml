@@ -1,0 +1,16 @@
+$kind: http-request
+url: "{{url}}/send-otp"
+method: POST
+headers:
+  x-access-token: "{{token}}"
+body:
+  type: json
+  content: "{\r
+
+    \    \"email\": \"test@xya.com\"\r
+
+    }"
+auth:
+  type: noauth
+settings: {}
+order: 4000

@@ -1,0 +1,9 @@
+$kind: http-request
+url: "{{url}}/health?status=true"
+method: GET
+queryParams:
+  status: "true"
+auth:
+  type: noauth
+settings: {}
+order: 7000

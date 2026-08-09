@@ -1,0 +1,18 @@
+$kind: http-request
+url: "{{url}}/admin/questions/assign"
+method: POST
+headers:
+  x-access-token: "{{token}}"
+body:
+  type: json
+  content: "{\r
+
+    \    \"studentId\":\"6a1726e84273750610292d45\" ,\r
+
+    \    \"questionIds\": [\"6a172d782a3fe12b04e53ba1\"]\r
+
+    }"
+auth:
+  type: noauth
+settings: {}
+order: 1000

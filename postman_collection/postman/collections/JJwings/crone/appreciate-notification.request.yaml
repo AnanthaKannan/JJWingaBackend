@@ -1,0 +1,12 @@
+$kind: http-request
+url: "{{url}}/crone/notifications/appreciations"
+method: POST
+headers:
+  x-access-token: "{{token}}"
+auth:
+  type: apikey
+  credentials:
+    key: x-api-key
+    value: "{{api_key}}"
+settings: {}
+order: 1000

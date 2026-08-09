@@ -1,0 +1,20 @@
+$kind: http-request
+url: "{{url}}/comment"
+method: POST
+headers:
+  x-access-token: "{{token}}"
+body:
+  type: json
+  content: "{\r
+
+    \    \"feedId\": \"6a6f98e5064fb22552f20217\",\r
+
+    \    \"content\": \"111If this operation is very frequent, store createdBy (feed owner) in the client request or in a cache so you don't need to read the Feed document every time. This is only safe if createdBy never changes.\"\r
+
+    \r
+
+    }"
+auth:
+  type: noauth
+settings: {}
+order: 2000

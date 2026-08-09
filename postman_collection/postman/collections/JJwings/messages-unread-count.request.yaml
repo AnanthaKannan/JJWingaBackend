@@ -1,0 +1,10 @@
+$kind: http-request
+name: messages/unread-count
+url: "{{url}}/messages/unread-count"
+method: GET
+headers:
+  x-access-token: "{{token}}"
+auth:
+  type: noauth
+settings: {}
+order: 16000

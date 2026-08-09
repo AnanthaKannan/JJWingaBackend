@@ -1,0 +1,6 @@
+$kind: collection
+name: JJwings
+description: ""
+variables:
+  - key: json_web_token_0yfk
+    secret: true

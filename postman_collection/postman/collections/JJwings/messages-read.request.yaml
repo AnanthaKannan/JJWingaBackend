@@ -1,0 +1,10 @@
+$kind: http-request
+name: messages/read
+url: "{{url}}/messages/read"
+method: PATCH
+headers:
+  x-access-token: "{{token}}"
+auth:
+  type: noauth
+settings: {}
+order: 18000

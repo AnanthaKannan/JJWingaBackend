@@ -1,0 +1,9 @@
+$kind: http-request
+url: "{{url}}/admin/payment/webhook"
+method: POST
+headers:
+  x-access-token: "{{token}}"
+auth:
+  type: noauth
+settings: {}
+order: 14000
