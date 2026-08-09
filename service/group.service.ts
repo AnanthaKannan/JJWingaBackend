@@ -3,22 +3,22 @@ import { Types } from "mongoose";
 
 interface CreateGroupParams {
   groupName: string;
-  userIds: string[];
+  studentIds: string[];
   orgId: string;
   createdBy: string;
 }
 
 export const createGroup = async ({
   groupName,
-  userIds,
+  studentIds,
   orgId,
   createdBy,
 }: CreateGroupParams) => {
-  const userIdsObj = userIds.map((id) => new Types.ObjectId(id));
+  const studentIdsObj = studentIds.map((id) => new Types.ObjectId(id));
 
   const group = await Group.create({
     groupName,
-    userIds: userIdsObj,
+    studentIds: studentIdsObj,
     orgId,
     createdBy,
   });
@@ -30,16 +30,28 @@ export const groupList = (orgId: string, adminId: string) => {
   return Group.find({ orgId, createdBy: adminId }).select("groupName");
 };
 
+export const groupStudentList = async (
+  orgId: string,
+  adminId: string,
+  groupId: string,
+) => {
+  const result = await Group.find({
+    _id: groupId,
+    orgId: orgId,
+    createdBy: adminId,
+  }).select("studentIds");
+};
+
 export const updateGroup = async (
   orgId: string,
   adminId: string,
   groupId: string,
-  updateData: { groupName?: string; userIds?: string[] },
+  updateData: { groupName?: string; studentIds?: string[] },
 ) => {
   const updateFields: any = {};
   if (updateData.groupName) updateFields.groupName = updateData.groupName;
-  if (updateData.userIds) {
-    updateFields.userId = updateData.userIds.map(
+  if (updateData.studentIds) {
+    updateFields.studentIds = updateData.studentIds.map(
       (id) => new Types.ObjectId(id),
     );
   }

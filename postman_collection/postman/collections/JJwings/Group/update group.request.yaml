@@ -1,18 +1,19 @@
 $kind: http-request
-url: "{{url}}/game/score"
-method: POST
+url: "{{url}}/group/6a782d2dc4b7748e0e3ea208"
+method: PUT
 headers:
   x-access-token: "{{token}}"
 body:
   type: json
   content: "{\r
 
-    \    \"level\": 1,\r
+    \    \"groupName\": \"{{$randomFullName}}\",\r
 
-    \    \"points\": 10\r
+    \    \"userIds\": [\"6a22fd73834b1443cc1808fb\", \"6a22ff9864fad8ecc7ccf995\"]\r
 
     }"
 auth:
   type: noauth
 settings: {}
+examples: .resources/update group.resources/examples
 order: 2000

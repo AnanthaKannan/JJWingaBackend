@@ -1,13 +1,19 @@
 import express from "express";
 const router = express.Router();
 
-import * as groupCtrl from "../controllers/group.controller";
-import { authenticate, authorizeAdmin } from "../middleware/auth";
+import * as gameCtrl from "../controllers/game.controller";
+import { authenticate } from "../middleware/auth";
 import { validate } from "../middleware/validate";
 import * as schema from "../validates";
 
-const feedAdmin = [authenticate, authorizeAdmin];
+router.get("/:level", authenticate, gameCtrl.gameScore);
 
-router.get("/", ...feedAdmin, groupCtrl.groupList);
+router.get("/toppers/:level", authenticate, gameCtrl.getGameTopper);
+
+router.post(
+  "/score",
+  [authenticate, validate(schema.addPoints)],
+  gameCtrl.addGameScore,
+);
 
 export default router;

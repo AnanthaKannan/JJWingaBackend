@@ -61,17 +61,13 @@ export const addPoints = z.object({
 
 export const createGroup = z.object({
   groupName: z.string().trim().min(1, "Group name is required"),
-  userIds: z.array(objectIdSchema).min(1, "At least one user is required"),
+  studentIds: z.array(objectIdSchema).min(1, "At least one user is required"),
 });
 
 export const updateGroup = z.object({
   groupName: z.string().trim().min(1, "Group name is required").optional(),
-  userIds: z
+  studentIds: z
     .array(objectIdSchema)
     .min(1, "At least one user is required")
     .optional(),
-});
-
-export const deleteGroup = z.object({
-  groupId: objectIdSchema,
 });

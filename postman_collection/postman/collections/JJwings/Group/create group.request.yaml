@@ -8,12 +8,13 @@ body:
   type: json
   content: "{\r
 
-    \    \"level\": 1,\r
+    \    \"groupName\": \"{{$randomFullName}}\",\r
 
-    \    \"points\": 10\r
+    \    \"userIds\": [\"6a22fd73834b1443cc1808fb\", \"6a22ff9864fad8ecc7ccf995\"]\r
 
     }"
 auth:
   type: noauth
 settings: {}
+examples: .resources/create group.resources/examples
 order: 1000

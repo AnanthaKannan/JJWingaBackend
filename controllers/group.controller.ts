@@ -5,7 +5,7 @@ import * as groupService from "../service/group.service";
 
 interface CreateGroupBody {
   groupName: string;
-  userIds: string[];
+  studentIds: string[];
 }
 
 export const groupList = async (req: Request, res: Response) => {
@@ -19,16 +19,31 @@ export const groupList = async (req: Request, res: Response) => {
   });
 };
 
+export const groupStudentList = async (
+  req: Request<{ groupId: string }>,
+  res: Response,
+) => {
+  const { id: adminId, orgId } = req.user;
+  const { groupId } = req.params;
+
+  const result = await groupService.groupStudentList(orgId, adminId, groupId);
+  return res.status(200).json({
+    success: true,
+    message: "Group list fetched successfully.",
+    result,
+  });
+};
+
 export const createGroup = async (
   req: Request<{}, {}, CreateGroupBody>,
   res: Response,
 ) => {
   const { id: adminId, orgId } = req.user;
-  const { groupName, userIds } = req.body;
+  const { groupName, studentIds } = req.body;
 
   const result = await groupService.createGroup({
     groupName,
-    userIds,
+    studentIds,
     orgId,
     createdBy: adminId,
   });
@@ -42,7 +57,7 @@ export const createGroup = async (
 
 interface UpdateGroupBody {
   groupName?: string;
-  userIds?: string[];
+  studentIds?: string[];
 }
 
 export const updateGroup = async (
@@ -50,12 +65,12 @@ export const updateGroup = async (
   res: Response,
 ) => {
   const { id: adminId, orgId } = req.user;
-  const { groupName, userIds } = req.body;
+  const { groupName, studentIds } = req.body;
   const groupId = req.params.groupId;
 
   const result = await groupService.updateGroup(orgId, adminId, groupId, {
     groupName,
-    userIds,
+    studentIds,
   });
 
   return res.status(200).json({

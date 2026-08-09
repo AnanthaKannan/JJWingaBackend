@@ -9,7 +9,12 @@ import * as schema from "../validates";
 const admin = [authenticate, authorizeAdmin];
 
 router.get("/", authenticate, ...admin, groupCtrl.groupList);
-
+router.get(
+  "/:groupId/student",
+  authenticate,
+  ...admin,
+  groupCtrl.groupStudentList,
+);
 router.post("/", ...admin, validate(schema.createGroup), groupCtrl.createGroup);
 
 router.put(
