@@ -5,7 +5,7 @@ import comment from "../routes/comment";
 import crone from "../routes/crone.route";
 import feed from "../routes/feed.route";
 import game from "../routes/game.route";
-import group from "../routes/game.route";
+import group from "../routes/group.route";
 import error from "./error";
 import swagger from "./swagger";
 import responseTracker from "../middleware/responseTracker";
