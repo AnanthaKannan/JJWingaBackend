@@ -1941,7 +1941,12 @@ const getCompletionStats = (results = [], timer = 0) => ({
 });
 
 const updateHomework = async (homeworkId, updateData) => {
-  const { state, answers, results, timer } = updateData;
+  const {
+    state: newState,
+    answers,
+    results: nextResults,
+    timer: nextTimer,
+  } = updateData;
 
   // 1. Validate homework exists
   const homework = await HomeWork.findById(homeworkId);
@@ -1950,67 +1955,51 @@ const updateHomework = async (homeworkId, updateData) => {
   const question = await Question.findById(homework.questionId)
     .select("type")
     .lean();
+
   const isPractice = question?.type === "practice";
   const prevState = homework.state;
-  const newState = state ?? prevState;
-  const nextResults = results ?? homework.results;
-  const nextTimer = timer ?? homework.timer;
 
   // 2. Build score increment object based on state transition
   const scoreInc = {};
 
-  if (prevState !== newState) {
-    // Decrement previous state
-    if (prevState === "NEW") addScoreIncrement(scoreInc, "new", -1, isPractice);
-    if (prevState === "PROGRESS")
-      addScoreIncrement(scoreInc, "progress", -1, isPractice);
-    if (prevState === "COMPLETED")
-      addScoreIncrement(scoreInc, "completed", -1, isPractice);
-
-    // Increment new state
-    if (newState === "PROGRESS")
-      addScoreIncrement(scoreInc, "progress", 1, isPractice);
-    if (newState === "COMPLETED")
-      addScoreIncrement(scoreInc, "completed", 1, isPractice);
+  if (prevState === "NEW" && newState === "PROGRESS") {
+    addScoreIncrement(scoreInc, "new", -1, isPractice);
+    addScoreIncrement(scoreInc, "progress", 1, isPractice);
   }
 
-  // 3. Keep completion details in sync when entering, leaving, or editing completed homework.
-  // use for revert process
-  if (prevState === "COMPLETED") {
-    const previousStats = getCompletionStats(homework.results, homework.timer);
+  // complete comes only once, the end of process
+  if (prevState === "PROGRESS" && newState === "COMPLETED") {
+    addScoreIncrement(scoreInc, "progress", -1, isPractice);
+    addScoreIncrement(scoreInc, "completed", 1, isPractice);
 
-    addScoreIncrement(scoreInc, "correct", -previousStats.correct, isPractice);
-    addScoreIncrement(scoreInc, "wrong", -previousStats.wrong, isPractice);
-    addScoreIncrement(
-      scoreInc,
-      "timeTaken",
-      -previousStats.timeTaken,
-      isPractice,
+    const { correct, wrong, timeTaken } = getCompletionStats(
+      nextResults,
+      nextTimer,
     );
-  }
 
-  if (newState === "COMPLETED") {
-    const nextStats = getCompletionStats(nextResults, nextTimer);
+    addScoreIncrement(scoreInc, "correct", correct, isPractice);
+    addScoreIncrement(scoreInc, "wrong", wrong, isPractice);
+    addScoreIncrement(scoreInc, "timeTaken", timeTaken, isPractice);
 
-    addScoreIncrement(scoreInc, "correct", nextStats.correct, isPractice);
-    addScoreIncrement(scoreInc, "wrong", nextStats.wrong, isPractice);
-    addScoreIncrement(scoreInc, "timeTaken", nextStats.timeTaken, isPractice);
-  }
-
-  if (prevState !== "COMPLETED" && newState === "COMPLETED") {
-    const { correct, wrong } = getCompletionStats(nextResults, nextTimer);
     await createHomeworkCompletedNotification(homework, correct, wrong);
   }
 
-  // 4. Update homework fields
-  if (state) homework.state = state;
-  if (Object.prototype.hasOwnProperty.call(updateData, "answers"))
-    homework.answers = answers;
-  if (Object.prototype.hasOwnProperty.call(updateData, "results"))
-    homework.results = results;
-  if (timer !== undefined) homework.timer = timer;
+  const updatedHomework = await HomeWork.findOneAndUpdate(
+    { _id: homeworkId, state: prevState },
+    {
+      $set: {
+        state: newState,
+        answers,
+        results: nextResults,
+        timer: nextTimer,
+      },
+    },
+    { new: true },
+  );
 
-  await homework.save();
+  if (!updatedHomework) {
+    return {};
+  }
 
   // 5. Update score atomically
   if (Object.keys(scoreInc).length > 0) {
@@ -2565,6 +2554,16 @@ const homeWorkRemainder = async () => {
         },
       },
     },
+    {
+      $lookup: {
+        from: "questions",
+        localField: "questionId",
+        foreignField: "_id",
+        as: "questionInfo",
+      },
+    },
+    { $unwind: "$questionInfo" },
+    { $match: { "questionInfo.type": "homework" } },
     { $group: { _id: "$studentId" } },
   ]);
 
