@@ -11,11 +11,11 @@ interface CreateGroupBody {
 export const groupList = async (req: Request, res: Response) => {
   const { id: adminId, orgId } = req.user;
 
-  const result = await groupService.groupList(orgId, adminId);
+  const data = await groupService.groupList(orgId, adminId);
   return res.status(200).json({
     success: true,
     message: "Group list fetched successfully.",
-    result,
+    data,
   });
 };
 
@@ -26,11 +26,11 @@ export const getGroupDetails = async (
   const { id: adminId, orgId } = req.user;
   const { groupId } = req.params;
 
-  const result = await groupService.getGroupDetails(orgId, adminId, groupId);
+  const data = await groupService.getGroupDetails(orgId, adminId, groupId);
   return res.status(200).json({
     success: true,
     message: "Group list fetched successfully.",
-    result,
+    data,
   });
 };
 
@@ -41,11 +41,11 @@ export const groupStudentList = async (
   const { id: adminId, orgId } = req.user;
   const { groupId } = req.params;
 
-  const result = await groupService.groupStudentList(orgId, adminId, groupId);
+  const data = await groupService.groupStudentList(orgId, adminId, groupId);
   return res.status(200).json({
     success: true,
     message: "Group student list fetched successfully.",
-    result,
+    data,
   });
 };
 
@@ -57,7 +57,7 @@ export const sendGroupMessage = async (
   const { groupId } = req.params;
   const { message } = req.body;
 
-  const result = await groupService.sendGroupMessage(
+  const data = await groupService.sendGroupMessage(
     orgId,
     adminId,
     groupId,
@@ -66,7 +66,7 @@ export const sendGroupMessage = async (
   return res.status(200).json({
     success: true,
     message: "Group student list fetched successfully.",
-    result,
+    data,
   });
 };
 
@@ -77,7 +77,7 @@ export const createGroup = async (
   const { id: adminId, orgId } = req.user;
   const { groupName, studentIds } = req.body;
 
-  const result = await groupService.createGroup({
+  const data = await groupService.createGroup({
     groupName,
     studentIds,
     orgId,
@@ -87,7 +87,7 @@ export const createGroup = async (
   return res.status(201).json({
     success: true,
     message: "Group created successfully.",
-    result,
+    data,
   });
 };
 
@@ -104,7 +104,7 @@ export const updateGroup = async (
   const { groupName, studentIds } = req.body;
   const groupId = req.params.groupId;
 
-  const result = await groupService.updateGroup(orgId, adminId, groupId, {
+  const data = await groupService.updateGroup(orgId, adminId, groupId, {
     groupName,
     studentIds,
   });
@@ -112,7 +112,7 @@ export const updateGroup = async (
   return res.status(200).json({
     success: true,
     message: "Group updated successfully.",
-    result,
+    data,
   });
 };
 

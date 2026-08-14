@@ -28,7 +28,9 @@ export const createGroup = async ({
 };
 
 export const groupList = (orgId: string, adminId: string) => {
-  return Group.find({ orgId, createdBy: adminId }).select("groupName").lean();
+  return Group.find({ orgId, createdBy: adminId })
+    .select("groupName studentIds")
+    .lean();
 };
 
 export const getGroupDetails = (
