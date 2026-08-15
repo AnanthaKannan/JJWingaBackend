@@ -30,6 +30,10 @@ export const createGroup = async ({
 export const groupList = (orgId: string, adminId: string) => {
   return Group.find({ orgId, createdBy: adminId })
     .select("groupName studentIds")
+    .populate({
+      path: "studentIds",
+      select: "name profilePicPath",
+    })
     .lean();
 };
 
@@ -41,29 +45,6 @@ export const getGroupDetails = (
   return Group.findOne({ _id: groupId, orgId, createdBy: adminId })
     .select("messages")
     .lean();
-};
-
-export const groupStudentList = async (
-  orgId: string,
-  adminId: string,
-  groupId: string,
-) => {
-  const group = await Group.findOne({
-    _id: groupId,
-    orgId: orgId,
-    createdBy: adminId,
-  })
-    .select("studentIds")
-    .lean();
-
-  if (!group) throw new NotFoundError(`Group ${groupId} not found`);
-
-  const studentList = await Student.find({
-    _id: { $in: group.studentIds },
-  })
-    .select("_id studentId name")
-    .lean();
-  return studentList;
 };
 
 export const updateGroup = async (

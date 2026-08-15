@@ -34,21 +34,6 @@ export const getGroupDetails = async (
   });
 };
 
-export const groupStudentList = async (
-  req: Request<{ groupId: string }>,
-  res: Response,
-) => {
-  const { id: adminId, orgId } = req.user;
-  const { groupId } = req.params;
-
-  const data = await groupService.groupStudentList(orgId, adminId, groupId);
-  return res.status(200).json({
-    success: true,
-    message: "Group student list fetched successfully.",
-    data,
-  });
-};
-
 export const sendGroupMessage = async (
   req: Request<{ groupId: string }, {}, { message: string }>,
   res: Response,
