@@ -1377,7 +1377,9 @@ const getMessagesController = async (req: Request, res: Response) => {
     const page = Number(req.query.page) || 1;
     const limit = Number(req.query.limit) || 15;
     const userId =
-      (req.query.userId as string) || (req.query.studentId as string) || null;
+      (req.params.studentId as string) ||
+      (req.query.studentId as string) ||
+      null;
 
     const result = await getMessageList(req.user, page, limit, userId);
 

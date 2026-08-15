@@ -1,6 +1,6 @@
 $kind: http-request
 url: "{{url}}/messages"
-method: POST
+method: GET
 headers:
   x-access-token: "{{token}}"
 body:
@@ -15,4 +15,4 @@ body:
 auth:
   type: noauth
 settings: {}
-order: 17000
+order: 3453

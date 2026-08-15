@@ -50,7 +50,7 @@ export const sendGroupMessage = async (
   );
   return res.status(200).json({
     success: true,
-    message: "Group student list fetched successfully.",
+    message: "Group message sent successfully.",
     data,
   });
 };

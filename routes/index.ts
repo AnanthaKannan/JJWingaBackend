@@ -187,7 +187,16 @@ router.get(
   authenticate,
   controller.getUnreadMessageCountController,
 );
+
+// DEPRECATED V3.0
 router.get("/messages", authenticate, controller.getMessagesController);
+
+router.get(
+  "/messages/:studentId",
+  authenticate,
+  controller.getMessagesController,
+);
+
 router.post("/messages", authenticate, controller.addMessageController);
 router.patch(
   "/messages/read",
