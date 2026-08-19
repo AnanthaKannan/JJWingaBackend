@@ -1,0 +1,10 @@
+$kind: http-request
+url: "{{url}}/group/6a7f731a2ed2fa01ab1d7724/messages"
+method: GET
+headers:
+  x-access-token: "{{token}}"
+auth:
+  type: noauth
+settings: {}
+examples: .resources/group message list.resources/examples
+order: 5000

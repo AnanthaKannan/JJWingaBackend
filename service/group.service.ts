@@ -98,3 +98,13 @@ export const sendGroupMessage = async (
 
   // TODO: send the message to all the students
 };
+
+export const messageList = (
+  orgId: string,
+  adminId: string,
+  groupId: string,
+) => {
+  return Group.findOne({ _id: groupId, orgId, createdBy: adminId })
+    .select("messages")
+    .lean();
+};

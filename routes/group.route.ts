@@ -8,8 +8,8 @@ import * as schema from "../validates";
 
 const admin = [authenticate, authorizeAdmin];
 
-router.get("/", authenticate, ...admin, groupCtrl.groupList);
-router.get("/:groupId", authenticate, ...admin, groupCtrl.getGroupDetails);
+router.get("/", ...admin, groupCtrl.groupList);
+router.get("/:groupId/messages", ...admin, groupCtrl.messageList);
 router.post("/", ...admin, validate(schema.createGroup), groupCtrl.createGroup);
 
 router.post(

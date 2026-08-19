@@ -1,5 +1,6 @@
 $kind: http-request
-url: "{{url}}/messages"
+name: message list
+url: "{{url}}/messages/6a3826a0ebe07eda9ee171a1"
 method: GET
 headers:
   x-access-token: "{{token}}"
