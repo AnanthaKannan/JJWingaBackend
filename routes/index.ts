@@ -188,7 +188,7 @@ router.get(
   controller.getUnreadMessageCountController,
 );
 
-// DEPRECATED V3.0
+// DEPRECATED V3.0 - we are going to use messages/:studentId
 router.get("/messages", authenticate, controller.getMessagesController);
 
 router.get(
