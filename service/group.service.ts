@@ -3,7 +3,7 @@ import { Types } from "mongoose";
 import { NotFoundError } from "@errors";
 import { Group, Student, Message } from "@models";
 import { getUserType } from "@utils";
-import { userTypeEnum } from "@constants";
+import { NEW_MESSAGE, userTypeEnum } from "@constants";
 
 import { getStudentsToken } from "@service/student.service";
 import { sendPushNotificationBulk } from "@service/notificaion.service";
@@ -113,7 +113,12 @@ const sendMessageGroupToEveryOne = async (
   });
 
   const tokens = await getStudentsToken(orgId, adminId, studentIds);
-  sendPushNotificationBulk(tokens);
+  const notificationDetails = await sendPushNotificationBulk(
+    tokens,
+    NEW_MESSAGE,
+    message,
+  );
+  return notificationDetails;
 };
 
 export const sendGroupMessage = async (
@@ -122,12 +127,27 @@ export const sendGroupMessage = async (
   groupId: string,
   message: string,
 ) => {
-  await Group.updateOne(
+  const groupDetails = await Group.findOneAndUpdate(
     { _id: groupId, orgId, createdBy: adminId },
     { $push: { messages: { text: message } } },
-  );
+    { new: true },
+  ).lean();
 
-  // TODO: send the message to all the students
+  const studentObjectIds = groupDetails?.studentIds;
+
+  if (!studentObjectIds) {
+    throw new NotFoundError(`Students not found on this ${groupId}`);
+  }
+
+  const studentIds = groupDetails.studentIds.map((id) => id.toString());
+
+  const result = await sendMessageGroupToEveryOne(
+    orgId,
+    adminId,
+    studentIds,
+    message,
+  );
+  return result;
 };
 
 export const messageList = (
