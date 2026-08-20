@@ -9,7 +9,20 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "sourceMap": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "paths": {
+      "@constants": ["./constants/index.ts"],
+      "@constants/*": ["./constants/*"],
+      "@models": ["./models/index.ts"],
+      "@models/*": ["./models/*"],
+      "@errors": ["./errors/index.ts"],
+      "@errors/*": ["./errors/*"],
+      "@utils": ["./utils/index.ts"],
+      "@utils/*": ["./utils/*"],
+      "@service": ["./service/index.ts"],
+      "@service/*": ["./service/*"]
+    }
   },
+
   "exclude": ["node_modules", "dist"]
 }

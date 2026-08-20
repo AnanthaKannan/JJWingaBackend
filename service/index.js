@@ -21,7 +21,8 @@ const {
   MEDIUM_SCORE_MESSAGE,
   LOW_SCORE_MESSAGE,
   SUPER_LOW_MESSAGE,
-} = require("../message/inedx");
+  NEW_MESSAGE,
+} = require("@constants");
 const {
   Student,
   HomeWork,
@@ -1624,7 +1625,7 @@ const sendMessageNotification = async (createdMessage) => {
 
   await sendPushNotificationSingle(
     receiver?.fcmTokens?.[0],
-    "New message",
+    NEW_MESSAGE,
     createdMessage.message,
   );
 };

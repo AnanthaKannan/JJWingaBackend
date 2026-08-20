@@ -2,11 +2,6 @@ import { Document } from "mongoose";
 
 export type UserType = "student" | "admin";
 
-export enum userType {
-  STUDENT = "student",
-  ADMIN = "admin",
-}
-
 export type UserTypeSch = "Student" | "Admin";
 
 export interface IOtpVerification extends Document {

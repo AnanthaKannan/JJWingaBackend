@@ -1,6 +1,12 @@
-import { NotFoundError } from "../errors";
-import { Group, Student } from "../models";
 import { Types } from "mongoose";
+
+import { NotFoundError } from "@errors";
+import { Group, Student, Message } from "@models";
+import { getUserType } from "@utils";
+import { userTypeEnum } from "@constants";
+
+import { getStudentsToken } from "@service/student.service";
+import { sendPushNotificationBulk } from "@service/notificaion.service";
 
 interface CreateGroupParams {
   groupName: string;
@@ -83,6 +89,31 @@ export const deleteGroup = async (
   });
   if (!result) throw new Error("Group not found");
   return result;
+};
+
+const sendMessageGroupToEveryOne = async (
+  orgId: string,
+  adminId: string,
+  studentIds: string[],
+  message: string,
+) => {
+  const sendByModel = getUserType(userTypeEnum.ADMIN);
+  const receivedToModel = getUserType(userTypeEnum.STUDENT);
+
+  const messagesData = studentIds.map((studentId) => ({
+    message: message.trim(),
+    sendBy: adminId,
+    sendByModel,
+    receivedTo: studentId,
+    receivedToModel,
+  }));
+
+  const result = await Message.insertMany(messagesData, {
+    ordered: false, // MongoDB tries to insert all documents, even if some fail.
+  });
+
+  const tokens = await getStudentsToken(orgId, adminId, studentIds);
+  sendPushNotificationBulk(tokens);
 };
 
 export const sendGroupMessage = async (
