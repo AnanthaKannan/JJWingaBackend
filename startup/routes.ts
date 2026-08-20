@@ -6,6 +6,8 @@ import crone from "../routes/crone.route";
 import feed from "../routes/feed.route";
 import game from "../routes/game.route";
 import group from "../routes/group.route";
+import auth from "../routes/auth.route";
+
 import error from "../errors/error";
 import swagger from "./swagger";
 import responseTracker from "../middleware/responseTracker";
@@ -20,5 +22,6 @@ export default function (app: Application): void {
   app.use("/v1/api/feed", feed);
   app.use("/v1/api/crone", crone);
   app.use("/v1/api/game", game);
+  app.use("/v1/api/auth", auth);
   app.use(error);
 }

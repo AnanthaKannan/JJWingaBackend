@@ -75,3 +75,13 @@ export const updateGroup = z.object({
     .min(1, "At least one user is required")
     .optional(),
 });
+
+export const logoutSchema = z
+  .object({
+    deviceId: z.string().trim().optional(),
+    fcmToken: z.string().trim().optional(),
+  })
+  .refine((data) => data.deviceId || data.fcmToken, {
+    message: "Either deviceId or fcmToken is required",
+    path: ["deviceId"],
+  });
