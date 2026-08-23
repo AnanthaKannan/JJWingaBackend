@@ -83,5 +83,5 @@ export const logoutSchema = z
   })
   .refine((data) => data.deviceId || data.fcmToken, {
     message: "Either deviceId or fcmToken is required",
-    path: ["deviceId"],
+    path: ["deviceId", "fcmToken"],
   });

@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{url}}/crone/assign-homework"
+url: "{{url}}/crone/assign-homeworks"
 method: POST
 headers:
   x-access-token: "{{token}}"
