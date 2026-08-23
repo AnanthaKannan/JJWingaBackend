@@ -1,0 +1,21 @@
+$kind: http-request
+name: logout
+url: "{{url}}/auth/logout"
+method: POST
+headers:
+  x-access-token: "{{token}}"
+body:
+  type: json
+  content: "{\r
+
+    \    \"deviceId\": \"123456788\"\r
+
+    }"
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: ""
+    language: text/javascript
+settings: {}
+order: 1080

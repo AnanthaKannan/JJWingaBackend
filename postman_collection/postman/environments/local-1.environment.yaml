@@ -1,6 +1,0 @@
-name: local
-values:
-  - key: url
-    value: ''
-  - key: token
-    value: ''
