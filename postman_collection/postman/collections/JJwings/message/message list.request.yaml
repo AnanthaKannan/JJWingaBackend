@@ -1,0 +1,19 @@
+$kind: http-request
+name: message list
+url: "{{url}}/messages/6a3826a0ebe07eda9ee171a1"
+method: GET
+headers:
+  x-access-token: "{{token}}"
+body:
+  type: json
+  content: "{\r
+
+    \    \"message\": \"{{$randomLoremParagraph}}\",\r
+
+    \    \"receivedTo\": \"6a16d4108349e449c87c7806\"\r
+
+    }"
+auth:
+  type: noauth
+settings: {}
+order: 3453

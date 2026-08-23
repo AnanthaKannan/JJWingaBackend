@@ -1,0 +1,25 @@
+$kind: http-request
+url: "{{url}}/uploads"
+method: POST
+headers:
+  x-access-token: "{{token}}"
+body:
+  type: formdata
+  content:
+    - type: text
+      key: path
+      value: feed
+    - type: file
+      key: file
+      src: postman-cloud:///1f18e818-d77c-4c80-bc70-8f489511e4be
+      disabled: true
+    - type: text
+      key: content
+      value: some content is here, hello world our achivement is here
+    - type: text
+      key: type
+      value: content
+auth:
+  type: noauth
+settings: {}
+order: 27000

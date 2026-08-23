@@ -1,0 +1,9 @@
+$kind: http-request
+url: "{{url}}/comment/admin/non-approve-comment"
+method: GET
+headers:
+  x-access-token: "{{token}}"
+auth:
+  type: noauth
+settings: {}
+order: 5000

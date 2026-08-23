@@ -1,0 +1,9 @@
+$kind: http-request
+url: "{{url}}/game/toppers/1"
+method: GET
+headers:
+  x-access-token: "{{token}}"
+auth:
+  type: noauth
+settings: {}
+order: 1000

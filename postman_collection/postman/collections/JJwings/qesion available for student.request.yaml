@@ -1,0 +1,9 @@
+$kind: http-request
+url: "{{url}}/admin/questions/available/6a1726e84273750610292d45"
+method: GET
+headers:
+  x-access-token: "{{token}}"
+auth:
+  type: noauth
+settings: {}
+order: 32000

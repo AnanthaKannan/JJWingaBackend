@@ -1,0 +1,12 @@
+$kind: http-request
+url: "{{url}}/admin/teacher/6a3ac5d1d2ac529d00f35208"
+method: PATCH
+headers:
+  x-access-token: "{{token}}"
+body:
+  type: json
+  content: "{\r\n    \"name\":\"heor\"\r\n}"
+auth:
+  type: noauth
+settings: {}
+order: 24000

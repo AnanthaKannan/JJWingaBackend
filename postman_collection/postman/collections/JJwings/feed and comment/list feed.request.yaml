@@ -1,0 +1,9 @@
+$kind: http-request
+url: "{{url}}/feed"
+method: GET
+headers:
+  x-access-token: "{{token}}"
+auth:
+  type: noauth
+settings: {}
+order: 4000

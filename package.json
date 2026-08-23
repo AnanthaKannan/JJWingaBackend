@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node dist/app.js",
     "dev": "tsx watch app.js",
-    "build": "tsc",
+    "build": "tsc && tsc-alias",
     "prod": "npm run build && npm start",
     "prod:pm2": "npm run build && pm2 start dist/server.js --name jj-wings-backend && pm2 logs jj-wings-backend",
     "pm2:stop": "pm2 stop jj-wings-backend && pm2 delete jj-wings-backend",
@@ -49,6 +49,7 @@
     "eslint": "^10.4.0",
     "globals": "^17.6.0",
     "ts-node": "^10.9.2",
+    "tsc-alias": "^1.9.2",
     "tsx": "^4.23.1",
     "typescript": "^7.0.2"
   }

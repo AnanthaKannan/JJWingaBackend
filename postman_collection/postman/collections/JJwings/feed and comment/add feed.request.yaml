@@ -1,0 +1,18 @@
+$kind: http-request
+url: "{{url}}/admin/content"
+method: POST
+headers:
+  x-access-token: "{{token}}"
+body:
+  type: json
+  content: "{\r
+
+    \    \"type\": \"content\",\r
+
+    \    \"content\": \"This preprocesses  and null into undefined before the z.undefined() check runs, so a form that always sends both keys (one populated, one empty) will validate correctly.\"\r
+
+    }"
+auth:
+  type: noauth
+settings: {}
+order: 3000

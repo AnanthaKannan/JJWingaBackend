@@ -1,0 +1,10 @@
+workspace:
+  id: d5b21167-9c76-4b79-81c5-3801e583d9c9
+
+# Each entry here maps a local resource to one or more corresponding objects in Postman Cloud
+
+cloudResources:
+  collections:
+    ../postman/collections/JJwings: 6202219-d4b4287c-f4a9-4563-a035-e05874391586
+  flows:
+    ../postman/flows/New Flow.flow: 6233506e6b610e44e413f65e

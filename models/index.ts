@@ -12,6 +12,7 @@ import OtpVerification from "./otpVerification";
 import GameScore from "./gameScore";
 import Feed, { IFeed, TFeedType } from "./feed";
 import Like, { ILike } from "./like";
+import Group from "./group";
 
 export {
   Student,
@@ -25,6 +26,7 @@ export {
   Organization,
   Comment,
   GameScore,
+  Group,
   Like,
   ILike,
   IFeed,

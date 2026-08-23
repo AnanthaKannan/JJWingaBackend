@@ -1,0 +1,17 @@
+$kind: http-request
+name: group message list
+url: "{{url}}/group/6a7f731a2ed2fa01ab1d7724/send-message"
+method: POST
+headers:
+  x-access-token: "{{token}}"
+body:
+  type: json
+  content: "{\r
+
+    \    \"message\": \"${{$randomFullName}}\"\r
+
+    }"
+auth:
+  type: noauth
+settings: {}
+order: 4446

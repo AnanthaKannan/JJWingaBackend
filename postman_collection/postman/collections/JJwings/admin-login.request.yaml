@@ -1,0 +1,30 @@
+$kind: http-request
+url: "{{url}}/login"
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \    \"username\":\"AHB100\",\r
+
+    \    \"password\":\"Teacher100\",\r
+
+    \    \"deviceId\": \"123456788\"\r
+
+    }"
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: "const response = pm.response.json();\r
+
+      \r
+
+      if (response.token) {\r
+
+      \    pm.environment.set(\"token\", response.token);\r
+
+      }"
+    language: text/javascript
+settings: {}
+order: 8000

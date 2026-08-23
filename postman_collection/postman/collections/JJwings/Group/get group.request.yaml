@@ -1,0 +1,10 @@
+$kind: http-request
+name: get group
+url: "{{url}}/group"
+method: GET
+headers:
+  x-access-token: "{{token}}"
+auth:
+  type: noauth
+settings: {}
+order: 6000

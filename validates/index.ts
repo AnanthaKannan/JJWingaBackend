@@ -58,3 +58,30 @@ export const addPoints = z.object({
   level: z.number(),
   points: z.number(),
 });
+
+export const createGroup = z.object({
+  groupName: z.string().trim().min(1, "Group name is required"),
+  studentIds: z.array(objectIdSchema).min(1, "At least one user is required"),
+});
+
+export const sendGroupMessage = z.object({
+  message: z.string().trim().min(1, "Message name is required"),
+});
+
+export const updateGroup = z.object({
+  groupName: z.string().trim().min(1, "Group name is required").optional(),
+  studentIds: z
+    .array(objectIdSchema)
+    .min(1, "At least one user is required")
+    .optional(),
+});
+
+export const logoutSchema = z
+  .object({
+    deviceId: z.string().trim().optional(),
+    fcmToken: z.string().trim().optional(),
+  })
+  .refine((data) => data.deviceId || data.fcmToken, {
+    message: "Either deviceId or fcmToken is required",
+    path: ["deviceId"],
+  });

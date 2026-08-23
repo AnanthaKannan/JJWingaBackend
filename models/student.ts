@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document, Model, Types } from "mongoose";
 import bcrypt from "bcryptjs";
 
-import { uniqueStringArray } from "../utils";
+import { uniqueStringArray } from "@utils";
 
 export interface IStudent extends Document {
   studentId: string;

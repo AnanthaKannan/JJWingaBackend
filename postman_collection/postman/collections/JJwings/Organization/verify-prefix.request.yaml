@@ -1,0 +1,18 @@
+$kind: http-request
+url: "{{url}}/verify-prefix"
+method: POST
+headers:
+  x-access-token: "{{token}}"
+body:
+  type: json
+  content: "{\r
+
+    \    \"type\": \"student\",\r
+
+    \    \"prefix\": \"AHB\"\r
+
+    }"
+auth:
+  type: noauth
+settings: {}
+order: 3000

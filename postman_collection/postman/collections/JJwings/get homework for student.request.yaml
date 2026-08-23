@@ -1,0 +1,13 @@
+$kind: http-request
+url: "{{url}}/homework/6a1ea6cdb51853003400656d/NEW?page=1&limit=20&type=homework"
+method: GET
+headers:
+  x-access-token: "{{token}}"
+queryParams:
+  page: "1"
+  limit: "20"
+  type: homework
+auth:
+  type: noauth
+settings: {}
+order: 38000

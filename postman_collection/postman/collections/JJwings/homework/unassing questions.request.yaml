@@ -1,0 +1,18 @@
+$kind: http-request
+url: "{{url}}/admin/questions/assign"
+method: DELETE
+headers:
+  x-access-token: "{{token}}"
+body:
+  type: json
+  content: "{\r
+
+    \    \"studentId\": \"6a1ff4a78defc0003490d471\",\r
+
+    \    \"questionIds\": [\"6a6c624145be4c5f47f687a4\"]\r
+
+    }"
+auth:
+  type: noauth
+settings: {}
+order: 2000

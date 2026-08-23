@@ -1,8 +1,9 @@
 import { Types } from "mongoose";
-import { Comment, FileUpload, Feed, Like } from "../models";
-import { getUserType } from "../utils";
-import { userType, UserType } from "../types";
-import { updateCommentCount, updateLikeCount } from "./feed.service";
+import { Comment, FileUpload, Feed, Like } from "@models";
+import { getUserType } from "@utils";
+import { UserType } from "@types";
+import { userTypeEnum } from "@constants";
+import { updateCommentCount, updateLikeCount } from "@service/feed.service";
 
 interface AddCommentResult {
   id: Types.ObjectId;
@@ -23,7 +24,7 @@ export const addComment = async (
 ): Promise<AddCommentResult> => {
   let approved = false;
 
-  if (role === userType.ADMIN) {
+  if (role === userTypeEnum.ADMIN) {
     approved = true;
     await updateCommentCount(feedId, 1);
   }

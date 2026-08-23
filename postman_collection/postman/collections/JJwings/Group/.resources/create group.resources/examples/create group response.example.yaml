@@ -1,0 +1,49 @@
+$kind: http-example
+request:
+  url: "{{url}}/group"
+  method: POST
+  headers:
+    x-access-token: "{{token}}"
+  body:
+    type: json
+    content: "{\r
+
+      \    \"groupName\": \"{{$randomFullName}}\",\r
+
+      \    \"userIds\": [\"6a22fd73834b1443cc1808fb\", \"6a22ff9864fad8ecc7ccf995\"]\r
+
+      }"
+response:
+  statusCode: 201
+  statusText: Created
+  headers:
+    x-powered-by: Express
+    access-control-allow-origin: "*"
+    access-control-expose-headers: "*"
+    content-type: application/json; charset=utf-8
+    content-length: "357"
+    etag: W/"165-HfVek/SeuQdjvRBywk3VFSQF3XQ"
+    date: Sun, 09 Aug 2026 07:33:01 GMT
+    connection: keep-alive
+    keep-alive: timeout=5
+  body:
+    type: json
+    content: |-
+      {
+        "success": true,
+        "message": "Group created successfully.",
+        "result": {
+          "groupName": "Sophie Greenholt",
+          "userIds": [
+            "6a22fd73834b1443cc1808fb",
+            "6a22ff9864fad8ecc7ccf995"
+          ],
+          "orgId": "6a3ab09c1d3395444a92be34",
+          "createdBy": "6a16d4108349e449c87c7806",
+          "_id": "6a782d2dc4b7748e0e3ea208",
+          "createdAt": "2026-08-09T07:33:01.162Z",
+          "updatedAt": "2026-08-09T07:33:01.162Z",
+          "__v": 0
+        }
+      }
+order: 1786260849146

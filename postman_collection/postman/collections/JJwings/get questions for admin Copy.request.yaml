@@ -1,0 +1,11 @@
+$kind: http-request
+url: "{{url}}/admin/questions?type=homework"
+method: GET
+headers:
+  x-access-token: "{{token}}"
+queryParams:
+  type: homework
+auth:
+  type: noauth
+settings: {}
+order: 35000

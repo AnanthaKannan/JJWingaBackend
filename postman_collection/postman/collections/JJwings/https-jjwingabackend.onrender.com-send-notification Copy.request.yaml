@@ -1,0 +1,19 @@
+$kind: http-request
+name: https://jjwingabackend.onrender.com/send-notification Copy
+url: https://jjwingabackend.onrender.com/send-notification
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \    \"token\":\"f6vIimmdTNmmWu7LiW9cDe:APA91bG7-Mi6THUFMIvdBRGK_x9AZcXaU_NlsNgK_aynVD8ILxzDZOxOwv2rt6ProNjhRplKqQc6V7F0OGZdmYF3A4krktTeYuxVdZR_xJJpbud-K9dJNJM\",\r
+
+    \    \"title\":\"Hello guys1\",\r
+
+    \    \"body\":\"some body\"\r
+
+    }"
+auth:
+  type: noauth
+settings: {}
+order: 41000

@@ -1,0 +1,16 @@
+$kind: http-request
+url: "{{url}}/uploads"
+method: PATCH
+headers:
+  x-access-token: "{{token}}"
+body:
+  type: json
+  content: "{\r
+
+    \    \"deviceId\": \"12121212121\"\r
+
+    }"
+auth:
+  type: noauth
+settings: {}
+order: 21000

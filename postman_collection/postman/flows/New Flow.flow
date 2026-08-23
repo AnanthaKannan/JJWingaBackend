@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "name": "New Flow",
+  "description": "",
+  "flow": {
+    "nodes": {
+      "idV872NNqjvzFjwUBH307": {
+        "type": "START",
+        "config": {},
+        "pos": {
+          "x": 100,
+          "y": 100
+        }
+      }
+    },
+    "modules": {},
+    "connections": {},
+    "annotations": {},
+    "forms": {},
+    "groups": {},
+    "ports": {},
+    "io": {},
+    "webhook": {},
+    "meta": {},
+    "scenes": {},
+    "scenarios": {},
+    "datasetRuns": {},
+    "config": {
+      "definitions": {},
+      "constants": {}
+    },
+    "attributes": {
+      "name": "New Flow",
+      "latestVersion": null,
+      "parent": null,
+      "createdBy": 6202219,
+      "createdOn": "2022-03-17T15:14:54.895Z",
+      "updatedOn": "2022-03-17T15:14:54.895Z",
+      "type": "module",
+      "permissions": {
+        "canView": true,
+        "canExecute": true,
+        "canEdit": true,
+        "canDelete": true,
+        "canDeploy": true,
+        "canUpdateRoles": false,
+        "canFork": false,
+        "canEditForkDetails": false,
+        "canAddComment": false,
+        "canResolveComment": false,
+        "canDeleteComment": false
+      },
+      "fork": null,
+      "activeTargets": null
+    }
+  },
+  "lockbox": {},
+  "info": {
+    "_postman_id": "7f136dbe-48ed-48f2-ae32-728a63719a17"
+  },
+  "_postman_exported_at": "2026-08-09T07:03:01.163Z",
+  "_postman_exported_using": "Postman/Local Mode"
+}

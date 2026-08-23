@@ -1,0 +1,74 @@
+$kind: http-example
+request:
+  url: "{{url}}/group/6a7f731a2ed2fa01ab1d7724/messages"
+  method: GET
+  headers:
+    x-access-token: "{{token}}"
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    x-powered-by: Express
+    access-control-allow-origin: "*"
+    access-control-expose-headers: "*"
+    content-type: application/json; charset=utf-8
+    content-length: "993"
+    etag: W/"3e1-hYAHqOSfprzGnnL/THgv0B0ErEo"
+    date: Wed, 19 Aug 2026 18:41:01 GMT
+    connection: keep-alive
+    keep-alive: timeout=5
+  body:
+    type: json
+    content: |-
+      {
+        "success": true,
+        "message": "Message list fetched successfully.",
+        "data": [
+          {
+            "_id": "6a7f731a2ed2fa01ab1d7724",
+            "messages": [
+              {
+                "text": "Hello",
+                "_id": "6a7ff878579db23d72e502a7",
+                "date": "2026-08-15T05:26:16.534Z"
+              },
+              {
+                "text": "Are you able to generate the code for the same as the day of the day",
+                "_id": "6a7ff8a5579db23d72e502a8",
+                "date": "2026-08-15T05:27:01.092Z"
+              },
+              {
+                "text": "It's ok to me and",
+                "_id": "6a7ff967579db23d72e502a9",
+                "date": "2026-08-15T05:30:15.142Z"
+              },
+              {
+                "text": "Hello my name is billa so sorry to bother you but I am using WhatsApp and",
+                "_id": "6a8002c1f9d7e8ab7b34cd7b",
+                "date": "2026-08-15T06:10:09.759Z"
+              },
+              {
+                "text": "hello test message is here",
+                "_id": "6a85f5a02006f7d43d180f85",
+                "date": "2026-08-19T18:27:44.271Z"
+              },
+              {
+                "text": "$Roderick Vandervort",
+                "_id": "6a85f5c92006f7d43d180f86",
+                "date": "2026-08-19T18:28:25.687Z"
+              },
+              {
+                "text": "$Mike Bernhard",
+                "_id": "6a85f5cb2006f7d43d180f87",
+                "date": "2026-08-19T18:28:27.510Z"
+              },
+              {
+                "text": "$Johnny Cartwright",
+                "_id": "6a85f5cd2006f7d43d180f88",
+                "date": "2026-08-19T18:28:29.098Z"
+              }
+            ]
+          }
+        ]
+      }
+order: 1787164943716

@@ -1,0 +1,18 @@
+$kind: http-request
+url: http://localhost:3001/send-notification
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \    \"token\":\"eVEjWNDCTTiJ1_6plqGQMf:APA91bHK_TFUKb89e9MjVxzQhuUotM6O6OGfyG4wpbvOk3FNC9k8bZ_AVfR9aSVr5zBLR1gmE2vcjYOKsUovVq0QtZWyOnznyRFzM88e-LGvc14Nj4d0F08\",\r
+
+    \    \"title\":\"Hello guys1\",\r
+
+    \    \"body\":\"some body\"\r
+
+    }"
+auth:
+  type: noauth
+settings: {}
+order: 40000
