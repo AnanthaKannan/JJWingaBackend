@@ -33,11 +33,13 @@ export const createFeed = async ({
 
   const tokens = students.flatMap((student) => student.fcmTokens ?? []);
   const { title, body } = NEW_FEED_PUBLISHED;
-  const notification = {
-    adminId: createdBy,
-    sentBy: userTypeModelEnum.ADMIN,
-  };
-  await sendPushNotificationBulk(tokens, title, body, [notification]);
+
+  const notifications = students.map((student) => ({
+    studentId: student._id.toString(),
+    sentBy: userTypeModelEnum.STUDENT,
+  }));
+
+  await sendPushNotificationBulk(tokens, title, body, notifications);
 
   return feed;
 };

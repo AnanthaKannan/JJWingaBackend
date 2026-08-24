@@ -6,6 +6,7 @@ import {
   COMMENT_APPROVED_BY_ADMIN,
   NEW_COMMENT_ADDED_BY_STUDENT,
   userTypeEnum,
+  userTypeModelEnum,
 } from "@constants";
 import { updateCommentCount, updateLikeCount } from "@service/feed.service";
 import { sendPushNotificationBulk } from "./notificaion.service";
@@ -64,7 +65,11 @@ export const addComment = async (
 
   if (tokens) {
     const { title, body } = NEW_COMMENT_ADDED_BY_STUDENT;
-    await sendPushNotificationBulk(tokens, title, body);
+    const notification = {
+      adminId: feed.createdBy.toString(),
+      sentBy: userTypeModelEnum.ADMIN,
+    };
+    await sendPushNotificationBulk(tokens, title, body, [notification]);
   }
 
   return { id: data._id };
@@ -192,7 +197,11 @@ export const approveComment = async (orgId: string, commentId: string) => {
 
   if (tokens) {
     const { title, body } = COMMENT_APPROVED_BY_ADMIN;
-    await sendPushNotificationBulk(tokens, title, body);
+    const notification = {
+      studentId: studentDetails._id.toString(),
+      sentBy: userTypeModelEnum.STUDENT,
+    };
+    await sendPushNotificationBulk(tokens, title, body, [notification]);
   }
 };
 
@@ -212,7 +221,11 @@ export const rejectComment = async (orgId: string, commentId: string) => {
 
   if (tokens) {
     const { title, body } = COMMENT_APPROVED_BY_ADMIN;
-    await sendPushNotificationBulk(tokens, title, body);
+    const notification = {
+      studentId: studentDetails._id.toString(),
+      sentBy: userTypeModelEnum.STUDENT,
+    };
+    await sendPushNotificationBulk(tokens, title, body, [notification]);
   }
 };
 
