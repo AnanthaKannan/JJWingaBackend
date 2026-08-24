@@ -1,12 +1,12 @@
 import express, { Application } from "express";
 
-import routes from "../routes";
-import comment from "../routes/comment";
-import crone from "../routes/crone.route";
-import feed from "../routes/feed.route";
-import game from "../routes/game.route";
-import group from "../routes/group.route";
-import auth from "../routes/auth.route";
+import routes from "@routes";
+import comment from "@routes/comment.route";
+import crone from "@routes/crone.route";
+import feed from "@routes/feed.route";
+import game from "@routes/game.route";
+import group from "@routes/group.route";
+import auth from "@routes/auth.route";
 
 import error from "../errors/error";
 import swagger from "./swagger";
