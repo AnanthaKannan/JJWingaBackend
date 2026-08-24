@@ -9,3 +9,8 @@ export const COMMENT_APPROVED_BY_ADMIN = {
   title: "Comment Approved",
   body: "Your comment has been approved by the admin and is now visible to everyone.",
 };
+
+export const NEW_FEED_PUBLISHED = {
+  title: "New Feed Added",
+  body: "A new feed has been added. Check it out and stay updated with the latest posts.",
+};
