@@ -17,4 +17,4 @@ auth:
   type: noauth
 settings: {}
 examples: .resources/update group.resources/examples
-order: 2000
+order: 3000

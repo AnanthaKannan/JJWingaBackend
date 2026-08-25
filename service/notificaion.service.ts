@@ -1,8 +1,10 @@
 const admin = require("firebase-admin");
 import { SendResponse } from "firebase-admin/messaging";
 
-import logger from "../middleware/logger";
-import { getTokenSuffix, chunk } from "../utils";
+import logger from "@middleware/logger";
+import { getTokenSuffix, chunk } from "@utils";
+import { Notification } from "@models";
+import { UserType, UserTypeSch } from "@types";
 
 if (!admin.apps.length) {
   admin.initializeApp({
@@ -44,10 +46,34 @@ export const sendPushNotificationSingle = async (
   }
 };
 
+type NotificationType = {
+  studentId?: string;
+  adminId?: string;
+  sentBy: UserTypeSch;
+};
+
+const insertNotification = async (
+  notifications: NotificationType[],
+  messageHeader: string,
+  messageBody: string,
+) => {
+  if (notifications.length < 1) return;
+  const updatedNotifications = notifications.map((notification) => ({
+    ...notification,
+    messageBody,
+    messageHeader,
+  }));
+
+  await Notification.insertMany(updatedNotifications, {
+    ordered: false,
+  });
+};
+
 export const sendPushNotificationBulk = async (
   tokens: string[],
   title: string,
   body: string,
+  notifications?: NotificationType[],
 ): Promise<{
   successCount: number;
   failureCount: number;
@@ -98,6 +124,10 @@ export const sendPushNotificationBulk = async (
         "push_notification_batch_failed",
       );
     }
+  }
+
+  if (notifications && notifications?.length > 0) {
+    await insertNotification(notifications, title, body);
   }
 
   return { successCount, failureCount, invalidTokens };

@@ -1,5 +1,7 @@
-import { Feed, IFeed, TFeedType, Comment, Like } from "../models";
+import { Feed, IFeed, TFeedType, Comment, Like, Student } from "../models";
 import { Types } from "mongoose";
+import { sendPushNotificationBulk } from "./notificaion.service";
+import { NEW_FEED_PUBLISHED, userTypeModelEnum } from "@constants";
 
 interface CreateFeedParams {
   orgId: string;
@@ -21,6 +23,23 @@ export const createFeed = async ({
     content,
     createdBy,
   });
+
+  const students = await Student.find({
+    orgId,
+    createdBy,
+  })
+    .select("fcmTokens _id")
+    .lean();
+
+  const tokens = students.flatMap((student) => student.fcmTokens ?? []);
+  const { title, body } = NEW_FEED_PUBLISHED;
+
+  const notifications = students.map((student) => ({
+    studentId: student._id.toString(),
+    sentBy: userTypeModelEnum.STUDENT,
+  }));
+
+  await sendPushNotificationBulk(tokens, title, body, notifications);
 
   return feed;
 };

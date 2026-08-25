@@ -1,9 +1,15 @@
 import { Types } from "mongoose";
-import { Comment, FileUpload, Feed, Like } from "@models";
+import { Comment, FileUpload, Feed, Like, Admin, Student } from "@models";
 import { getUserType } from "@utils";
 import { UserType } from "@types";
-import { userTypeEnum } from "@constants";
+import {
+  COMMENT_APPROVED_BY_ADMIN,
+  NEW_COMMENT_ADDED_BY_STUDENT,
+  userTypeEnum,
+  userTypeModelEnum,
+} from "@constants";
 import { updateCommentCount, updateLikeCount } from "@service/feed.service";
+import { sendPushNotificationBulk } from "./notificaion.service";
 
 interface AddCommentResult {
   id: Types.ObjectId;
@@ -29,7 +35,9 @@ export const addComment = async (
     await updateCommentCount(feedId, 1);
   }
 
-  const feed = await Feed.findById(feedId).select("createdBy").lean();
+  const feed = await Feed.findOne({ _id: feedId, orgId })
+    .select("createdBy")
+    .lean();
 
   if (!feed) throw new Error(`feed not available for ${feedId}`);
 
@@ -43,6 +51,27 @@ export const addComment = async (
     feedOwnerId: feed.createdBy,
     userType: getUserType(role),
   });
+
+  const response = { id: data._id };
+  if (role === userTypeEnum.ADMIN) {
+    return response;
+  }
+
+  // if it is comment by admin, need to send the notification to the admin
+  const adminDetail = await Admin.findOne({ _id: feed.createdBy, orgId })
+    .select("fcmTokens")
+    .lean();
+  const tokens = adminDetail?.fcmTokens;
+
+  if (tokens) {
+    const { title, body } = NEW_COMMENT_ADDED_BY_STUDENT;
+    const notification = {
+      adminId: feed.createdBy.toString(),
+      sentBy: userTypeModelEnum.ADMIN,
+    };
+    await sendPushNotificationBulk(tokens, title, body, [notification]);
+  }
+
   return { id: data._id };
 };
 
@@ -160,6 +189,20 @@ export const approveComment = async (orgId: string, commentId: string) => {
   );
   if (!result) throw new Error(`${commentId} is invalid`);
   await updateCommentCount(result.feedId.toString(), 1);
+
+  const studentDetails = await Student.findOne({ _id: result.userId, orgId })
+    .select("fcmTokens")
+    .lean();
+  const tokens = studentDetails?.fcmTokens;
+
+  if (tokens) {
+    const { title, body } = COMMENT_APPROVED_BY_ADMIN;
+    const notification = {
+      studentId: studentDetails._id.toString(),
+      sentBy: userTypeModelEnum.STUDENT,
+    };
+    await sendPushNotificationBulk(tokens, title, body, [notification]);
+  }
 };
 
 export const rejectComment = async (orgId: string, commentId: string) => {
@@ -169,7 +212,21 @@ export const rejectComment = async (orgId: string, commentId: string) => {
     approved: false,
   });
 
-  // TODO: send notification to the user, that it is deleted
+  if (!result) throw new Error(`${commentId} is invalid`);
+
+  const studentDetails = await Student.findOne({ _id: result.userId, orgId })
+    .select("fcmTokens")
+    .lean();
+  const tokens = studentDetails?.fcmTokens;
+
+  if (tokens) {
+    const { title, body } = COMMENT_APPROVED_BY_ADMIN;
+    const notification = {
+      studentId: studentDetails._id.toString(),
+      sentBy: userTypeModelEnum.STUDENT,
+    };
+    await sendPushNotificationBulk(tokens, title, body, [notification]);
+  }
 };
 
 export const deleteComment = async (

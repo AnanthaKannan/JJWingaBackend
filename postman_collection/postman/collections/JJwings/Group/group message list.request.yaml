@@ -7,4 +7,4 @@ auth:
   type: noauth
 settings: {}
 examples: .resources/group message list.resources/examples
-order: 5000
+order: 6000

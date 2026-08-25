@@ -15,4 +15,4 @@ body:
 auth:
   type: noauth
 settings: {}
-order: 3000
+order: 4000

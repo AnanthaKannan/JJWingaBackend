@@ -1697,6 +1697,19 @@ const getUnreadMessageCount = async (user) => {
   return { unreadCount };
 };
 
+const getAdminDetail = async (orgId, studentId) => {
+  const student = await Student.findOne({ _id: studentId, orgId })
+    .select("createdBy")
+    .lean();
+
+  if (!student.createdBy) return {};
+
+  const admin = await Admin.findOne({ orgId, _id: student.createdBy })
+    .select("name profilePicPath")
+    .lean();
+  return admin || {};
+};
+
 const getMessageList = async (user, page = 1, limit = 15, userId) => {
   const userModel = getMessageUserModel(user?.role);
   if (!userModel) {
@@ -2719,4 +2732,5 @@ module.exports = {
   markMessagesAsRead,
   getWeeklyRankings,
   updateQuestion,
+  getAdminDetail,
 };

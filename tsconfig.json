@@ -28,7 +28,9 @@
       "@validates": ["./validates/index.ts"],
       "@validates/*": ["./validates/*"],
       "@types": ["./types/index.ts"],
-      "@types/*": ["./types/*"]
+      "@types/*": ["./types/*"],
+      "@routes": ["./routes/index.ts"],
+      "@routes/*": ["./routes/*"]
     }
   },
 
