@@ -8,7 +8,7 @@ export const getStudentsToken = async (
   const students = await Student.find({
     orgId,
     createdBy,
-    studentId: { $in: studentIds },
+    _id: { $in: studentIds },
   })
     .select("fcmTokens -_id")
     .lean();

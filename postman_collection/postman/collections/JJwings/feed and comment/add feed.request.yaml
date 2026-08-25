@@ -1,5 +1,6 @@
 $kind: http-request
-url: "{{url}}/admin/content"
+name: add feed
+url: "{{url}}/feed/admin/content"
 method: POST
 headers:
   x-access-token: "{{token}}"

@@ -108,7 +108,7 @@ const sendMessageGroupToEveryOne = async (
     receivedToModel,
   }));
 
-  const result = await Message.insertMany(messagesData, {
+  await Message.insertMany(messagesData, {
     ordered: false, // MongoDB tries to insert all documents, even if some fail.
   });
 
