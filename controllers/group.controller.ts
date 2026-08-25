@@ -112,6 +112,6 @@ export const messageList = async (
   return res.status(200).json({
     success: true,
     message: "Message list fetched successfully.",
-    data: data || [],
+    data: data?.[0]?.messages || [],
   });
 };
