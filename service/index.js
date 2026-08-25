@@ -1707,7 +1707,7 @@ const getAdminDetail = async (orgId, studentId) => {
   const admin = await Admin.findOne({ orgId, _id: student.createdBy })
     .select("name profilePicPath")
     .lean();
-  return admin;
+  return admin || {};
 };
 
 const getMessageList = async (user, page = 1, limit = 15, userId) => {
