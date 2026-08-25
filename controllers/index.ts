@@ -45,6 +45,7 @@ import {
   updateAdmin,
   getAdminList,
   getOrgDetail,
+  getAdminDetail,
 } from "../service";
 import {
   hasField,
@@ -54,6 +55,7 @@ import {
 } from "../utils/validation";
 import { getFormattedUptime } from "../utils";
 import logger from "../middleware/logger";
+import { userTypeEnum } from "@constants";
 
 // ---------------------------------------------------------------------------
 // Shared types
@@ -1376,15 +1378,21 @@ const getMessagesController = async (req: Request, res: Response) => {
   try {
     const page = Number(req.query.page) || 1;
     const limit = Number(req.query.limit) || 15;
+    const { id, role, orgId } = req.user;
     const userId =
       (req.params.studentId as string) ||
       (req.query.studentId as string) ||
       null;
 
     const result = await getMessageList(req.user, page, limit, userId);
+    let adminDetails = {};
+    if (role === userTypeEnum.STUDENT) {
+      adminDetails = await getAdminDetail(orgId, id);
+    }
 
     return res.status(200).json({
       success: true,
+      adminDetails,
       data: result.messages,
       meta: result.meta,
     });
