@@ -155,7 +155,23 @@ export const messageList = (
   adminId: string,
   groupId: string,
 ) => {
-  return Group.findOne({ _id: groupId, orgId, createdBy: adminId })
-    .select("messages")
-    .lean();
+  return Group.aggregate([
+    {
+      $match: {
+        _id: new Types.ObjectId(groupId),
+        orgId: new Types.ObjectId(orgId),
+        createdBy: new Types.ObjectId(adminId),
+      },
+    },
+    {
+      $project: {
+        messages: {
+          $sortArray: {
+            input: "$messages",
+            sortBy: { date: -1 },
+          },
+        },
+      },
+    },
+  ]);
 };
