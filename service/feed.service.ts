@@ -28,7 +28,7 @@ export const createFeed = async ({
     orgId,
     createdBy,
   })
-    .select("fcmTokens -_id")
+    .select("fcmTokens _id")
     .lean();
 
   const tokens = students.flatMap((student) => student.fcmTokens ?? []);
