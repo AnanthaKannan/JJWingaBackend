@@ -47,6 +47,7 @@ import {
   getOrgDetail,
   getAdminDetail,
 } from "../service";
+import * as messageService from "@service/messages.service";
 import {
   hasField,
   sendOptionalStudentLevelError,
@@ -1649,9 +1650,23 @@ const getOrgDetailController = async (req: Request, res: Response) => {
   });
 };
 
+const deleteMessage = async (
+  req: Request<{ messageId: string }>,
+  res: Response,
+) => {
+  const { id } = req.user;
+  const { messageId } = req.params;
+  await messageService.deleteMessage(id, messageId);
+  return res.status(200).json({
+    success: true,
+    message: "Messages deleted successfully",
+  });
+};
+
 export {
   addAdminController,
   updateAdminController,
+  deleteMessage,
   getAdminListController,
   getStudentListController,
   getMessageStudentListController,

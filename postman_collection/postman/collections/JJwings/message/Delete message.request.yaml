@@ -1,7 +1,7 @@
 $kind: http-request
-name: message list
-url: "{{url}}/messages/6a3826a0ebe07eda9ee171a1"
-method: GET
+name: Delete message
+url: "{{url}}/messages/6a8ae2395396fe28d9dc2804"
+method: DELETE
 headers:
   x-access-token: "{{token}}"
 body:
@@ -16,4 +16,4 @@ body:
 auth:
   type: noauth
 settings: {}
-order: 4000
+order: 3484
