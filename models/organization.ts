@@ -18,6 +18,7 @@ export interface IOrganization extends Document {
   pricePerStudent: number;
   total?: number;
   state: OrganizationState;
+  expired: boolean;
 }
 
 const organizationSchema = new Schema<IOrganization>(
@@ -73,13 +74,18 @@ const organizationSchema = new Schema<IOrganization>(
     total: {
       type: Number,
     },
+    expired: {
+      // If expired true we will block the user to access the screen
+      type: Boolean,
+      default: false,
+    },
     state: {
       type: String,
       enum: ["paid", "unpaid", "free"],
       default: "free", // Optional
     },
   },
-  { versionKey: false },
+  { timestamps: true, versionKey: false },
 );
 
 const Organization: Model<IOrganization> = mongoose.model<IOrganization>(

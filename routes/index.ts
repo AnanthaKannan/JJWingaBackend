@@ -238,6 +238,5 @@ router.post(
   orgController.verifyPrefix,
 );
 router.post("/org", validate(schema.addOrg), orgController.addOrganization);
-router.post("/org", validate(schema.addOrg), orgController.addOrganization);
 
 export default router;

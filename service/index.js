@@ -83,6 +83,10 @@ const login = async (username, password, deviceId, validatePassword = true) => {
     await updateStudent(user._id, { deviceId }, user?.orgId);
   }
 
+  const orgDetail = await Organization.findById(user.orgId)
+    .select("expired")
+    .lean();
+
   // Step 5: Generate JWT
   let deviceIds = user.deviceIds;
   if (deviceId) {
@@ -104,6 +108,7 @@ const login = async (username, password, deviceId, validatePassword = true) => {
     token,
     role,
     orgId: user.orgId,
+    expired: orgDetail.expired || false,
     user: {
       id: user._id,
       name: user.name,
