@@ -62,6 +62,8 @@ notificationSchema.pre("validate", function (this: INotification) {
   }
 });
 
+notificationSchema.index({ createdAt: 1 }, { expireAfterSeconds: 864000 });
+
 const Notification: Model<INotification> = mongoose.model<INotification>(
   "Notification",
   notificationSchema,
