@@ -4,7 +4,7 @@ import { SendResponse } from "firebase-admin/messaging";
 import logger from "@middleware/logger";
 import { getTokenSuffix, chunk } from "@utils";
 import { Notification } from "@models";
-import { UserType, UserTypeSch } from "@types";
+import { UserTypeSch } from "@types";
 
 if (!admin.apps.length) {
   admin.initializeApp({
@@ -17,34 +17,6 @@ if (!admin.apps.length) {
 }
 
 const FCM_BATCH_LIMIT = 500; // sendEachForMulticast's per-call token limit
-
-export const sendPushNotificationSingle = async (
-  token: string,
-  title: string,
-  body: string,
-) => {
-  try {
-    if (!token) {
-      logger.warn({ title }, "push_notification_skipped_missing_token");
-      return;
-    }
-
-    await admin.messaging().send({
-      token,
-      notification: { title, body },
-    });
-  } catch (error) {
-    // Log but don't throw — DB entry already saved, push failure is non-critical
-    logger.error(
-      {
-        err: error,
-        title,
-        tokenSuffix: getTokenSuffix(token),
-      },
-      "push_notification_failed",
-    );
-  }
-};
 
 type NotificationType = {
   studentId?: string;

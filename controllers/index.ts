@@ -795,8 +795,8 @@ const updateStudentFcmTokenController = async (req: Request, res: Response) => {
     });
   }
 
-  const isStudent = req.user.role === "student";
-  await updateFcmToken(orgId as string, req.user.id, fcmToken, isStudent);
+  const isStudent = req.user.role === userTypeEnum.STUDENT;
+  await updateFcmToken(orgId, req.user.id, fcmToken, isStudent);
 
   return res.status(200).json({
     success: true,
