@@ -197,6 +197,8 @@ router.get(
   controller.getMessagesController,
 );
 
+router.delete("/messages/:messageId", authenticate, controller.deleteMessage);
+
 router.post("/messages", authenticate, controller.addMessageController);
 router.patch(
   "/messages/read",
