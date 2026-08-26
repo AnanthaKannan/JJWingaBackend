@@ -1,4 +1,5 @@
 $kind: http-request
+name: assign homework to the student
 url: "{{url}}/admin/questions/assign"
 method: POST
 headers:
@@ -7,9 +8,9 @@ body:
   type: json
   content: "{\r
 
-    \    \"studentId\":\"6a1726e84273750610292d45\" ,\r
+    \    \"studentId\":\"6a3d7fe319454e72a58f48f3\" ,\r
 
-    \    \"questionIds\": [\"6a172d782a3fe12b04e53ba1\"]\r
+    \    \"questionIds\": [\"6a3e9f0fefa0759e83ac7cf6\"]\r
 
     }"
 auth:

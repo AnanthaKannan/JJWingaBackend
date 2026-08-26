@@ -631,7 +631,8 @@ const sendAssignmentNotifications = async (
     { _id: { $in: studentIds } },
     { fcmTokens: 1 },
   );
-  const tokenMap = studentDocs.map((acc, student) => {
+
+  const tokenMap = studentDocs.reduce((acc, student) => {
     acc[student._id.toString()] = student.fcmTokens || [];
     return acc;
   }, {});

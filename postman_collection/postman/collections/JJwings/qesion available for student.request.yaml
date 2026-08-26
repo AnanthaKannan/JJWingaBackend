@@ -1,5 +1,6 @@
 $kind: http-request
-url: "{{url}}/admin/questions/available/6a1726e84273750610292d45"
+name: qesion available for student
+url: "{{url}}/admin/questions/available/6a3d7fe319454e72a58f48f3"
 method: GET
 headers:
   x-access-token: "{{token}}"
