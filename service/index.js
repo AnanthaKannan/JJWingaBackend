@@ -10,10 +10,7 @@ const {
   getSupabaseStorageTarget,
 } = require("../utils/supabaseStorage");
 const { createFeed } = require("./feed.service");
-const {
-  sendPushNotificationSingle,
-  sendPushNotificationBulk,
-} = require("./notificaion.service");
+const { sendPushNotificationBulk } = require("./notificaion.service");
 const {
   PERFECT_SCORE_MESSAGES,
   HOMEWORK_COMPLETION_REMINDER,
@@ -629,8 +626,8 @@ const sendAssignmentNotifications = async (
     { _id: { $in: studentIds } },
     { fcmTokens: 1 },
   );
-  const tokenMap = studentDocs.reduce((acc, student) => {
-    acc[student._id.toString()] = student.fcmTokens?.[0] || null;
+  const tokenMap = studentDocs.map((acc, student) => {
+    acc[student._id.toString()] = student.fcmTokens || [];
     return acc;
   }, {});
 
@@ -666,7 +663,7 @@ const sendAssignmentNotifications = async (
 
   await Promise.allSettled(
     notifications.map((notification) =>
-      sendPushNotificationSingle(
+      sendPushNotificationBulk(
         tokenMap[notification.studentId.toString()],
         notification.messageHeader,
         notification.messageBody,
@@ -1270,13 +1267,15 @@ const updateFcmToken = async (orgId, userId, fcmToken, isStudent) => {
     const studentId = userId;
     await Student.findOneAndUpdate(
       { _id: studentId, orgId },
-      { fcmTokens: [fcmToken] }, // replace entire array with the new single token
+      { $addToSet: { fcmTokens: fcmToken } },
+      { new: true },
     );
   } else {
     const adminId = userId;
     await Admin.findOneAndUpdate(
       { _id: adminId, orgId },
-      { fcmTokens: [fcmToken] }, // replace entire array with the new single token
+      { $addToSet: { fcmTokens: fcmToken } },
+      { new: true },
     );
   }
 };
@@ -1623,8 +1622,8 @@ const getMessageReceiver = async (createdMessage) => {
 const sendMessageNotification = async (createdMessage) => {
   const receiver = await getMessageReceiver(createdMessage);
 
-  await sendPushNotificationSingle(
-    receiver?.fcmTokens?.[0],
+  await sendPushNotificationBulk(
+    receiver?.fcmTokens,
     NEW_MESSAGE,
     createdMessage.message,
   );
@@ -1917,8 +1916,8 @@ const createHomeworkCompletedNotification = async (
     ...completionMessage,
   });
 
-  await sendPushNotificationSingle(
-    adminDetail?.fcmTokens?.[0],
+  await sendPushNotificationBulk(
+    adminDetail?.fcmTokens,
     notification.messageHeader,
     notification.messageBody,
   );
@@ -2111,8 +2110,8 @@ const sendAppreciationNotifications = async () => {
       sentByModel: "Admin",
     });
 
-    await sendPushNotificationSingle(
-      student?.fcmTokens?.[0],
+    await sendPushNotificationBulk(
+      student?.fcmTokens,
       notification.messageHeader,
       notification.messageBody,
     );
