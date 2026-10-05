@@ -71,6 +71,8 @@ async function sendOtpService(email: string): Promise<ServiceResult> {
   const otp = generateOtp();
   const otpHash = await bcrypt.hash(otp, 10);
 
+  logger.info({ otp }, "otp_record");
+
   await OtpVerification.create({
     email: normalizedEmail,
     otpHash,
