@@ -104,6 +104,12 @@ router.get(
   authenticate,
   controller.getScoreByStudentIdController,
 );
+router.post(
+  "/admin/scores/recalculate",
+  ...admin,
+  validate(schema.recalculateStudentScore),
+  controller.recalculateStudentScoreController,
+);
 
 // Question (protected)
 router.get(
