@@ -59,6 +59,10 @@ export const addPoints = z.object({
   points: z.number(),
 });
 
+export const recalculateStudentScore = z.object({
+  studentId: objectIdSchema,
+});
+
 export const createGroup = z.object({
   groupName: z.string().trim().min(1, "Group name is required"),
   studentIds: z.array(objectIdSchema).min(1, "At least one user is required"),

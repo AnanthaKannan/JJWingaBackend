@@ -47,6 +47,7 @@ import {
   getOrgDetail,
   getAdminDetail,
 } from "../service";
+import { recalculateStudentScore as recalculateStudentScoreService } from "../service/score.service";
 import * as messageService from "@service/messages.service";
 import {
   hasField,
@@ -494,6 +495,22 @@ const getScoreByStudentIdController = async (req: Request, res: Response) => {
     success: true,
     message: "Score fetched successfully",
     ...score,
+  });
+};
+
+const recalculateStudentScoreController = async (
+  req: Request,
+  res: Response,
+) => {
+  const score = await recalculateStudentScoreService(
+    req.user.id,
+    req.body.studentId,
+  );
+
+  return res.status(200).json({
+    success: true,
+    message: "Student score recalculated successfully",
+    data: score,
   });
 };
 
@@ -1690,6 +1707,7 @@ export {
   updateHomeworkController,
   getAvailableQuestionsForStudentController,
   getScoreByStudentIdController,
+  recalculateStudentScoreController,
   loginController,
   healthCheckController,
   getNotificationsController,
